@@ -1,0 +1,6 @@
+[project]
+name = "kikitoru"
+version = "0.1.0"
+description = "AI-powered meeting minutes from voice recordings, with Japanese language support."
+requires-python = ">=3.14"
+dependencies = []
