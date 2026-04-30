@@ -1,0 +1,279 @@
+# ============================================================================
+# Python
+# ============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+*.lcov
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Type checkers
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.pyright/
+
+# Linters / formatters
+.ruff_cache/
+
+# Cython debug
+cython_debug/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ============================================================================
+# 仮想環境
+# ============================================================================
+
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ============================================================================
+# uv
+# ============================================================================
+# uv.lock は再現性のためコミットする（ignore しない）
+# .python-version も通常コミット（uv が参照）
+
+# ============================================================================
+# 環境変数 / シークレット
+# ============================================================================
+
+.env
+.env.*
+!.env.example
+.envrc
+*.pem
+*.key
+*.pfx
+*.p12
+
+# API キー / OAuth クレデンシャル
+# OS キーチェーン（keyring）に入れる前にダウンロードする JSON も含めて誤コミット防止
+credentials.json
+client_secret*.json
+token.json
+tokens.json
+*_credentials.json
+service_account*.json
+oauth_token*.json
+
+# Anthropic / Hugging Face トークンが書かれがちなファイル
+.anthropic
+.huggingface
+api_keys.txt
+
+# ============================================================================
+# データベース
+# ============================================================================
+
+# Docker Compose で立てる PostgreSQL のデータディレクトリ
+pgdata/
+postgres-data/
+postgres_data/
+.postgres/
+
+# 万一 SQLite を使った場合
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# DB ダンプ
+*.sql.gz
+*.dump
+
+# Alembic は migrations/ をコミットする（ignore しない）
+
+# ============================================================================
+# ログ / 観測性
+# ============================================================================
+
+*.log
+logs/
+log/
+
+# ============================================================================
+# 音声ファイル / 文字起こし中間生成物
+# ============================================================================
+# 議事録の元となる録音は基本コミットしない（プライバシー + サイズ）。
+# テスト用フィクスチャは tests/fixtures/audio/ に置いて
+# git add -f か Git LFS で個別管理する想定。
+
+recordings/
+audio/
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+*.opus
+*.aac
+
+# 文字起こしの中間生成物
+transcripts/
+.transcripts_cache/
+
+# 議事録の下書き（最終 Markdown は別ディレクトリで管理）
+minutes_drafts/
+
+# ============================================================================
+# モデルキャッシュ（Whisper / pyannote / 埋め込み）
+# ============================================================================
+# 通常は ~/.cache/huggingface に保存されるので無視不要だが、
+# プロジェクト内に HF_HOME を指定した場合の保険
+
+models/
+.model_cache/
+.cache/
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+# ============================================================================
+# Eval Harness
+# ============================================================================
+# tests/eval/fixtures/ はコミット対象。実行結果キャッシュ・出力のみ無視。
+
+eval_results/
+.eval_cache/
+eval_output/
+
+# ============================================================================
+# Streamlit（Phase 2 以降）
+# ============================================================================
+
+.streamlit/secrets.toml
+
+# ============================================================================
+# Claude Code
+# ============================================================================
+# プロジェクト共有の設定（agents / commands 等）はコミットしてよい。
+# ローカル個別設定だけ無視。
+
+.claude/settings.local.json
+.claude/.session/
+.claude/cache/
+
+# ============================================================================
+# OS
+# ============================================================================
+
+# macOS
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+.directory
+.fuse_hidden*
+.Trash-*
+.nfs*
+
+# ============================================================================
+# エディタ / IDE
+# ============================================================================
+
+# VSCode（プロジェクト共有設定が必要なら ! で個別に除外）
+.vscode/
+!.vscode/extensions.json
+
+# JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Vim
+*.swp
+*.swo
+*.swn
+*~
+[._]*.s[a-w][a-z]
+Session.vim
+.netrwhist
+
+# Cursor
+.cursor/
+
+# Zed
+.zed/
+
+# ============================================================================
+# 一時ファイル / バックアップ
+# ============================================================================
+
+*.bak
+*.tmp
+*.temp
+*.orig
+*.rej
+tempCodeRunnerFile.py
+.~lock.*
