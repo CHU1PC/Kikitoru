@@ -3,4 +3,9 @@ name = "kikitoru"
 version = "0.1.0"
 description = "AI-powered meeting minutes from voice recordings, with Japanese language support."
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "fastapi-cli>=0.0.24",
+    "langchain>=1.2.16",
+    "langchain-google-genai>=4.2.2",
+    "pydantic>=2.13.3",
+]
