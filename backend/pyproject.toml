@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "AI-powered meeting minutes from voice recordings, with Japanese language support."
 requires-python = ">=3.14"
 dependencies = [
+    "faster-whisper>=1.1",
     "fastapi-cli>=0.0.24",
     "langchain>=1.2.16",
     "langchain-google-genai>=4.2.2",
@@ -14,6 +15,9 @@ dependencies = [
     "alembic>=1.13",
     "pydantic-settings>=2.5",
     "python-dotenv>=1.0",
+    "pyannote-audio>=4.0.4",
+    "torch>=2.11.0",
+    "keyrings-alt>=5.0.2",
 ]
 
 [dependency-groups]
