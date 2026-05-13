@@ -31,8 +31,8 @@ def align(transcripts: list[WhisperSegment], diarization_turns: list[Diarization
 
         segments.append(
             Segment(
-                start_seconds=transcript.start,
-                end_seconds=transcript.end,
+                start=transcript.start,
+                end=transcript.end,
                 speaker_label=speaker,
                 text=transcript.text
             )
