@@ -36,21 +36,43 @@ python-version = "3.14.3"
 
 [tool.ruff]
 line-length = 120
+indent-width = 4
+target-version = "py314"
+extend-include = ["*.ipynb"]
 
 [tool.ruff.lint]
+preview = true
 select = ["ALL"]
 ignore = [
-    "COM812",
-    "ISC001",
-    "D100",
-    "D104",
-    "D203",
-    "D213",
+    "COM812",  # missing-trailing-comma (conflicts with formatter)
+    "ISC001",  # single-line-implicit-string-concatenation (conflicts with formatter)
+    "D100",    # undocumented-public-module
+    "D104",    # undocumented-public-package
+    "D203",    # incorrect-blank-line-before-class (conflicts with D211)
+    "D213",    # multi-line-summary-second-line (conflicts with D212)
+    "CPY001",  # missing-copyright-notice (社内プロダクトのため不要)
+    "ERA001",  # commented-out-code (日本語のセクションコメントが誤検知される)
+    "PLR0913", # too-many-arguments (プロンプト構築関数等で自然に多引数になる)
+    "PLR0917", # too-many-positional-arguments (同上)
+    "PLR6301", # no-self-use (framework override メソッドで誤検知される)
+    "TD003",   # missing-todo-link (Issue リンク強制は不要)
 ]
+fixable = ["ALL"]
+unfixable = []
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "D103", "ANN", "ERA001", "PLR2004"]
-"main.py" = ["D"]
+"tests/**" = ["S101", "D103", "ANN"]  # S101: use of assert detected (テストコード内の assert は許容)
+  # D103: missing docstring in public function (テストコード内の関数はドキュメント不要)
+  # ANN: missing type annotations (テストコード内は型注釈不要)
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
