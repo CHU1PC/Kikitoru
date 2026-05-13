@@ -21,6 +21,9 @@ def transcribe_with_diarization(audio: Path) -> list[Segment]:
     Returns:
         list[Segment]: A list of aligned segments. Each segment contains the start
             time, end time, speaker label, and transcribed text.
+
+    Raises:
+        FileNotFoundError: If the audio file does not exist.
     """
     if not audio.exists():
         msg = f"Audio file not found: {audio}"
