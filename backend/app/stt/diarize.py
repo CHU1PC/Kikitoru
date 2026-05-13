@@ -21,6 +21,9 @@ def diarize(audio: Path) -> list[DiarizationTurn]:
 
     Returns:
         list[DiarizationTurn]: A list of diarization turns, each containing the start time, end time, and speaker label.
+
+    Raises:
+        ValueError: If the Hugging Face token is not set, if the pipeline fails to load, or if the audio file is None
     """
     token = settings.HF_TOKEN
 
