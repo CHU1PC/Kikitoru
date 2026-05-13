@@ -30,6 +30,10 @@ dev = [
 pythonpath = ["."]
 testpaths = ["tests"]
 
+[tool.pyrefly]
+project-includes = ["app", "tests"]  # ← プロジェクトのソースディレクトリに合わせて変更
+python-version = "3.14.3"
+
 [tool.ruff]
 line-length = 120
 
