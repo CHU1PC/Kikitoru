@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, UploadFile
 
 from app.llm.summarize import summarize_chain
 from app.llm.summarize.schema import Summary
+from app.settings.config import llm_semaphore
 from app.stt.models import pool
 from app.stt.pipeline import transcribe_with_diarization
 
@@ -51,4 +52,5 @@ async def summarize_audio(file: UploadFile) -> Summary:
     data = io.BytesIO(raw)
     async with pool.acquire() as (whisper, pipeline):
         segments = await asyncio.to_thread(transcribe_with_diarization, data, whisper, pipeline)
-    return await summarize_chain.ainvoke(segments)
+    async with llm_semaphore:
+        return await summarize_chain.ainvoke(segments)
