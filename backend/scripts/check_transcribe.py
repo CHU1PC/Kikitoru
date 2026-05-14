@@ -33,9 +33,16 @@ def main() -> None:
     segments = transcribe(audio_np)
     elapsed = time.perf_counter() - start
 
-    print(f"\n--- Result ({len(segments)} segments, {elapsed:.1f}s) ---")
+    lines = [f"--- Result ({len(segments)} segments, {elapsed:.1f}s) ---"]
     for seg in segments:
-        print(f"[{seg.start:6.2f} - {seg.end:6.2f}]  {seg.text}")
+        lines.append(f"[{seg.start:6.2f} - {seg.end:6.2f}]  {seg.text}")
+
+    output = "\n".join(lines)
+    print(f"\n{output}")
+
+    out_path = audio.parent / f"{audio.stem}_transcribe.txt"
+    out_path.write_text(output, encoding="utf-8")
+    print(f"\nSaved: {out_path}")
 
 
 if __name__ == "__main__":
