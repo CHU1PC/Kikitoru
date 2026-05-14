@@ -5,7 +5,7 @@ description = "AI-powered meeting minutes from voice recordings, with Japanese l
 requires-python = ">=3.14"
 dependencies = [
     "faster-whisper>=1.1",
-    "fastapi-cli>=0.0.24",
+    "fastapi[standard]>=0.100.0",
     "langchain>=1.2.16",
     "langchain-google-genai>=4.2.2",
     "pydantic>=2.13.3",
