@@ -6,6 +6,9 @@ import numpy as np
 import torchaudio  # type: ignore[import-untyped]
 
 if TYPE_CHECKING:
+    from faster_whisper import WhisperModel  # type: ignore[import-untyped]
+    from pyannote.audio import Pipeline  # type: ignore[import-untyped]
+
     from app.stt.types import Segment
 
 from app.stt.align import align
@@ -15,15 +18,20 @@ from app.stt.transcribe import transcribe
 _WHISPER_SAMPLE_RATE = 16000
 
 
-def transcribe_with_diarization(audio: BinaryIO) -> list[Segment]:
+def transcribe_with_diarization(
+    audio: BinaryIO,
+    whisper: WhisperModel,
+    pipeline: Pipeline,
+) -> list[Segment]:
     """Transcribes the given audio and performs speaker diarization, returning aligned segments.
 
     Args:
         audio (BinaryIO): Audio data as a file-like object (e.g. io.BytesIO).
+        whisper (WhisperModel): Whisper model instance to use for transcription.
+        pipeline (Pipeline): pyannote diarization pipeline instance to use.
 
     Returns:
-        list[Segment]: A list of aligned segments. Each segment contains the start
-            time, end time, speaker label, and transcribed text.
+        list[Segment]: A list of aligned segments with speaker labels and transcribed text.
     """
     waveform, sample_rate = torchaudio.load(audio)  # type: ignore[reportUnknownMemberType]
 
@@ -33,7 +41,7 @@ def transcribe_with_diarization(audio: BinaryIO) -> list[Segment]:
 
     audio_np: np.ndarray = waveform.mean(dim=0).numpy().astype(np.float32)  # type: ignore[reportUnknownMemberType]
 
-    transcript = transcribe(audio_np)
-    diarization_turns = diarize(waveform, sample_rate)
+    transcript = transcribe(audio_np, whisper)
+    diarization_turns = diarize(waveform, sample_rate, pipeline)
 
     return align(transcript, diarization_turns)
