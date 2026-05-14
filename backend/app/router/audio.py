@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, UploadFile
 
 from app.llm.summarize import summarize_chain
 from app.llm.summarize.schema import Summary
+from app.stt.models import pool
 from app.stt.pipeline import transcribe_with_diarization
 
 router = APIRouter(prefix="/audio", tags=["audio"])
@@ -22,9 +23,6 @@ _ALLOWED_CONTENT_TYPES = frozenset({
     "audio/m4a",
     "audio/x-m4a",
 })
-
-# GPU models (Whisper, pyannote) are not thread-safe — allow only one inference at a time.
-_GPU_SEMAPHORE = asyncio.Semaphore(1)
 
 
 @router.post("/summarize", response_model=Summary)
@@ -51,6 +49,6 @@ async def summarize_audio(file: UploadFile) -> Summary:
         raise HTTPException(status_code=413, detail="File exceeds the 200 MB limit")
 
     data = io.BytesIO(raw)
-    async with _GPU_SEMAPHORE:
-        segments = await asyncio.to_thread(transcribe_with_diarization, data)
+    async with pool.acquire() as (whisper, pipeline):
+        segments = await asyncio.to_thread(transcribe_with_diarization, data, whisper, pipeline)
     return await summarize_chain.ainvoke(segments)
