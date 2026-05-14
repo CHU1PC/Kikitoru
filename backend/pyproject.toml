@@ -62,7 +62,7 @@ unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "D103", "ANN"]  # S101: use of assert detected (テストコード内の assert は許容)
+"tests/**" = ["S101", "D103", "ANN", "PLC2701"]  # S101: use of assert detected (テストコード内の assert は許容)
   # D103: missing docstring in public function (テストコード内の関数はドキュメント不要)
   # ANN: missing type annotations (テストコード内は型注釈不要)
 

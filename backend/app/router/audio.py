@@ -23,6 +23,9 @@ _ALLOWED_CONTENT_TYPES = frozenset({
     "audio/x-m4a",
 })
 
+# GPU models (Whisper, pyannote) are not thread-safe — allow only one inference at a time.
+_GPU_SEMAPHORE = asyncio.Semaphore(1)
+
 
 @router.post("/summarize", response_model=Summary)
 async def summarize_audio(file: UploadFile) -> Summary:
@@ -40,10 +43,14 @@ async def summarize_audio(file: UploadFile) -> Summary:
     if file.content_type not in _ALLOWED_CONTENT_TYPES:
         raise HTTPException(status_code=415, detail=f"Unsupported media type: {file.content_type}")
 
+    if file.size is not None and file.size > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File exceeds the 200 MB limit")
+
     raw = await file.read()
     if len(raw) > _MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="File exceeds the 200 MB limit")
 
     data = io.BytesIO(raw)
-    segments = await asyncio.to_thread(transcribe_with_diarization, data)
+    async with _GPU_SEMAPHORE:
+        segments = await asyncio.to_thread(transcribe_with_diarization, data)
     return await summarize_chain.ainvoke(segments)
