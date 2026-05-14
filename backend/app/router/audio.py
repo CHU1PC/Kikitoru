@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import io
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.db.crud import create_summary
+from app.db.engine import get_session
 from app.llm.summarize import summarize_chain
-from app.llm.summarize.schema import Summary
+from app.schema.summaries import SummaryRead
 from app.settings.config import llm_semaphore
 from app.stt.models import pool
 from app.stt.pipeline import transcribe_with_diarization
@@ -26,15 +30,19 @@ _ALLOWED_CONTENT_TYPES = frozenset({
 })
 
 
-@router.post("/summarize", response_model=Summary)
-async def summarize_audio(file: UploadFile) -> Summary:
-    """Accepts an audio file and returns a structured meeting summary.
+Session = Annotated[AsyncSession, Depends(get_session)]
+
+
+@router.post("/summarize", response_model=SummaryRead)
+async def summarize_audio(file: UploadFile, session: Session) -> SummaryRead:
+    """Accepts an audio file, summarizes it, persists the result, and returns it.
 
     Args:
         file (UploadFile): The audio file to process (mp3, m4a, wav, flac). Max 200 MB.
+        session (AsyncSession): Database session.
 
     Returns:
-        Summary: Structured meeting summary including topics, decisions, and action items.
+        SummaryRead: Persisted summary including topics, decisions, and action items.
 
     Raises:
         HTTPException: 413 if the file exceeds 200 MB, 415 if the format is unsupported.
@@ -53,4 +61,7 @@ async def summarize_audio(file: UploadFile) -> Summary:
     async with pool.acquire() as (whisper, pipeline):
         segments = await asyncio.to_thread(transcribe_with_diarization, data, whisper, pipeline)
     async with llm_semaphore:
-        return await summarize_chain.ainvoke(segments)
+        llm_result = await summarize_chain.ainvoke(segments)
+
+    filename = file.filename or "unknown"
+    return await create_summary(session, filename, llm_result)
