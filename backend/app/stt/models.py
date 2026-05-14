@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import torch
@@ -15,6 +17,7 @@ if TYPE_CHECKING:
 
 _WHISPER_MODEL_ID = "large-v3"
 _DIARIZATION_MODEL_ID = "pyannote/speaker-diarization-3.1"
+_CLEANUP_INTERVAL_SECONDS = 60
 
 
 def get_whisper() -> WhisperModel:
@@ -46,19 +49,54 @@ def get_diarize_pipeline() -> Pipeline:
     return pipeline
 
 
+@dataclass
+class _Slot:
+    whisper: WhisperModel
+    pipeline: Pipeline
+    last_used: float = field(default_factory=time.monotonic)
+
+
 class ModelPool:
     """On-demand pool of (WhisperModel, Pipeline) pairs up to a configurable maximum."""
 
-    def __init__(self, max_size: int) -> None:
+    def __init__(self, max_size: int, idle_timeout: float) -> None:
         """Initialize the pool.
 
         Args:
             max_size (int): Maximum number of concurrent model pairs.
+            idle_timeout (float): Seconds before an idle slot is unloaded.
         """
-        self._pool: asyncio.Queue[tuple[WhisperModel, Pipeline]] = asyncio.Queue()
+        self._pool: asyncio.Queue[_Slot] = asyncio.Queue()
         self._lock = asyncio.Lock()
         self._current = 0
         self._max = max_size
+        self._idle_timeout = idle_timeout
+        self._cleanup_task: asyncio.Task[None] | None = None
+
+    def _ensure_cleanup_running(self) -> None:
+        if self._cleanup_task is None or self._cleanup_task.done():
+            self._cleanup_task = asyncio.create_task(self._cleanup_loop())
+
+    async def _cleanup_loop(self) -> None:
+        while True:
+            await asyncio.sleep(_CLEANUP_INTERVAL_SECONDS)
+            await self._evict_idle()
+
+    async def _evict_idle(self) -> None:
+        now = time.monotonic()
+        keep: list[_Slot] = []
+        while True:
+            try:
+                slot = self._pool.get_nowait()
+                if now - slot.last_used < self._idle_timeout:
+                    keep.append(slot)
+                else:
+                    async with self._lock:
+                        self._current -= 1
+            except asyncio.QueueEmpty:
+                break
+        for slot in keep:
+            self._pool.put_nowait(slot)
 
     @asynccontextmanager
     async def acquire(self) -> AsyncGenerator[tuple[WhisperModel, Pipeline]]:
@@ -67,6 +105,8 @@ class ModelPool:
         Yields:
             tuple[WhisperModel, Pipeline]: A pair of model instances for inference.
         """
+        self._ensure_cleanup_running()
+
         try:
             slot = self._pool.get_nowait()
         except asyncio.QueueEmpty:
@@ -78,14 +118,18 @@ class ModelPool:
                     should_create = False
 
             if should_create:
-                slot = await asyncio.to_thread(lambda: (get_whisper(), get_diarize_pipeline()))
+                whisper, pipeline = await asyncio.to_thread(
+                    lambda: (get_whisper(), get_diarize_pipeline())
+                )
+                slot = _Slot(whisper=whisper, pipeline=pipeline)
             else:
                 slot = await self._pool.get()
 
         try:
-            yield slot
+            yield slot.whisper, slot.pipeline
         finally:
+            slot.last_used = time.monotonic()
             self._pool.put_nowait(slot)
 
 
-pool = ModelPool(settings.STT_POOL_SIZE)
+pool = ModelPool(settings.STT_POOL_SIZE, settings.STT_IDLE_TIMEOUT_SECONDS)
