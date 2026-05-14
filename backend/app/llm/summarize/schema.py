@@ -10,7 +10,11 @@ class Topic(BaseModel):
         segment_ids (list[int]): List of segment IDs that belong to this topic.
     """
     title: str = Field(..., description="The title of the topic", max_length=50)
-    summary: str = Field(..., description="A brief summary of the topic", max_length=400)
+    summary: str = Field(
+        ...,
+        description="Detailed explanation of the topic including specific statements, context, and nuance",
+        max_length=2000,
+    )
     segment_ids: list[int] = Field(..., description="List of segment IDs that belong to this topic")
 
 
@@ -22,7 +26,7 @@ class Decision(BaseModel):
         decided_by (str | None): The person or group that made the decision. Null if unknown.
         segment_ids (list[int]): List of segment IDs that relate to this decision.
     """
-    description: str = Field(..., description="A description of the decision", max_length=200)
+    description: str = Field(..., description="A description of the decision", max_length=1000)
     decided_by: str | None = Field(None, description="The person or group that made the decision")
     segment_ids: list[int] = Field(..., description="List of segment IDs that relate to this decision")
 
@@ -36,7 +40,7 @@ class ActionItem(BaseModel):
         due_date (str | None): The due date for the action item. Null if unknown.
         segment_ids (list[int]): List of segment IDs that relate to this action item.
     """
-    description: str = Field(..., description="A description of the action item", max_length=200)
+    description: str = Field(..., description="A description of the action item", max_length=1000)
     assignee: str | None = Field(None, description="The person or group that is responsible for the action item")
     due_date: str | None = Field(None, description="The due date for the action item")
     segment_ids: list[int] = Field(..., description="List of segment IDs that relate to this action item")
@@ -51,7 +55,11 @@ class Summary(BaseModel):
         decisions (list[Decision]): A list of decisions made during the meeting.
         action_items (list[ActionItem]): A list of action items assigned during the meeting.
     """
-    overall_summary: str = Field(..., description="A brief summary of the meeting", max_length=1000)
+    overall_summary: str = Field(
+        ...,
+        description="A detailed description of the meeting covering the full flow and content",
+        max_length=3000,
+    )
     topics: list[Topic] = Field(..., description="A list of topics discussed during the meeting")
     decisions: list[Decision] = Field(..., description="A list of decisions made during the meeting")
     action_items: list[ActionItem] = Field(..., description="A list of action items assigned during the meeting")
