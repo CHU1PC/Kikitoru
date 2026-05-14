@@ -18,6 +18,7 @@ dependencies = [
     "pyannote-audio>=4.0.4",
     "torch>=2.11.0",
     "keyrings-alt>=5.0.2",
+    "asyncpg>=0.31.0",
 ]
 
 [dependency-groups]
@@ -65,6 +66,10 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "tests/**" = ["S101", "D103", "ANN", "PLC2701"]  # S101: use of assert detected (テストコード内の assert は許容)
   # D103: missing docstring in public function (テストコード内の関数はドキュメント不要)
   # ANN: missing type annotations (テストコード内は型注釈不要)
+"app/db/migrations/**" = ["INP001", "D103", "D415", "W291", "I001", "TC002", "TC003", "ANN"]  # Alembic boilerplate
+
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = ["pydantic.BaseModel", "sqlmodel.SQLModel"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
