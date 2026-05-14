@@ -8,7 +8,7 @@ MAX_RETRY = 3
 rate_limiter = InMemoryRateLimiter(
     requests_per_second=40,
     check_every_n_seconds=0.1,
-    max_bucket_size=settings.LLM_CONCURRENT_LIMIT,
+    max_bucket_size=80,
 )
 
 gemini_2_5_flash = ChatGoogleGenerativeAI(

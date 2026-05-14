@@ -10,7 +10,6 @@ class Settings(BaseSettings):
 
     # LLM Settings
     GOOGLE_API_KEY: SecretStr = Field(..., description="API key for Google services")
-    LLM_CONCURRENT_LIMIT: int = Field(..., description="The concurrent limit for the LLM")
     LLM_TIMEOUT_SECONDS: int = Field(..., description="The timeout in seconds for LLM responses")
 
 
