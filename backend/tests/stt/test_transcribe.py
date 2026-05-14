@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 
@@ -18,15 +18,13 @@ def _mock_segment(start: float, end: float, text: str) -> MagicMock:
 
 def test_returns_whisper_segments() -> None:
     audio = np.zeros(16000, dtype=np.float32)
-
     mock_whisper = MagicMock()
     mock_whisper.transcribe.return_value = (
         [_mock_segment(0.0, 1.5, "こんにちは"), _mock_segment(1.5, 3.0, "世界")],
         MagicMock(),
     )
 
-    with patch("app.stt.transcribe.whisper", mock_whisper):
-        result = transcribe(audio)
+    result = transcribe(audio, mock_whisper)
 
     assert result == [
         WhisperSegment(start=0.0, end=1.5, text="こんにちは"),
@@ -36,23 +34,19 @@ def test_returns_whisper_segments() -> None:
 
 def test_transcribes_in_japanese() -> None:
     audio = np.zeros(16000, dtype=np.float32)
-
     mock_whisper = MagicMock()
     mock_whisper.transcribe.return_value = ([], MagicMock())
 
-    with patch("app.stt.transcribe.whisper", mock_whisper):
-        transcribe(audio)
+    transcribe(audio, mock_whisper)
 
     mock_whisper.transcribe.assert_called_once_with(audio, language="ja", vad_filter=True)
 
 
 def test_empty_audio_returns_empty_list() -> None:
     audio = np.zeros(16000, dtype=np.float32)
-
     mock_whisper = MagicMock()
     mock_whisper.transcribe.return_value = ([], MagicMock())
 
-    with patch("app.stt.transcribe.whisper", mock_whisper):
-        result = transcribe(audio)
+    result = transcribe(audio, mock_whisper)
 
     assert result == []
