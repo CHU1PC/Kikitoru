@@ -1,6 +1,6 @@
 import json
 
-from app.llm.summarize.chain import _format_segments  # type: ignore[import]
+from app.llm.summarize.chain import _format_segments
 from app.stt.types import Segment
 
 
@@ -12,7 +12,7 @@ def test_format_segments_empty():
 
 def test_format_segments_single_segment():
     segments = [
-        Segment(start_seconds=0.0, end_seconds=2.0, speaker_label="Speaker 0", text="hello"),
+        Segment(start=0.0, end=2.0, speaker_label="Speaker 0", text="hello"),
     ]
 
     result = _format_segments(segments)
@@ -23,9 +23,9 @@ def test_format_segments_single_segment():
 
 def test_format_segments_assigns_sequential_ids():
     segments = [
-        Segment(start_seconds=0.0, end_seconds=2.0, speaker_label="Speaker 0", text="a"),
-        Segment(start_seconds=2.0, end_seconds=4.0, speaker_label="Speaker 1", text="b"),
-        Segment(start_seconds=4.0, end_seconds=6.0, speaker_label="Speaker 0", text="c"),
+        Segment(start=0.0, end=2.0, speaker_label="Speaker 0", text="a"),
+        Segment(start=2.0, end=4.0, speaker_label="Speaker 1", text="b"),
+        Segment(start=4.0, end=6.0, speaker_label="Speaker 0", text="c"),
     ]
 
     result = _format_segments(segments)
@@ -37,7 +37,7 @@ def test_format_segments_assigns_sequential_ids():
 
 def test_format_segments_preserves_japanese_characters():
     segments = [
-        Segment(start_seconds=0.0, end_seconds=2.0, speaker_label="Speaker 0", text="こんにちは"),
+        Segment(start=0.0, end=2.0, speaker_label="Speaker 0", text="こんにちは"),
     ]
 
     result = _format_segments(segments)
@@ -51,7 +51,7 @@ def test_format_segments_preserves_japanese_characters():
 def test_format_segments_uses_speaker_label_as_is():
     """Speaker label can be normalized ("Speaker 0") or a real name; both pass through."""
     segments = [
-        Segment(start_seconds=0.0, end_seconds=2.0, speaker_label="田中", text="..."),
+        Segment(start=0.0, end=2.0, speaker_label="田中", text="..."),
     ]
 
     result = _format_segments(segments)
@@ -63,7 +63,7 @@ def test_format_segments_uses_speaker_label_as_is():
 def test_format_segments_returns_segments_json_key():
     """The returned dict matches what the prompt template expects."""
     segments = [
-        Segment(start_seconds=0.0, end_seconds=2.0, speaker_label="Speaker 0", text="test"),
+        Segment(start=0.0, end=2.0, speaker_label="Speaker 0", text="test"),
     ]
 
     result = _format_segments(segments)
