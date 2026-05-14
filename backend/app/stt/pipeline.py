@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+import torchaudio  # type: ignore[import-untyped]
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -10,6 +13,8 @@ if TYPE_CHECKING:
 from app.stt.align import align
 from app.stt.diarize import diarize
 from app.stt.transcribe import transcribe
+
+_WHISPER_SAMPLE_RATE = 16000
 
 
 def transcribe_with_diarization(audio: Path) -> list[Segment]:
@@ -29,7 +34,15 @@ def transcribe_with_diarization(audio: Path) -> list[Segment]:
         msg = f"Audio file not found: {audio}"
         raise FileNotFoundError(msg)
 
-    transcript = transcribe(audio)
-    diarization_turns = diarize(audio)
+    waveform, sample_rate = torchaudio.load(str(audio))  # type: ignore[reportUnknownMemberType]
+
+    if sample_rate != _WHISPER_SAMPLE_RATE:
+        waveform = torchaudio.functional.resample(waveform, sample_rate, _WHISPER_SAMPLE_RATE)  # type: ignore[reportUnknownMemberType]
+        sample_rate = _WHISPER_SAMPLE_RATE
+
+    audio_np: np.ndarray = waveform.mean(dim=0).numpy().astype(np.float32)  # type: ignore[reportUnknownMemberType]
+
+    transcript = transcribe(audio_np)
+    diarization_turns = diarize(waveform, sample_rate)
 
     return align(transcript, diarization_turns)
