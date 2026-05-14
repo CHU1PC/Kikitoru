@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     # STT Settings
     STT_POOL_SIZE: int = Field(5, description="Number of concurrent STT model instances")
+    STT_IDLE_TIMEOUT_SECONDS: int = Field(300, description="Seconds before an idle STT model is unloaded")
 
     # LLM Settings
     GOOGLE_API_KEY: SecretStr = Field(..., description="API key for Google services")
