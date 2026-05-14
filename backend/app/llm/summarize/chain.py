@@ -14,7 +14,14 @@ if TYPE_CHECKING:
 
 
 def _format_segments(segments: list[Segment]) -> dict[str, str]:
-    """Convert list[Segment] into the dict shape expected by the prompt."""
+    """Convert list[Segment] into the dict shape expected by the prompt.
+
+    Args:
+        segments (list[Segment]): List of transcribed segments.
+
+    Returns:
+        dict[str, str]: A dictionary with a single key "segments_json" containing the JSON string of segments.
+    """
     payload: list[dict[str, int | str]] = [
         {"id": i, "speaker": s.speaker_label, "text": s.text}
         for i, s in enumerate(segments)
