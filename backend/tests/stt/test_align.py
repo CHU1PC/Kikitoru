@@ -10,8 +10,8 @@ def test_transcript_fully_within_turn():
 
     assert result == [
         Segment(
-            start_seconds=1.0,
-            end_seconds=2.0,
+            start=1.0,
+            end=2.0,
             speaker_label="SPEAKER_00",
             text="hello",
         ),
@@ -60,7 +60,8 @@ def test_empty_diarization_marks_all_unknown():
 
     result = align(transcripts, [])
 
-    assert len(result) == 2
+    expected_count = 2
+    assert len(result) == expected_count
     assert all(s.speaker_label == "UNKNOWN" for s in result)
     assert [s.text for s in result] == ["a", "b"]
 
