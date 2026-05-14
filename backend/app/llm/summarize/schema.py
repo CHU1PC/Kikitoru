@@ -1,3 +1,5 @@
+from datetime import date
+
 from pydantic import BaseModel, Field
 
 
@@ -37,12 +39,12 @@ class ActionItem(BaseModel):
     Fields:
         description (str): A description of the action item.
         assignee (str | None): The person or group that is responsible for the action item. Null if unknown.
-        due_date (str | None): The due date for the action item. Null if unknown.
+        due_date (date | None): The due date for the action item in ISO 8601 format (YYYY-MM-DD). Null if unknown.
         segment_ids (list[int]): List of segment IDs that relate to this action item.
     """
     description: str = Field(..., description="A description of the action item", max_length=1000)
     assignee: str | None = Field(None, description="The person or group that is responsible for the action item")
-    due_date: str | None = Field(None, description="The due date for the action item")
+    due_date: date | None = Field(None, description="The due date for the action item in ISO 8601 format (YYYY-MM-DD)")
     segment_ids: list[int] = Field(..., description="List of segment IDs that relate to this action item")
 
 
