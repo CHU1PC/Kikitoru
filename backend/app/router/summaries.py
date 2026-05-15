@@ -1,14 +1,10 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
-
-if TYPE_CHECKING:
-    import uuid
 
 from app.db.engine import get_session
 from app.db.models import ActionItem, Decision, Summary, Topic
@@ -26,7 +22,7 @@ router = APIRouter(prefix="/summaries", tags=["summaries"])
 Session = Annotated[AsyncSession, Depends(get_session)]
 
 
-@router.get("", response_model=SummaryPageResponse)
+@router.get("")
 async def list_summaries_endpoint(
     session: Session,
     limit: Annotated[int, Query(ge=1, le=100, description="Page size")] = 50,
@@ -52,8 +48,8 @@ async def list_summaries_endpoint(
     )
 
 
-@router.get("/{summary_id}", response_model=SummaryRead)
-async def get_summary_endpoint(summary_id: uuid.UUID, session: Session) -> SummaryRead:
+@router.get("/{summary_id}")
+async def get_summary_endpoint(summary_id: UUID, session: Session) -> SummaryRead:
     """Return a single summary with full detail.
 
     Raises:
