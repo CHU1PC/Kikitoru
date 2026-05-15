@@ -41,3 +41,12 @@ class SummaryRead(SummaryListItem):
     topics: list[TopicRead] = Field(..., description="Topics discussed in the meeting")
     decisions: list[DecisionRead] = Field(..., description="Decisions made during the meeting")
     action_items: list[ActionItemRead] = Field(..., description="Action items assigned during the meeting")
+
+
+class SummaryPageResponse(BaseModel):
+    """Paginated list of summaries."""
+
+    items: list[SummaryListItem] = Field(..., description="Summaries in the current page")
+    total: int = Field(..., description="Total number of summaries in the database")
+    limit: int = Field(..., description="Maximum number of items returned per page")
+    offset: int = Field(..., description="Number of items skipped before this page")
