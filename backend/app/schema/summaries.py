@@ -1,5 +1,5 @@
-import uuid
 from datetime import date, datetime
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -29,7 +29,7 @@ class ActionItemRead(BaseModel):
 class SummaryListItem(BaseModel):
     """Summary metadata for list responses."""
 
-    id: uuid.UUID = Field(..., description="Unique identifier of the summary")
+    id: UUID = Field(..., description="Unique identifier of the summary")
     filename: str = Field(..., description="Name of the uploaded audio file")
     created_at: datetime = Field(..., description="Timestamp when the summary was created")
     overall_summary: str = Field(..., description="Overall summary of the meeting")

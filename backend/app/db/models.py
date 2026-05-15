@@ -1,5 +1,5 @@
-import uuid
 from datetime import UTC, date, datetime
+from uuid import UUID, uuid4
 
 from sqlalchemy import Column, DateTime
 from sqlmodel import Field, SQLModel
@@ -10,8 +10,8 @@ class Summary(SQLModel, table=True):
 
     __tablename__ = "summaries"  # type: ignore[assignment]
 
-    id: uuid.UUID = Field(
-        default_factory=uuid.uuid4,
+    id: UUID = Field(
+        default_factory=uuid4,
         primary_key=True,
         description="Unique identifier of the summary",
     )
@@ -30,7 +30,7 @@ class Topic(SQLModel, table=True):
     __tablename__ = "topics"  # type: ignore[assignment]
 
     id: int | None = Field(default=None, primary_key=True, description="Primary key")
-    summary_id: uuid.UUID = Field(
+    summary_id: UUID = Field(
         foreign_key="summaries.id",
         ondelete="CASCADE",
         index=True,
@@ -46,7 +46,7 @@ class Decision(SQLModel, table=True):
     __tablename__ = "decisions"  # type: ignore[assignment]
 
     id: int | None = Field(default=None, primary_key=True, description="Primary key")
-    summary_id: uuid.UUID = Field(
+    summary_id: UUID = Field(
         foreign_key="summaries.id",
         ondelete="CASCADE",
         index=True,
@@ -62,7 +62,7 @@ class ActionItem(SQLModel, table=True):
     __tablename__ = "action_items"  # type: ignore[assignment]
 
     id: int | None = Field(default=None, primary_key=True, description="Primary key")
-    summary_id: uuid.UUID = Field(
+    summary_id: UUID = Field(
         foreign_key="summaries.id",
         ondelete="CASCADE",
         index=True,

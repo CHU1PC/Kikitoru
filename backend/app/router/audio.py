@@ -83,7 +83,7 @@ async def _create_summary(session: AsyncSession, filename: str, data: LLMSummary
     )
 
 
-@router.post("/summarize", response_model=SummaryRead)
+@router.post("/summarize")
 async def summarize_audio(file: UploadFile, session: Session) -> SummaryRead:
     """Accepts an audio file, summarizes it, persists the result, and returns it.
 
