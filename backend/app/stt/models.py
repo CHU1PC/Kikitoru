@@ -46,6 +46,12 @@ def get_diarize_pipeline() -> Pipeline:
         msg = "Failed to load the " + _DIARIZATION_MODEL_ID + " pipeline."
         raise ValueError(msg)
     pipeline.to(torch.device("cuda"))  # type: ignore[reportUnknownMemberType]
+
+    # pyannote は from_pretrained 内部で TF32 を無効化する。速度優先のため再有効化。
+    # 精度は微減するが、Ampere+ GPU の matmul/conv が大幅に高速化される。
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+
     return pipeline
 
 
