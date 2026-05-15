@@ -24,6 +24,7 @@ services:
       HF_TOKEN: ${HF_TOKEN}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-120}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-["http://localhost:5173"]}
     ports:
       - "8000:8000"
     deploy:

@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     LLM_CONCURRENT_LIMIT: int = Field(80, description="Max concurrent requests to the LLM")
     LLM_TIMEOUT_SECONDS: int = Field(..., description="The timeout in seconds for LLM responses")
 
+    # CORS Settings
+    ALLOWED_ORIGINS: list[str] = Field(
+        default=["http://localhost:5173"],
+        description="Comma-separated list of allowed origins for CORS",
+    )
+
 
 settings = Settings()  # type: ignore[call-arg]
 
