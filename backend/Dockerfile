@@ -3,7 +3,7 @@
 # =============================================================================
 # Stage 1: Build dependencies
 # =============================================================================
-FROM python:3.14-slim AS builder
+FROM python:3.13-slim-bookworm AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
@@ -22,22 +22,27 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # =============================================================================
 # Stage 2: Runtime
 # =============================================================================
-FROM python:3.14-slim AS runtime
+FROM python:3.13-slim-bookworm AS runtime
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    libsndfile1 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --create-home --shell /bin/bash appuser
+
 WORKDIR /app
 
-COPY pyproject.toml uv.lock ./
-COPY --from=builder /app/.venv /app/.venv
-COPY app/ ./app/
-COPY main.py alembic.ini ./
+COPY --chown=appuser:appuser pyproject.toml uv.lock ./
+COPY --chown=appuser:appuser --from=builder /app/.venv /app/.venv
+COPY --chown=appuser:appuser app/ ./app/
+COPY --chown=appuser:appuser main.py alembic.ini ./
 
-RUN useradd --create-home --shell /bin/bash appuser && \
-    chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000
