@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import torch
 from faster_whisper import WhisperModel  # type: ignore[import-untyped]
+from loguru import logger
 from pyannote.audio import Pipeline  # type: ignore[import-untyped]
 
 from app.settings.config import settings
@@ -40,7 +41,7 @@ def get_diarize_pipeline() -> Pipeline:
     """
     pipeline = Pipeline.from_pretrained(  # type: ignore[reportUnknownMemberType]
         _DIARIZATION_MODEL_ID,
-        token=settings.HF_TOKEN,
+        token=settings.HF_TOKEN.get_secret_value(),
     )
     if pipeline is None:
         msg = "Failed to load the " + _DIARIZATION_MODEL_ID + " pipeline."
@@ -85,24 +86,35 @@ class ModelPool:
 
     async def _cleanup_loop(self) -> None:
         while True:
-            await asyncio.sleep(_CLEANUP_INTERVAL_SECONDS)
-            await self._evict_idle()
+            try:
+                await asyncio.sleep(_CLEANUP_INTERVAL_SECONDS)
+                await self._evict_idle()
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # noqa: BLE001 — keep the loop alive across all errors
+                logger.exception("ModelPool cleanup loop iteration failed")
 
     async def _evict_idle(self) -> None:
         now = time.monotonic()
         keep: list[_Slot] = []
-        while True:
-            try:
-                slot = self._pool.get_nowait()
+        async with self._lock:
+            while True:
+                try:
+                    slot = self._pool.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
                 if now - slot.last_used < self._idle_timeout:
                     keep.append(slot)
                 else:
-                    async with self._lock:
-                        self._current -= 1
-            except asyncio.QueueEmpty:
-                break
-        for slot in keep:
-            self._pool.put_nowait(slot)
+                    self._current -= 1
+                    # Free GPU memory eagerly; otherwise Python GC delay can lead to
+                    # _current showing capacity while CUDA is still OOM.
+                    del slot.whisper
+                    del slot.pipeline
+            for slot in keep:
+                self._pool.put_nowait(slot)
+        if torch.cuda.is_available():
+            await asyncio.to_thread(torch.cuda.empty_cache)
 
     @asynccontextmanager
     async def acquire(self) -> AsyncGenerator[tuple[WhisperModel, Pipeline]]:
@@ -124,16 +136,32 @@ class ModelPool:
                     should_create = False
 
             if should_create:
-                whisper, pipeline = await asyncio.to_thread(
-                    lambda: (get_whisper(), get_diarize_pipeline())
-                )
+                try:
+                    whisper, pipeline = await asyncio.to_thread(
+                        lambda: (get_whisper(), get_diarize_pipeline())
+                    )
+                except BaseException:
+                    # Model creation failed: roll back the counter so the slot does
+                    # not leak. Without this, repeated failures permanently exhaust
+                    # the pool and acquire() blocks forever.
+                    async with self._lock:
+                        self._current -= 1
+                    raise
                 slot = _Slot(whisper=whisper, pipeline=pipeline)
             else:
                 slot = await self._pool.get()
 
         try:
             yield slot.whisper, slot.pipeline
-        finally:
+        except BaseException:
+            # Inference failed; the model may be in a corrupted CUDA state. Drop the
+            # slot instead of returning it to the pool so the next request gets a
+            # fresh model.
+            async with self._lock:
+                self._current -= 1
+            del slot
+            raise
+        else:
             slot.last_used = time.monotonic()
             self._pool.put_nowait(slot)
 
