@@ -28,24 +28,38 @@ async def list_summaries_endpoint(
     limit: Annotated[int, Query(ge=1, le=100, description="Page size")] = 50,
     offset: Annotated[int, Query(ge=0, description="Number of items to skip")] = 0,
 ) -> SummaryPageResponse:
-    """Return a page of summaries ordered by creation date descending."""
-    total = (await session.exec(select(func.count()).select_from(Summary))).one()
+    """Return a page of summaries ordered by creation date descending.
 
-    rows = (
-        await session.exec(
-            select(Summary).order_by(col(Summary.created_at).desc()).limit(limit).offset(offset)
-        )
-    ).all()
-
-    return SummaryPageResponse(
-        items=[
-            SummaryListItem(id=r.id, filename=r.filename, created_at=r.created_at, overall_summary=r.overall_summary)
-            for r in rows
-        ],
-        total=total,
-        limit=limit,
-        offset=offset,
+    Uses a single query with `COUNT(*) OVER ()` so that `total` and `items`
+    come from the same snapshot — avoiding the inconsistency that would
+    arise if `count` and `select` were issued as separate transactions
+    while concurrent inserts happen.
+    """
+    total_col = func.count().over().label("total")
+    stmt = (
+        select(Summary, total_col)
+        .order_by(col(Summary.created_at).desc())
+        .limit(limit)
+        .offset(offset)
     )
+    rows = (await session.exec(stmt)).all()
+
+    if rows:
+        total = int(rows[0][1])
+        items = [
+            SummaryListItem(
+                id=summary.id,
+                filename=summary.filename,
+                created_at=summary.created_at,
+                overall_summary=summary.overall_summary,
+            )
+            for summary, _ in rows
+        ]
+    else:
+        total = (await session.exec(select(func.count()).select_from(Summary))).one()
+        items = []
+
+    return SummaryPageResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get("/{summary_id}")
