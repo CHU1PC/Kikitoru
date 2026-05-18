@@ -1,6 +1,6 @@
 from datetime import date
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Topic(BaseModel):
@@ -29,7 +29,9 @@ class Decision(BaseModel):
         segment_ids (list[int]): List of segment IDs that relate to this decision.
     """
     description: str = Field(..., description="A description of the decision", max_length=1000)
-    decided_by: str | None = Field(None, description="The person or group that made the decision")
+    decided_by: str | None = Field(
+        None, description="The person or group that made the decision", max_length=100,
+    )
     segment_ids: list[int] = Field(..., description="List of segment IDs that relate to this decision")
 
 
@@ -43,9 +45,37 @@ class ActionItem(BaseModel):
         segment_ids (list[int]): List of segment IDs that relate to this action item.
     """
     description: str = Field(..., description="A description of the action item", max_length=1000)
-    assignee: str | None = Field(None, description="The person or group that is responsible for the action item")
+    assignee: str | None = Field(
+        None,
+        description="The person or group that is responsible for the action item",
+        max_length=100,
+    )
     due_date: date | None = Field(None, description="The due date for the action item in ISO 8601 format (YYYY-MM-DD)")
     segment_ids: list[int] = Field(..., description="List of segment IDs that relate to this action item")
+
+    @field_validator("due_date", mode="before")
+    @classmethod
+    def _parse_due_date(cls, value: object) -> date | None:
+        """Fall back to None when the LLM returns a non-ISO date string.
+
+        Without this, a single malformed date in one action item would raise
+        ValidationError and discard the entire summary (overall_summary,
+        topics, decisions, and all other action items).
+
+        Args:
+            value (object): Raw value provided by the LLM (date, str, or None).
+
+        Returns:
+            date | None: Parsed date if valid ISO 8601, otherwise None.
+        """
+        if value is None or isinstance(value, date):
+            return value
+        if isinstance(value, str):
+            try:
+                return date.fromisoformat(value)
+            except ValueError:
+                return None
+        return None
 
 
 class Summary(BaseModel):
@@ -64,4 +94,6 @@ class Summary(BaseModel):
     )
     topics: list[Topic] = Field(..., description="A list of topics discussed during the meeting")
     decisions: list[Decision] = Field(..., description="A list of decisions made during the meeting")
-    action_items: list[ActionItem] = Field(..., description="A list of action items assigned during the meeting")
+    action_items: list[ActionItem] = Field(
+        ..., description="A list of action items assigned during the meeting",
+    )

@@ -30,7 +30,7 @@ erDiagram
         uuid    summary_id  FK
         text    description
         text    assignee    "nullable"
-        text    due_date    "nullable"
+        date    due_date    "nullable"
     }
 
     summaries ||--o{ topics       : "has"
@@ -42,7 +42,9 @@ erDiagram
 
 ### `due_date` の型
 
-`action_items.due_date` は `text` 型。LLM が "来週月曜" や "2025-06-01" のように多様な形式で返す可能性があるため、`date` 型への変換は行わない。
+`action_items.due_date` は `date` 型。LLM プロンプトで ISO 8601 形式 (YYYY-MM-DD) を強制し、確定日が不明なら `null` を返させる。
+
+「来週月曜」のような相対表現や非 ISO 形式が返ってきた場合は、Pydantic の `field_validator` で `None` に fallback する (`app/llm/summarize/schema.py` 参照)。これにより、1件の日付パース失敗で Summary 全体がロールバックする事態を防ぐ。
 
 ### CASCADE 削除
 
