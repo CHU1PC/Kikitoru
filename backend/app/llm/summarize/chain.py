@@ -10,29 +10,34 @@ from app.llm.summarize.prompts import prompt
 from app.llm.summarize.schema import Summary
 
 if TYPE_CHECKING:
+    from datetime import date
+
     from app.stt.types import Segment
 
 
-def _format_segments(segments: list[Segment]) -> dict[str, str]:
-    """Convert list[Segment] into the dict shape expected by the prompt.
+def _format_input(inputs: tuple[list[Segment], date]) -> dict[str, str]:
+    """Convert (segments, recorded_at) into the dict shape expected by the prompt.
 
     Args:
-        segments (list[Segment]): List of transcribed segments.
+        inputs (tuple[list[Segment], date]): Segments and reference date for resolving
+            relative date expressions in the audio.
 
     Returns:
-        dict[str, str]: A dictionary with a single key "segments_json" containing the JSON string of segments.
+        dict[str, str]: Dictionary with "segments_json" and "recorded_at" keys.
     """
+    segments, recorded_at = inputs
     payload: list[dict[str, int | str]] = [
         {"id": i, "speaker": s.speaker_label, "text": s.text}
         for i, s in enumerate(segments)
     ]
     return {
         "segments_json": json.dumps(payload, ensure_ascii=False, indent=2),
+        "recorded_at": recorded_at.isoformat(),
     }
 
 
 summarize_chain = (
-    RunnableLambda(_format_segments)
+    RunnableLambda(_format_input)
     | prompt
     | gemini.with_structured_output(Summary)
 )
