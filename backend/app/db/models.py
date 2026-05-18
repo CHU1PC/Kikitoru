@@ -15,7 +15,7 @@ class Summary(SQLModel, table=True):
         primary_key=True,
         description="Unique identifier of the summary",
     )
-    filename: str = Field(..., description="Name of the uploaded audio file")
+    filename: str = Field(..., max_length=255, description="Name of the uploaded audio file")
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False),
