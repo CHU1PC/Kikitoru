@@ -1,17 +1,21 @@
 import asyncio
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel
 
 from alembic import context
-from app.db import models as _models  # noqa: F401 — registers all tables
-from app.settings.config import settings
+from app.db.models import ActionItem, Decision, Summary, Topic
+
+# Importing the SQLModel tables above populates SQLModel.metadata so that
+# Alembic's autogenerate can detect schema changes. This tuple keeps the
+# imports referenced so static analyzers don't flag them as unused.
+_ALEMBIC_MODELS = (Summary, Topic, Decision, ActionItem)
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -19,11 +23,31 @@ if config.config_file_name is not None:
 target_metadata = SQLModel.metadata
 
 
+def _get_database_url() -> str:
+    """Read DATABASE_URL directly from the environment.
+
+    Reading from os.environ instead of app.settings.config keeps migrations
+    independent of LLM/STT env vars (HF_TOKEN, GOOGLE_API_KEY, etc.) so they
+    can run in DB-only CI jobs. Also avoids passing the URL through
+    configparser, which would interpolate '%' characters.
+
+    Returns:
+        str: The DATABASE_URL from the environment.
+
+    Raises:
+        RuntimeError: If DATABASE_URL is not set.
+    """
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        msg = "DATABASE_URL environment variable is required for migrations"
+        raise RuntimeError(msg)
+    return url
+
+
 def run_migrations_offline() -> None:
     """Run migrations without a live DB connection."""
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=_get_database_url(),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -39,9 +63,8 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    connectable = create_async_engine(
+        _get_database_url(),
         poolclass=pool.NullPool,
     )
     async with connectable.connect() as connection:
