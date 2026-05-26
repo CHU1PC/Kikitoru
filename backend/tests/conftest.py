@@ -3,7 +3,7 @@ import sys
 from unittest.mock import MagicMock
 
 os.environ.setdefault("HF_TOKEN", "test_hf_token")
-os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test")
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test")
 os.environ.setdefault("GOOGLE_API_KEY", "test-api-key")
 os.environ.setdefault("LLM_TIMEOUT_SECONDS", "30")
 
