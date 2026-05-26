@@ -1,5 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 
+from loguru import logger
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -60,21 +61,28 @@ class ActionItem(BaseModel):
 
         Without this, a single malformed date in one action item would raise
         ValidationError and discard the entire summary (overall_summary,
-        topics, decisions, and all other action items).
+        topics, decisions, and all other action items). Parse failures are
+        logged so the silent drop is observable rather than invisible.
 
         Args:
-            value (object): Raw value provided by the LLM (date, str, or None).
+            value (object): Raw value provided by the LLM (date, datetime, str, or None).
 
         Returns:
             date | None: Parsed date if valid ISO 8601, otherwise None.
         """
-        if value is None or isinstance(value, date):
+        if value is None:
+            return value
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, date):
             return value
         if isinstance(value, str):
             try:
                 return date.fromisoformat(value)
             except ValueError:
+                logger.warning("Discarding unparseable due_date from LLM: {!r}", value)
                 return None
+        logger.warning("Discarding due_date of unexpected type {}: {!r}", type(value).__name__, value)
         return None
 
 
