@@ -48,8 +48,6 @@ def get_diarize_pipeline() -> Pipeline:
         raise ValueError(msg)
     pipeline.to(torch.device("cuda"))  # type: ignore[reportUnknownMemberType]
 
-    # pyannote は from_pretrained 内部で TF32 を無効化する。速度優先のため再有効化。
-    # 精度は微減するが、Ampere+ GPU の matmul/conv が大幅に高速化される。
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
 
@@ -73,10 +71,8 @@ class ModelPool:
             max_size (int): Maximum number of concurrent model pairs.
             idle_timeout (float): Seconds before an idle slot is unloaded.
         """
-        self._pool: asyncio.Queue[_Slot] = asyncio.Queue()
-        self._lock = asyncio.Lock()
-        self._current = 0
-        self._max = max_size
+        self._idle: asyncio.Queue[_Slot] = asyncio.Queue()
+        self._capacity = asyncio.Semaphore(max_size)
         self._idle_timeout = idle_timeout
         self._cleanup_task: asyncio.Task[None] | None = None
 
@@ -97,23 +93,21 @@ class ModelPool:
     async def _evict_idle(self) -> None:
         now = time.monotonic()
         keep: list[_Slot] = []
-        async with self._lock:
-            while True:
-                try:
-                    slot = self._pool.get_nowait()
-                except asyncio.QueueEmpty:
-                    break
-                if now - slot.last_used < self._idle_timeout:
-                    keep.append(slot)
-                else:
-                    self._current -= 1
-                    # Free GPU memory eagerly; otherwise Python GC delay can lead to
-                    # _current showing capacity while CUDA is still OOM.
-                    del slot.whisper
-                    del slot.pipeline
-            for slot in keep:
-                self._pool.put_nowait(slot)
-        if torch.cuda.is_available():
+        evicted = False
+        while True:
+            try:
+                slot = self._idle.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+            if now - slot.last_used < self._idle_timeout:
+                keep.append(slot)
+            else:
+                del slot.whisper
+                del slot.pipeline
+                evicted = True
+        for slot in keep:
+            self._idle.put_nowait(slot)
+        if evicted and torch.cuda.is_available():
             await asyncio.to_thread(torch.cuda.empty_cache)
 
     @asynccontextmanager
@@ -125,45 +119,29 @@ class ModelPool:
         """
         self._ensure_cleanup_running()
 
+        await self._capacity.acquire()
         try:
-            slot = self._pool.get_nowait()
-        except asyncio.QueueEmpty:
-            async with self._lock:
-                if self._current < self._max:
-                    self._current += 1
-                    should_create = True
-                else:
-                    should_create = False
-
-            if should_create:
-                try:
-                    whisper, pipeline = await asyncio.to_thread(
-                        lambda: (get_whisper(), get_diarize_pipeline())
-                    )
-                except BaseException:
-                    # Model creation failed: roll back the counter so the slot does
-                    # not leak. Without this, repeated failures permanently exhaust
-                    # the pool and acquire() blocks forever.
-                    async with self._lock:
-                        self._current -= 1
-                    raise
+            try:
+                slot = self._idle.get_nowait()
+            except asyncio.QueueEmpty:
+                whisper, pipeline = await asyncio.to_thread(
+                    lambda: (get_whisper(), get_diarize_pipeline())
+                )
                 slot = _Slot(whisper=whisper, pipeline=pipeline)
-            else:
-                slot = await self._pool.get()
+        except BaseException:
+            self._capacity.release()
+            raise
 
         try:
             yield slot.whisper, slot.pipeline
         except BaseException:
-            # Inference failed; the model may be in a corrupted CUDA state. Drop the
-            # slot instead of returning it to the pool so the next request gets a
-            # fresh model.
-            async with self._lock:
-                self._current -= 1
             del slot
+            self._capacity.release()
             raise
         else:
             slot.last_used = time.monotonic()
-            self._pool.put_nowait(slot)
+            self._idle.put_nowait(slot)
+            self._capacity.release()
 
 
 pool = ModelPool(settings.STT_POOL_SIZE, settings.STT_IDLE_TIMEOUT_SECONDS)
