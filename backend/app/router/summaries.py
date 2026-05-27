@@ -76,10 +76,6 @@ async def list_summaries_endpoint(
     total_col = func.count().over().label("total")
     stmt = (
         select(Summary, total_col)
-        # id is a unique tiebreaker: created_at alone is not unique (rows
-        # inserted in the same instant collide), and Postgres does not
-        # guarantee row order on a non-unique sort key, which would let items
-        # drift between pages (re-appearing or being skipped).
         .order_by(col(Summary.created_at).desc(), col(Summary.id).desc())
         .limit(limit)
         .offset(offset)
