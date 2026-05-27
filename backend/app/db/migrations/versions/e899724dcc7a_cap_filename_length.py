@@ -1,4 +1,4 @@
-"""cap filename length
+"""cap filename length.
 
 Revision ID: e899724dcc7a
 Revises: 65436f77ed6b
@@ -7,7 +7,7 @@ Create Date: 2026-05-19 14:43:47.225037
 """
 from collections.abc import Sequence
 
-import sqlmodel
+import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -28,8 +28,8 @@ def upgrade() -> None:
     op.alter_column(
         "summaries",
         "filename",
-        existing_type=sqlmodel.sql.sqltypes.AutoString(),
-        type_=sqlmodel.sql.sqltypes.AutoString(length=255),
+        existing_type=sa.String(),
+        type_=sa.String(length=255),
         existing_nullable=False,
     )
 
@@ -39,7 +39,7 @@ def downgrade() -> None:
     op.alter_column(
         "summaries",
         "filename",
-        existing_type=sqlmodel.sql.sqltypes.AutoString(length=255),
-        type_=sqlmodel.sql.sqltypes.AutoString(),
+        existing_type=sa.String(length=255),
+        type_=sa.String(),
         existing_nullable=False,
     )

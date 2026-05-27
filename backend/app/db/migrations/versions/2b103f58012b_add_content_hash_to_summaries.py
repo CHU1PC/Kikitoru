@@ -1,4 +1,4 @@
-"""add content_hash to summaries
+"""add content_hash to summaries.
 
 Revision ID: 2b103f58012b
 Revises: e899724dcc7a
@@ -7,10 +7,8 @@ Create Date: 2026-05-26 21:04:16.299398
 """
 from collections.abc import Sequence
 
-import sqlmodel
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "2b103f58012b"
@@ -28,7 +26,7 @@ def upgrade() -> None:
     """
     op.add_column(
         "summaries",
-        sa.Column("content_hash", sqlmodel.sql.sqltypes.AutoString(length=64), nullable=True),
+        sa.Column("content_hash", sa.String(length=64), nullable=True),
     )
     op.create_index(
         op.f("ix_summaries_content_hash"),
