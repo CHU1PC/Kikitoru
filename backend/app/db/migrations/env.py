@@ -2,12 +2,12 @@ import asyncio
 import os
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel
 
-from alembic import context
 from app.db.models import ActionItem, Decision, Summary, Topic
 
 # Importing the SQLModel tables above populates SQLModel.metadata so that
@@ -57,12 +57,14 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
+    """Run migrations against an already-established synchronous connection."""
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
         context.run_migrations()
 
 
 async def run_async_migrations() -> None:
+    """Create an async engine and run the migrations within a sync-bridged run."""
     connectable = create_async_engine(
         _get_database_url(),
         poolclass=pool.NullPool,
@@ -73,6 +75,7 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
+    """Run migrations in 'online' mode with a live database connection."""
     asyncio.run(run_async_migrations())
 
 
