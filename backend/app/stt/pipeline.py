@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, BinaryIO
+from typing import IO, TYPE_CHECKING
 
 import numpy as np
 import torchaudio  # type: ignore[import-untyped]
@@ -19,14 +19,15 @@ _WHISPER_SAMPLE_RATE = 16000
 
 
 def transcribe_with_diarization(
-    audio: BinaryIO,
+    audio: IO[bytes],
     whisper: WhisperModel,
     pipeline: Pipeline,
 ) -> list[Segment]:
     """Transcribes the given audio and performs speaker diarization, returning aligned segments.
 
     Args:
-        audio (BinaryIO): Audio data as a file-like object (e.g. io.BytesIO).
+        audio (IO[bytes]): Audio data as a binary file-like object (e.g. io.BytesIO
+            or tempfile.SpooledTemporaryFile).
         whisper (WhisperModel): Whisper model instance to use for transcription.
         pipeline (Pipeline): pyannote diarization pipeline instance to use.
 
