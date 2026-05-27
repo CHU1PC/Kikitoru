@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import func
 from sqlmodel import col, select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.engine import SessionDep
 from app.db.models import ActionItem, Decision, Summary, Topic
@@ -17,6 +18,46 @@ from app.schema.summaries import (
 )
 
 router = APIRouter(prefix="/summaries", tags=["summaries"])
+
+
+async def build_summary_read(session: AsyncSession, summary: Summary) -> SummaryRead:
+    """Load a summary's children in stable id order and assemble the read model.
+
+    Shared by the detail endpoint and the audio router's idempotency hit so both
+    return identical, deterministically-ordered payloads from the database.
+
+    Args:
+        session (AsyncSession): Database session.
+        summary (Summary): The already-loaded parent summary row.
+
+    Returns:
+        SummaryRead: The summary with its topics, decisions, and action items.
+    """
+    topics = (
+        await session.exec(
+            select(Topic).where(col(Topic.summary_id) == summary.id).order_by(col(Topic.id))
+        )
+    ).all()
+    decisions = (
+        await session.exec(
+            select(Decision).where(col(Decision.summary_id) == summary.id).order_by(col(Decision.id))
+        )
+    ).all()
+    action_items = (
+        await session.exec(
+            select(ActionItem).where(col(ActionItem.summary_id) == summary.id).order_by(col(ActionItem.id))
+        )
+    ).all()
+
+    return SummaryRead(
+        id=summary.id,
+        filename=summary.filename,
+        created_at=summary.created_at,
+        overall_summary=summary.overall_summary,
+        topics=[TopicRead.model_validate(t) for t in topics],
+        decisions=[DecisionRead.model_validate(d) for d in decisions],
+        action_items=[ActionItemRead.model_validate(a) for a in action_items],
+    )
 
 
 @router.get("")
@@ -47,15 +88,7 @@ async def list_summaries_endpoint(
 
     if rows:
         total = int(rows[0][1])
-        items = [
-            SummaryListItem(
-                id=summary.id,
-                filename=summary.filename,
-                created_at=summary.created_at,
-                overall_summary=summary.overall_summary,
-            )
-            for summary, _ in rows
-        ]
+        items = [SummaryListItem.model_validate(summary) for summary, _ in rows]
     else:
         total = (await session.exec(select(func.count()).select_from(Summary))).one()
         items = []
@@ -74,34 +107,4 @@ async def get_summary_endpoint(summary_id: UUID, session: SessionDep) -> Summary
     if row is None:
         raise HTTPException(status_code=404, detail="Summary not found")
 
-    # Order by id so the children come back in a stable, insertion-order
-    # sequence; without an explicit ORDER BY, Postgres may return rows in any
-    # order and the response ordering would vary between requests.
-    topics = (
-        await session.exec(
-            select(Topic).where(col(Topic.summary_id) == summary_id).order_by(col(Topic.id))
-        )
-    ).all()
-    decisions = (
-        await session.exec(
-            select(Decision).where(col(Decision.summary_id) == summary_id).order_by(col(Decision.id))
-        )
-    ).all()
-    action_items = (
-        await session.exec(
-            select(ActionItem).where(col(ActionItem.summary_id) == summary_id).order_by(col(ActionItem.id))
-        )
-    ).all()
-
-    return SummaryRead(
-        id=row.id,
-        filename=row.filename,
-        created_at=row.created_at,
-        overall_summary=row.overall_summary,
-        topics=[TopicRead(title=t.title, summary=t.summary) for t in topics],
-        decisions=[DecisionRead(description=d.description, decided_by=d.decided_by) for d in decisions],
-        action_items=[
-            ActionItemRead(description=a.description, assignee=a.assignee, due_date=a.due_date)
-            for a in action_items
-        ],
-    )
+    return await build_summary_read(session, row)
