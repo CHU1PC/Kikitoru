@@ -69,7 +69,9 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "tests/**" = ["S101", "D103", "ANN", "PLC2701"]  # S101: use of assert detected (テストコード内の assert は許容)
   # D103: missing docstring in public function (テストコード内の関数はドキュメント不要)
   # ANN: missing type annotations (テストコード内は型注釈不要)
-"app/db/migrations/**" = ["INP001", "D103", "D415", "W291", "I001", "TC002", "TC003", "ANN"]  # Alembic boilerplate
+# INP001 only: Alembic's versions/ is an implicit namespace package by design;
+# adding __init__.py would make Alembic try to load it as a revision and break.
+"app/db/migrations/**" = ["INP001"]
 
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel", "sqlmodel.SQLModel"]
