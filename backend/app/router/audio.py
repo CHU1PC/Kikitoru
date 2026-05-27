@@ -9,10 +9,9 @@ from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Annotated
 
 import magic
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
-from sqlmodel.ext.asyncio.session import AsyncSession
+from fastapi import APIRouter, Form, HTTPException, UploadFile
 
-from app.db.engine import get_session
+from app.db.engine import SessionDep  # noqa: TC001 — FastAPI resolves the dependency annotation at runtime
 from app.db.models import ActionItem, Decision, Summary, Topic
 from app.llm.summarize import summarize_chain
 from app.schema.summaries import ActionItemRead, DecisionRead, SummaryRead, TopicRead
@@ -21,6 +20,8 @@ from app.stt.models import pool
 from app.stt.pipeline import transcribe_with_diarization
 
 if TYPE_CHECKING:
+    from sqlmodel.ext.asyncio.session import AsyncSession
+
     from app.llm.summarize.schema import Summary as LLMSummary
 
 
@@ -45,9 +46,6 @@ _ALLOWED_MIME_TYPES = frozenset({
 
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
 _magic_mime = magic.Magic(mime=True)
-
-
-Session = Annotated[AsyncSession, Depends(get_session)]
 
 
 def _sanitize_filename(filename: str | None) -> str:
@@ -152,7 +150,7 @@ async def _create_summary(session: AsyncSession, filename: str, data: LLMSummary
 @router.post("/summarize")
 async def summarize_audio(
     file: UploadFile,
-    session: Session,
+    session: SessionDep,
     recorded_at: Annotated[date | None, Form()] = None,
 ) -> SummaryRead:
     """Accepts an audio file, summarizes it, persists the result, and returns it.
