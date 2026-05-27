@@ -35,7 +35,11 @@ async def list_summaries_endpoint(
     total_col = func.count().over().label("total")
     stmt = (
         select(Summary, total_col)
-        .order_by(col(Summary.created_at).desc())
+        # id is a unique tiebreaker: created_at alone is not unique (rows
+        # inserted in the same instant collide), and Postgres does not
+        # guarantee row order on a non-unique sort key, which would let items
+        # drift between pages (re-appearing or being skipped).
+        .order_by(col(Summary.created_at).desc(), col(Summary.id).desc())
         .limit(limit)
         .offset(offset)
     )
@@ -70,9 +74,24 @@ async def get_summary_endpoint(summary_id: UUID, session: SessionDep) -> Summary
     if row is None:
         raise HTTPException(status_code=404, detail="Summary not found")
 
-    topics = (await session.exec(select(Topic).where(col(Topic.summary_id) == summary_id))).all()
-    decisions = (await session.exec(select(Decision).where(col(Decision.summary_id) == summary_id))).all()
-    action_items = (await session.exec(select(ActionItem).where(col(ActionItem.summary_id) == summary_id))).all()
+    # Order by id so the children come back in a stable, insertion-order
+    # sequence; without an explicit ORDER BY, Postgres may return rows in any
+    # order and the response ordering would vary between requests.
+    topics = (
+        await session.exec(
+            select(Topic).where(col(Topic.summary_id) == summary_id).order_by(col(Topic.id))
+        )
+    ).all()
+    decisions = (
+        await session.exec(
+            select(Decision).where(col(Decision.summary_id) == summary_id).order_by(col(Decision.id))
+        )
+    ).all()
+    action_items = (
+        await session.exec(
+            select(ActionItem).where(col(ActionItem.summary_id) == summary_id).order_by(col(ActionItem.id))
+        )
+    ).all()
 
     return SummaryRead(
         id=row.id,
