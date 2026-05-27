@@ -16,6 +16,13 @@ class Summary(SQLModel, table=True):
         description="Unique identifier of the summary",
     )
     filename: str = Field(..., max_length=255, description="Name of the uploaded audio file")
+    content_hash: str | None = Field(
+        default=None,
+        max_length=64,
+        index=True,
+        unique=True,
+        description="SHA-256 hex digest of the uploaded audio; makes re-uploads idempotent",
+    )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False),
