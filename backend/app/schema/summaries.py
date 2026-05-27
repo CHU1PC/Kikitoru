@@ -1,24 +1,30 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class TopicRead(BaseModel):
+class _ReadModel(BaseModel):
+    """Base for response models built directly from ORM rows via model_validate."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TopicRead(_ReadModel):
     """Topic in a summary response."""
 
     title: str = Field(..., description="Title of the topic")
     summary: str = Field(..., description="Detailed summary of the topic")
 
 
-class DecisionRead(BaseModel):
+class DecisionRead(_ReadModel):
     """Decision in a summary response."""
 
     description: str = Field(..., description="Description of the decision")
     decided_by: str | None = Field(None, description="Person or group that made the decision")
 
 
-class ActionItemRead(BaseModel):
+class ActionItemRead(_ReadModel):
     """Action item in a summary response."""
 
     description: str = Field(..., description="Description of the action item")
@@ -26,7 +32,7 @@ class ActionItemRead(BaseModel):
     due_date: date | None = Field(None, description="Due date for the action item")
 
 
-class SummaryListItem(BaseModel):
+class SummaryListItem(_ReadModel):
     """Summary metadata for list responses."""
 
     id: UUID = Field(..., description="Unique identifier of the summary")
