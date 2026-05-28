@@ -26,6 +26,8 @@ from app.stt.models import pool
 from app.stt.pipeline import transcribe_with_diarization
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from sqlmodel.ext.asyncio.session import AsyncSession
 
     from app.llm.summarize.schema import Summary as LLMSummary
@@ -153,6 +155,29 @@ async def _find_by_content_hash(session: AsyncSession, content_hash: str) -> Sum
     ).first()
 
 
+def _add_children(session: AsyncSession, summary_id: UUID, data: LLMSummary) -> None:
+    """Stage the summary's topics, decisions, and action items for insert.
+
+    Args:
+        session (AsyncSession): Database session.
+        summary_id (UUID): Parent summary id (set after flush).
+        data (LLMSummary): Structured summary from the LLM.
+    """
+    for t in data.topics:
+        session.add(Topic(summary_id=summary_id, title=t.title, summary=t.summary))
+    for d in data.decisions:
+        session.add(Decision(summary_id=summary_id, description=d.description, decided_by=d.decided_by))
+    for action_item in data.action_items:
+        session.add(
+            ActionItem(
+                summary_id=summary_id,
+                description=action_item.description,
+                assignee=action_item.assignee,
+                due_date=action_item.due_date,
+            )
+        )
+
+
 async def _create_summary(
     session: AsyncSession, filename: str, content_hash: str, data: LLMSummary
 ) -> SummaryRead:
@@ -172,24 +197,10 @@ async def _create_summary(
             content_hash (the duplicate race is handled by returning the existing row).
     """
     summary = Summary(filename=filename, content_hash=content_hash, overall_summary=data.overall_summary)
-    session.add(summary)
-    await session.flush()
-
-    for t in data.topics:
-        session.add(Topic(summary_id=summary.id, title=t.title, summary=t.summary))
-    for d in data.decisions:
-        session.add(Decision(summary_id=summary.id, description=d.description, decided_by=d.decided_by))
-    for action_item in data.action_items:
-        session.add(
-            ActionItem(
-                summary_id=summary.id,
-                description=action_item.description,
-                assignee=action_item.assignee,
-                due_date=action_item.due_date,
-            )
-        )
-
     try:
+        session.add(summary)
+        await session.flush()
+        _add_children(session, summary.id, data)
         await session.commit()
     except IntegrityError:
         await session.rollback()
