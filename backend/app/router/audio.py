@@ -5,9 +5,10 @@ import hashlib
 import re
 import tempfile
 import unicodedata
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING, Annotated
+from zoneinfo import ZoneInfo
 
 import magic
 from fastapi import APIRouter, Form, HTTPException, UploadFile
@@ -41,6 +42,7 @@ _READ_CHUNK_SIZE = 1024 * 1024  # 1 MB
 _SPOOL_MAX_BYTES = 8 * 1024 * 1024  # 8 MB
 _MAGIC_SNIFF_BYTES = 8192
 _MAX_FILENAME_LENGTH = 255
+_MEETING_TZ = ZoneInfo("Asia/Tokyo")  # default tz when the client omits recorded_at
 
 
 _ALLOWED_MIME_TYPES = frozenset({
@@ -225,7 +227,7 @@ async def summarize_audio(
         session (AsyncSession): Database session.
         recorded_at (date | None): Date when the meeting was recorded (ISO 8601:
             YYYY-MM-DD). Used as the reference date for relative date expressions
-            in the audio (e.g., "来週月曜"). Defaults to today (UTC).
+            in the audio (e.g., "来週月曜"). Defaults to today in Asia/Tokyo (JST).
 
     Returns:
         SummaryRead: Persisted summary including topics, decisions, and action items.
@@ -250,7 +252,7 @@ async def summarize_audio(
 
     segments = await _transcribe(spooled)
 
-    reference_date = recorded_at or datetime.now(UTC).date()
+    reference_date = recorded_at or datetime.now(_MEETING_TZ).date()
     async with llm_semaphore:
         llm_result = await summarize_chain.ainvoke((segments, reference_date))
 
