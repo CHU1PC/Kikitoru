@@ -45,11 +45,18 @@ class Settings(BaseSettings):
 
         Returns:
             object: A list of origin strings, or the value unchanged if not a string.
+
+        Raises:
+            ValueError: If the value looks like a JSON array but is not valid JSON.
         """
         if isinstance(value, str):
             text = value.strip()
             if text.startswith("["):
-                return json.loads(text)
+                try:
+                    return json.loads(text)
+                except json.JSONDecodeError as exc:
+                    msg = f"ALLOWED_ORIGINS looks like JSON but is invalid: {text!r}"
+                    raise ValueError(msg) from exc
             return [origin.strip() for origin in text.split(",") if origin.strip()]
         return value
 
