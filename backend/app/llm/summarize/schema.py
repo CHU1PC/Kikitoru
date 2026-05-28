@@ -72,13 +72,15 @@ class ActionItem(BaseModel):
         """
         if value is None:
             return value
-        if isinstance(value, datetime):
-            return value.date()
         if isinstance(value, date):
-            return value
+            return value.date() if isinstance(value, datetime) else value
         if isinstance(value, str):
             try:
                 return date.fromisoformat(value)
+            except ValueError:
+                pass
+            try:
+                return datetime.fromisoformat(value).date()
             except ValueError:
                 logger.warning("Discarding unparseable due_date from LLM: {!r}", value)
                 return None
