@@ -22,7 +22,8 @@ def upgrade() -> None:
 
     Truncate any existing rows whose filename exceeds 255 chars before
     altering the column so the ALTER does not fail with
-    'value too long for type character varying(255)'.
+    'value too long for type character varying(255)'. This truncation is
+    irreversible: downgrade restores the column type but not the lost bytes.
     """
     op.execute("UPDATE summaries SET filename = LEFT(filename, 255) WHERE LENGTH(filename) > 255")
     op.alter_column(
