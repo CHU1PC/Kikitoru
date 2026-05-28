@@ -237,7 +237,6 @@ async def summarize_audio(
     if file.size is not None and file.size > _MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="File exceeds the 200 MB limit")
 
-    reference_date = recorded_at or datetime.now(UTC).date()
     spooled, content_hash, detected_mime = await _spool_upload(file)
 
     if detected_mime not in _ALLOWED_MIME_TYPES:
@@ -251,6 +250,7 @@ async def summarize_audio(
 
     segments = await _transcribe(spooled)
 
+    reference_date = recorded_at or datetime.now(UTC).date()
     async with llm_semaphore:
         llm_result = await summarize_chain.ainvoke((segments, reference_date))
 
