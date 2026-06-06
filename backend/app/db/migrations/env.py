@@ -8,12 +8,10 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel
 
-from app.db.models import ActionItem, Decision, Summary, Topic
+from app.db.models import ActionItem, Decision, Summary, Topic, User, UserSession
 
-# Importing the SQLModel tables above populates SQLModel.metadata so that
-# Alembic's autogenerate can detect schema changes. This tuple keeps the
-# imports referenced so static analyzers don't flag them as unused.
-_ALEMBIC_MODELS = (Summary, Topic, Decision, ActionItem)
+_ALEMBIC_MODELS = (Summary, Topic, Decision, ActionItem, User, UserSession)
+
 
 config = context.config
 
