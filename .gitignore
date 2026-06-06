@@ -91,6 +91,7 @@ venv.bak/
 .env
 .env.*
 !.env.example
+!.env.dev_example
 .envrc
 *.pem
 *.key

@@ -1,0 +1,76 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: kikitoru-dev-db
+    environment:
+      POSTGRES_DB: kikitoru
+      POSTGRES_USER: postgres
+      # .env の POSTGRES_PASSWORD を読む。未設定なら dev_password にフォールバック。
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password}
+    ports:
+      # ホスト側に 5432 を公開。alembic / psql / DataGrip 等から localhost:5432 で接続可能。
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: kikitoru-dev-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # glibc malloc arena 数を制限して RSS 単調増加を抑える
+      # (Python + asyncio + ML 系で発生する典型問題への対策)
+      MALLOC_ARENA_MAX: "2"
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-dev_password}@db:5432/kikitoru
+      DATABASE_SSL_MODE: ${DATABASE_SSL_MODE:-disable}
+      HF_TOKEN: ${HF_TOKEN}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      # OAuth (KKT/9 認証実装で使用)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8000/auth/google/callback}
+      # Cookie / Session
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      SESSION_EXPIRY_DAYS: ${SESSION_EXPIRY_DAYS:-1}
+      # LLM / CORS
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-120}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-["http://localhost:5173","http://localhost:8000"]}
+      ENABLE_DOCS: ${ENABLE_DOCS:-true}
+    ports:
+      - "8000:8000"
+    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    develop:
+      watch:
+        - action: sync
+          path: ./backend/app
+          target: /app/app
+        - action: sync
+          path: ./backend/tests
+          target: /app/tests
+        - action: sync
+          path: ./backend/alembic.ini
+          target: /app/alembic.ini
+        - action: rebuild
+          path: ./backend/pyproject.toml
+        - action: rebuild
+          path: ./backend/uv.lock
+        - action: rebuild
+          path: ./backend/Dockerfile
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  postgres_dev_data:
