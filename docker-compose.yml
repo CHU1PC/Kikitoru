@@ -20,6 +20,9 @@ services:
       db:
         condition: service_healthy
     environment:
+      # glibc malloc arena 数を制限して RSS 単調増加を抑える
+      # (Python + asyncio + ML 系で発生する典型問題への対策)
+      MALLOC_ARENA_MAX: "2"
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/kikitoru
       HF_TOKEN: ${HF_TOKEN}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
