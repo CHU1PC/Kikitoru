@@ -9,7 +9,6 @@ from pydantic_settings import BaseSettings, NoDecode
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    HF_TOKEN: SecretStr = Field(default=..., description="The Hugging Face token")
     DATABASE_URL: SecretStr = Field(default=..., description="The URL for the database connection")
     DATABASE_SSL_MODE: str = Field(
         default="disable",
@@ -25,6 +24,9 @@ class Settings(BaseSettings):
     STT_POOL_SIZE: int = Field(default=5, description="Number of concurrent STT model instances")
     STT_IDLE_TIMEOUT_SECONDS: int = Field(default=300, description="Seconds before an idle STT model is unloaded")
 
+    # Hugging Face Settings
+    HF_TOKEN: SecretStr = Field(..., description="The Hugging Face token")
+
     # LLM Settings
     GOOGLE_API_KEY: SecretStr = Field(default=..., description="API key for Google services")
     LLM_CONCURRENT_LIMIT: int = Field(default=80, description="Max concurrent requests to the LLM")
@@ -33,6 +35,34 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: Annotated[list[str], NoDecode] = Field(
         default=["http://localhost:5173"],
         description='Allowed CORS origins. Comma-separated (a,b) or a JSON array (["a","b"]).',
+    )
+
+    # Google OAuth (sign-in)
+    GOOGLE_CLIENT_ID: SecretStr = Field(
+        ..., description="OAuth 2.0 Client ID for Google authentication"
+    )
+    GOOGLE_CLIENT_SECRET: SecretStr = Field(
+        ..., description="OAuth 2.0 Client Secret for Google authentication"
+    )
+    GOOGLE_REDIRECT_URI: str = Field(
+        ...,
+        description=(
+            "OAuth 2.0 redirect URI. Must exactly match an entry registered in "
+            "Google Cloud Console under 'Authorized redirect URIs'."
+        ),
+    )
+
+    # Cookie / Session
+    COOKIE_SECURE: bool = Field(
+        default=True,
+        description=(
+            "Set the Secure flag on session cookies. Required for production (HTTPS). "
+            "Set to false only for local HTTP development."
+        ),
+    )
+    SESSION_EXPIRY_DAYS: int = Field(
+        default=1,
+        description="How long a new session remains valid before requiring re-login.",
     )
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
