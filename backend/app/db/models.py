@@ -1,26 +1,100 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column, DateTime, UniqueConstraint
 from sqlmodel import Field, SQLModel
+
+
+class User(SQLModel, table=True):
+    """A User of the system."""
+
+    __tablename__ = "users"  # type: ignore[assignment]
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True, description="Unique identifier of the user")
+    google_sub: str = Field(..., unique=True, max_length=255, description="Google OIDC Subject Identifier")
+    email: str = Field(..., unique=True, max_length=320, description="Email address of the user")
+    name: str = Field(default="", max_length=255, description="Full name of the user")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="Timestamp when the user was created (UTC)",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=lambda: datetime.now(UTC)),
+        description="Timestamp when the user was last updated (UTC)",
+    )
+
+
+class UserSession(SQLModel, table=True):
+    """ログインを維持するためのユーザーセッション."""
+
+    __tablename__ = "user_sessions"  # type: ignore[assignment]
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True, description="セッションの一意識別子")
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        ondelete="CASCADE",
+        index=True,
+        description="このセッションが属するユーザーのID",
+    )
+    token_hash: str = Field(..., max_length=64, unique=True, description="SHA-256でハッシュ化されたセッショントークン")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="このセッションが作成されたTimestamp (UTC)",
+    )
+    expires_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC) + timedelta(days=1),
+        sa_column=Column(DateTime(timezone=True), nullable=False, index=True),
+        description="このセッションが期限切れになるTimestamp (UTC)",
+    )
+    last_seen_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=lambda: datetime.now(UTC)),
+        description="このセッションが最後に使用されたTimestamp (UTC)",
+    )
+    revoked_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+        description="このセッションが削除されたTimestamp (UTC); null if active",
+    )
+    user_agent: str | None = Field(
+        default=None,
+        max_length=512,
+        description="クライアントのブラウザから取得したUser agent文字列"
+    )
+    ip_address: str | None = Field(
+        default=None,
+        max_length=45,
+        description="セッションを作成したクライアントのIPアドレス"
+    )
 
 
 class Summary(SQLModel, table=True):
     """Persisted meeting summary."""
 
     __tablename__ = "summaries"  # type: ignore[assignment]
+    __table_args__ = (
+        UniqueConstraint("user_id", "content_hash", name="uq_user_content_hash"),
+    )
 
     id: UUID = Field(
         default_factory=uuid4,
         primary_key=True,
         description="Unique identifier of the summary",
     )
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        ondelete="CASCADE",
+        index=True,
+        description="UserのID",
+    )
     filename: str = Field(..., max_length=255, description="Name of the uploaded audio file")
     content_hash: str | None = Field(
         default=None,
         max_length=64,
         index=True,
-        unique=True,
         description=(
             "SHA-256 hex digest of the audio combined with num_speakers; "
             "makes re-uploads idempotent per speaker-count setting"
