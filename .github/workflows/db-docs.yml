@@ -8,22 +8,20 @@ name: DB Documentation
 on:
   push:
     branches-ignore:
-      - gh-pages   # gh-pages 自身への push では走らない (無限ループ防止)
+      - gh-pages
     paths:
       - 'backend/app/db/models.py'
       - 'backend/app/db/migrations/versions/**'
       - '.github/workflows/db-docs.yml'
 
-  # 手動実行 (Actions UI の "Run workflow" ボタン)
   workflow_dispatch:
 
-# 同じブランチでの並列実行を防止 (deploy 競合回避)。別ブランチは並列で OK。
 concurrency:
   group: db-docs-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
-  contents: write   # gh-pages branch へ push するために必要
+  contents: write
 
 jobs:
   generate-and-deploy:
@@ -57,18 +55,14 @@ jobs:
           echo "dir=${SANITIZED}" >> "$GITHUB_OUTPUT"
           echo "Branch directory: ${SANITIZED}"
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
       - name: Install uv
-        run: pip install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
 
       - name: Install backend dependencies (db group only)
         working-directory: backend
-        # torch / whisper / langchain 等の重量級依存は入れない。
-        # alembic + sqlmodel + asyncpg だけで migration が走れば SchemaSpy には十分。
         run: uv sync --frozen --only-group db
 
       - name: Run migrations
@@ -95,8 +89,6 @@ jobs:
             -vizjs
 
       - name: Add .nojekyll
-        # GitHub Pages は _ で始まるファイル / ディレクトリを Jekyll が無視するので、
-        # SchemaSpy の出力 (_assets 等) が serve されない対策。
         run: touch site/.nojekyll
 
       - name: Deploy to gh-pages/${{ steps.branch.outputs.dir }}/
@@ -105,9 +97,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./site
           destination_dir: ${{ steps.branch.outputs.dir }}
-          # force_orphan は使わない:
-          # - true にすると他ブランチの docs まで消える (ブランチ別 deploy と矛盾)
-          # - false でも Kikitoru 規模 (~1 MB/deploy) では履歴サイズは問題にならない
-          # - 履歴を残すことで rollback / 過去スナップショット参照が可能
-          keep_files: false   # 同じディレクトリ内のみクリーンに置き換え (他ブランチには影響なし)
+          keep_files: false
           commit_message: "auto: deploy DB docs for ${{ github.ref_name }} @ ${{ github.sha }}"
