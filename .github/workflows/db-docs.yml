@@ -1,0 +1,112 @@
+name: DB Documentation
+
+# SchemaSpy で DB スキーマのドキュメントを生成し、gh-pages の <branch-dir>/ に deploy する。
+# 任意のブランチへの push で backend/app/db/** が変更された場合に発火。
+# 各ブランチは独立したディレクトリにデプロイされるため、複数 PR のスキーマを並列に閲覧可能。
+# 公開先: https://<owner>.github.io/Kikitoru/<branch-dir>/
+
+on:
+  push:
+    branches-ignore:
+      - gh-pages   # gh-pages 自身への push では走らない (無限ループ防止)
+    paths:
+      - 'backend/app/db/models.py'
+      - 'backend/app/db/migrations/versions/**'
+      - '.github/workflows/db-docs.yml'
+
+  # 手動実行 (Actions UI の "Run workflow" ボタン)
+  workflow_dispatch:
+
+# 同じブランチでの並列実行を防止 (deploy 競合回避)。別ブランチは並列で OK。
+concurrency:
+  group: db-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write   # gh-pages branch へ push するために必要
+
+jobs:
+  generate-and-deploy:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: kikitoru
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sanitize branch name
+        id: branch
+        run: |
+          # KKT/10 → KKT-10 のように、URL に使えない文字を変換
+          SANITIZED="${{ github.ref_name }}"
+          SANITIZED="${SANITIZED//\//-}"
+          echo "dir=${SANITIZED}" >> "$GITHUB_OUTPUT"
+          echo "Branch directory: ${SANITIZED}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install backend dependencies (db group only)
+        working-directory: backend
+        # torch / whisper / langchain 等の重量級依存は入れない。
+        # alembic + sqlmodel + asyncpg だけで migration が走れば SchemaSpy には十分。
+        run: uv sync --frozen --only-group db
+
+      - name: Run migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:ci_password@localhost:5432/kikitoru
+        run: uv run alembic upgrade head
+
+      - name: Generate SchemaSpy docs
+        run: |
+          mkdir -p site
+          docker run --rm \
+            --network host \
+            -v "$PWD/site:/output" \
+            schemaspy/schemaspy:latest \
+            -t pgsql \
+            -host localhost \
+            -port 5432 \
+            -db kikitoru \
+            -u postgres \
+            -p ci_password \
+            -s public \
+            -vizjs
+
+      - name: Add .nojekyll
+        # GitHub Pages は _ で始まるファイル / ディレクトリを Jekyll が無視するので、
+        # SchemaSpy の出力 (_assets 等) が serve されない対策。
+        run: touch site/.nojekyll
+
+      - name: Deploy to gh-pages/${{ steps.branch.outputs.dir }}/
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          destination_dir: ${{ steps.branch.outputs.dir }}
+          # force_orphan は使わない:
+          # - true にすると他ブランチの docs まで消える (ブランチ別 deploy と矛盾)
+          # - false でも Kikitoru 規模 (~1 MB/deploy) では履歴サイズは問題にならない
+          # - 履歴を残すことで rollback / 過去スナップショット参照が可能
+          keep_files: false   # 同じディレクトリ内のみクリーンに置き換え (他ブランチには影響なし)
+          commit_message: "auto: deploy DB docs for ${{ github.ref_name }} @ ${{ github.sha }}"

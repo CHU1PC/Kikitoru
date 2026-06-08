@@ -1,0 +1,56 @@
+name: DB Documentation Cleanup
+
+# ブランチが削除されたら、対応する gh-pages/<branch-dir>/ を削除する。
+# db-docs.yml と組み合わせて「ブランチごと deploy + ブランチ消滅で自動 cleanup」を実現。
+
+on:
+  delete:
+
+# 削除系処理が並列で走ると競合するので排他制御。
+# main の deploy workflow とは別グループ (deploy を block しない)。
+concurrency:
+  group: db-docs-cleanup
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # gh-pages に commit / push するため
+
+jobs:
+  remove-branch-docs:
+    # tag 削除では走らない (branch 削除のみ対象)
+    if: github.event.ref_type == 'branch'
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Sanitize deleted branch name
+        id: branch
+        run: |
+          # delete event の場合、削除されたブランチ名は github.event.ref に入る
+          SANITIZED="${{ github.event.ref }}"
+          SANITIZED="${SANITIZED//\//-}"
+          echo "dir=${SANITIZED}" >> "$GITHUB_OUTPUT"
+          echo "Cleaning up gh-pages/${SANITIZED}/"
+
+      - name: Checkout gh-pages
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          # commit / push のため git 設定を保持
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove branch directory and commit
+        env:
+          BRANCH_DIR: ${{ steps.branch.outputs.dir }}
+        run: |
+          if [ ! -d "$BRANCH_DIR" ]; then
+            echo "Directory $BRANCH_DIR not found in gh-pages. Nothing to clean."
+            exit 0
+          fi
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git rm -rf "$BRANCH_DIR"
+          git commit -m "auto: cleanup DB docs for deleted branch ${{ github.event.ref }}"
+          git push origin gh-pages
