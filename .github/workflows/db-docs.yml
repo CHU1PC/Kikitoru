@@ -81,6 +81,7 @@ jobs:
         run: |
           mkdir -p site
           docker run --rm \
+            --user "$(id -u):$(id -g)" \
             --network host \
             -v "$PWD/site:/output" \
             schemaspy/schemaspy:latest \
