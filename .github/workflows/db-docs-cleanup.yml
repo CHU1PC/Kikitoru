@@ -1,68 +1,56 @@
 name: DB Documentation Cleanup
 
-# gh-pages に残った「消えたブランチ」のドキュメント dir を live ブランチと突き合わせて掃除する (reconcile)。
-# 注意: delete / workflow_dispatch は *default ブランチ上の* このファイル版で発火するため、
-# このファイルは default ブランチに載せる必要がある。
+# ブランチが削除されたら、対応する gh-pages/<branch-dir>/ を削除する。
+# db-docs.yml と組み合わせて「ブランチごと deploy + ブランチ消滅で自動 cleanup」を実現。
 
 on:
   delete:
-  workflow_dispatch:
 
+# 削除系処理が並列で走ると競合するので排他制御。
+# main の deploy workflow とは別グループ (deploy を block しない)。
 concurrency:
   group: db-docs-cleanup
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: write   # gh-pages に commit / push するため
 
 jobs:
-  prune:
-    # tag 削除では走らせない (branch 削除 or 手動のみ)
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.ref_type == 'branch' }}
+  remove-branch-docs:
+    # tag 削除では走らない (branch 削除のみ対象)
+    if: github.event.ref_type == 'branch'
 
     runs-on: ubuntu-latest
 
     steps:
+      - name: Sanitize deleted branch name
+        id: branch
+        run: |
+          # delete event の場合、削除されたブランチ名は github.event.ref に入る
+          SANITIZED="${{ github.event.ref }}"
+          SANITIZED="${SANITIZED//\//-}"
+          echo "dir=${SANITIZED}" >> "$GITHUB_OUTPUT"
+          echo "Cleaning up gh-pages/${SANITIZED}/"
+
       - name: Checkout gh-pages
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        uses: actions/checkout@v4
         with:
           ref: gh-pages
+          # commit / push のため git 設定を保持
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Prune docs dirs whose branch no longer exists
+      - name: Remove branch directory and commit
+        env:
+          BRANCH_DIR: ${{ steps.branch.outputs.dir }}
         run: |
-          set -euo pipefail
-          shopt -s nullglob
-
-          declare -A keep
-          while IFS= read -r ref; do
-            branch="${ref#refs/heads/}"
-            keep["${branch//\//-}"]=1
-          done < <(git ls-remote --heads origin | awk '{print $2}')
-
-          if [[ ${#keep[@]} -eq 0 ]]; then
-            echo "No live branches resolved (ls-remote failed?). Aborting." >&2
-            exit 1
-          fi
-
-          removed=0
-          for d in */; do
-            name="${d%/}"
-            if [[ -z "${keep[$name]:-}" ]]; then
-              echo "prune: $name (no live branch)"
-              git rm -rq "$name"
-              removed=1
-            else
-              echo "keep : $name"
-            fi
-          done
-
-          if [[ "$removed" -eq 0 ]]; then
-            echo "Nothing to prune."
+          if [ ! -d "$BRANCH_DIR" ]; then
+            echo "Directory $BRANCH_DIR not found in gh-pages. Nothing to clean."
             exit 0
           fi
 
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "auto: prune db docs for deleted branches"
+
+          git rm -rf "$BRANCH_DIR"
+          git commit -m "auto: cleanup DB docs for deleted branch ${{ github.event.ref }}"
           git push origin gh-pages
