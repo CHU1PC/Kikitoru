@@ -938,6 +938,11 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+db = [
+    { name = "alembic" },
+    { name = "asyncpg" },
+    { name = "sqlmodel" },
+]
 dev = [
     { name = "keyrings-alt" },
     { name = "pytest" },
@@ -965,6 +970,11 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+db = [
+    { name = "alembic", specifier = ">=1.13" },
+    { name = "asyncpg", specifier = ">=0.31.0" },
+    { name = "sqlmodel", specifier = ">=0.0.22" },
+]
 dev = [
     { name = "keyrings-alt", specifier = ">=5.0.2" },
     { name = "pytest", specifier = ">=8.3" },
