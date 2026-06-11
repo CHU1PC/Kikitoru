@@ -14,6 +14,7 @@ def _mock_segment(start: float, end: float) -> MagicMock:
 
 
 def test_returns_diarization_turns() -> None:
+    """Diarize が Pipeline の出力を受け取り DiarizationTurn のリストに変換することを確認するテスト."""
     waveform = MagicMock()
     sample_rate = 16000
     mock_output = MagicMock()
@@ -32,6 +33,7 @@ def test_returns_diarization_turns() -> None:
 
 
 def test_passes_waveform_dict_to_pipeline() -> None:
+    """波形とsample_rateをdictにまとめてpipelineに渡すことを確認するテスト."""
     waveform = MagicMock()
     sample_rate = 16000
     mock_pipeline = MagicMock()
@@ -43,6 +45,7 @@ def test_passes_waveform_dict_to_pipeline() -> None:
 
 
 def test_empty_audio_returns_empty_list() -> None:
+    """話者ターンが無いとき空リストを返すことを確認するテスト."""
     waveform = MagicMock()
     sample_rate = 16000
     mock_pipeline = MagicMock()

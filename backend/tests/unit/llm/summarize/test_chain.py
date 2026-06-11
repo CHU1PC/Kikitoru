@@ -1,19 +1,21 @@
 import json
 from datetime import date
 
-from app.llm.summarize.chain import _format_input
+from app.llm.summarize.chain import _format_input  # noqa: PLC2701  # pyright: ignore[reportPrivateUsage]
 from app.stt.types import Segment
 
 _RECORDED_AT = date(2025, 6, 1)
 
 
-def test_format_input_empty():
+def test_format_input_empty() -> None:
+    """空のセグメント列でも落ちず空配列 [] のJSONを返すことを確認するテスト."""
     result = _format_input(([], _RECORDED_AT))
 
     assert json.loads(result["segments_json"]) == []
 
 
-def test_format_input_single_segment():
+def test_format_input_single_segment() -> None:
+    """セグメントが {id, speaker, text} のキー構造でJSON化されることを確認するテスト."""
     segments = [
         Segment(start=0.0, end=2.0, speaker_label="Speaker 0", text="hello"),
     ]
@@ -24,7 +26,8 @@ def test_format_input_single_segment():
     assert payload == [{"id": 0, "speaker": "Speaker 0", "text": "hello"}]
 
 
-def test_format_input_assigns_sequential_ids():
+def test_format_input_assigns_sequential_ids() -> None:
+    """各セグメントに 0 始まりの連番 id が振られることを確認するテスト."""
     segments = [
         Segment(start=0.0, end=2.0, speaker_label="Speaker 0", text="a"),
         Segment(start=2.0, end=4.0, speaker_label="Speaker 1", text="b"),
@@ -38,21 +41,20 @@ def test_format_input_assigns_sequential_ids():
     assert [item["text"] for item in payload] == ["a", "b", "c"]
 
 
-def test_format_input_preserves_japanese_characters():
+def test_format_input_preserves_japanese_characters() -> None:
+    """日本語をエスケープせず生の文字のまま出力することを確認するテスト."""
     segments = [
         Segment(start=0.0, end=2.0, speaker_label="Speaker 0", text="こんにちは"),
     ]
 
     result = _format_input((segments, _RECORDED_AT))
 
-    # ensure_ascii=False means Japanese characters appear literally,
-    # not as \uXXXX escape sequences.
     assert "こんにちは" in result["segments_json"]
     assert "\\u" not in result["segments_json"]
 
 
-def test_format_input_uses_speaker_label_as_is():
-    """Speaker label can be normalized ("Speaker 0") or a real name; both pass through."""
+def test_format_input_uses_speaker_label_as_is() -> None:
+    """話者ラベルを加工せずそのまま speaker に渡すことを確認するテスト."""
     segments = [
         Segment(start=0.0, end=2.0, speaker_label="田中", text="..."),
     ]
@@ -63,8 +65,8 @@ def test_format_input_uses_speaker_label_as_is():
     assert payload[0]["speaker"] == "田中"
 
 
-def test_format_input_returns_expected_keys():
-    """The returned dict matches what the prompt template expects."""
+def test_format_input_returns_expected_keys() -> None:
+    """プロンプトテンプレートが要求するキーを返すことを確認するテスト."""
     segments = [
         Segment(start=0.0, end=2.0, speaker_label="Speaker 0", text="test"),
     ]
@@ -75,8 +77,8 @@ def test_format_input_returns_expected_keys():
     assert isinstance(result["segments_json"], str)
 
 
-def test_format_input_emits_recorded_at_iso():
-    """recorded_at is passed to the prompt as an ISO 8601 date string."""
+def test_format_input_emits_recorded_at_iso() -> None:
+    """recorded_at を ISO 8601 形式の日付文字列で渡すことを確認するテスト."""
     result = _format_input(([], _RECORDED_AT))
 
     assert result["recorded_at"] == "2025-06-01"
