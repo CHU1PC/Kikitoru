@@ -17,6 +17,7 @@ def _mock_segment(start: float, end: float, text: str) -> MagicMock:
 
 
 def test_returns_whisper_segments() -> None:
+    """TranscribeがWhisperの出力を受け取りWhisperSegmentのリストに変換することを確認するテスト."""
     audio = np.zeros(16000, dtype=np.float32)
     mock_whisper = MagicMock()
     mock_whisper.transcribe.return_value = (
@@ -33,6 +34,7 @@ def test_returns_whisper_segments() -> None:
 
 
 def test_transcribes_in_japanese() -> None:
+    """Transcribeがlanguage=ja・vad_filter=Trueで呼ばれることを確認するテスト."""
     audio = np.zeros(16000, dtype=np.float32)
     mock_whisper = MagicMock()
     mock_whisper.transcribe.return_value = ([], MagicMock())
@@ -43,6 +45,7 @@ def test_transcribes_in_japanese() -> None:
 
 
 def test_empty_audio_returns_empty_list() -> None:
+    """Transcribeが文字起こし結果が無いとき空リストを返すことを確認するテスト."""
     audio = np.zeros(16000, dtype=np.float32)
     mock_whisper = MagicMock()
     mock_whisper.transcribe.return_value = ([], MagicMock())
