@@ -62,7 +62,7 @@ class Settings(BaseSettings):
 
     # Deployment
     ENABLE_DOCS: bool = Field(
-        default=True,
+        default=False,
         description="Whether to expose /docs, /redoc, /openapi.json. Set to false in production.",
     )
 
