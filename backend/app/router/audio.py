@@ -90,22 +90,21 @@ def _sanitize_filename(filename: str | None) -> str:
 
 
 async def _spool_upload(file: UploadFile) -> tuple[tempfile.SpooledTemporaryFile[bytes], str, str]:
-    """Stream the upload to a spooled temp file while hashing and sniffing it.
+    """アップロードを spooled 一時ファイルに書き出しつつ、ハッシュ化と MIME 判定を同じ走査で行う.
 
-    Reads in chunks so the whole file is never fully held in memory: small
-    uploads stay in RAM, larger ones roll over to disk past _SPOOL_MAX_BYTES.
-    The SHA-256 digest and the first bytes (for MIME sniffing) are computed in
-    the same pass, so the content is read only once.
+    チャンク単位で読み、ファイル全体をメモリに保持しない. 小さいアップロードはメモリ上に残り、
+    _SPOOL_MAX_BYTES を超えるとディスクに退避する. SHA-256 ダイジェストと先頭バイト
+    (MIME sniff 用) を同じ1回の走査で計算するため、内容は1度しか読まない.
 
     Args:
-        file (UploadFile): The incoming file.
+        file (UploadFile): 受信したファイル.
 
     Returns:
-        tuple[SpooledTemporaryFile, str, str]: The rewound temp file, the
-        SHA-256 hex digest of its contents, and the libmagic-detected MIME type.
+        tuple[SpooledTemporaryFile, str, str]: 先頭に巻き戻した一時ファイル、その内容の
+            SHA-256 hex ダイジェスト、libmagic が判定した MIME タイプ.
 
     Raises:
-        HTTPException: 413 if the running total exceeds _MAX_UPLOAD_BYTES.
+        HTTPException: 累積サイズが _MAX_UPLOAD_BYTES を超えた場合は 413.
     """
     spooled: tempfile.SpooledTemporaryFile[bytes] = tempfile.SpooledTemporaryFile(max_size=_SPOOL_MAX_BYTES)  # noqa: SIM115
     hasher = hashlib.sha256()
