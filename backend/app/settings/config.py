@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     # LLM Settings
     GOOGLE_API_KEY: SecretStr = Field(default=..., description="API key for Google services")
     LLM_CONCURRENT_LIMIT: int = Field(default=80, description="Max concurrent requests to the LLM")
-    LLM_TIMEOUT_SECONDS: int = Field(default=..., description="The timeout in seconds for LLM responses")
+    LLM_TIMEOUT_SECONDS: int = Field(default=120, description="The timeout in seconds for LLM responses")
 
     ALLOWED_ORIGINS: Annotated[list[str], NoDecode] = Field(
         default=["http://localhost:5173"],
