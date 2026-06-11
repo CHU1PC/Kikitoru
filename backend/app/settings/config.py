@@ -9,8 +9,8 @@ from pydantic_settings import BaseSettings, NoDecode
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    HF_TOKEN: SecretStr = Field(..., description="The Hugging Face token")
-    DATABASE_URL: SecretStr = Field(..., description="The URL for the database connection")
+    HF_TOKEN: SecretStr = Field(default=..., description="The Hugging Face token")
+    DATABASE_URL: SecretStr = Field(default=..., description="The URL for the database connection")
     DATABASE_SSL_MODE: str = Field(
         default="disable",
         description=(
@@ -22,13 +22,13 @@ class Settings(BaseSettings):
     )
 
     # STT Settings
-    STT_POOL_SIZE: int = Field(5, description="Number of concurrent STT model instances")
-    STT_IDLE_TIMEOUT_SECONDS: int = Field(300, description="Seconds before an idle STT model is unloaded")
+    STT_POOL_SIZE: int = Field(default=5, description="Number of concurrent STT model instances")
+    STT_IDLE_TIMEOUT_SECONDS: int = Field(default=300, description="Seconds before an idle STT model is unloaded")
 
     # LLM Settings
-    GOOGLE_API_KEY: SecretStr = Field(..., description="API key for Google services")
-    LLM_CONCURRENT_LIMIT: int = Field(80, description="Max concurrent requests to the LLM")
-    LLM_TIMEOUT_SECONDS: int = Field(..., description="The timeout in seconds for LLM responses")
+    GOOGLE_API_KEY: SecretStr = Field(default=..., description="API key for Google services")
+    LLM_CONCURRENT_LIMIT: int = Field(default=80, description="Max concurrent requests to the LLM")
+    LLM_TIMEOUT_SECONDS: int = Field(default=..., description="The timeout in seconds for LLM responses")
 
     ALLOWED_ORIGINS: Annotated[list[str], NoDecode] = Field(
         default=["http://localhost:5173"],
