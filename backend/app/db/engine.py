@@ -22,19 +22,24 @@ async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit
 
 
 async def get_session() -> AsyncGenerator[AsyncSession]:
-    """Yield a database session for use as a FastAPI dependency.
+    """FastAPI の依存性として使うデータベースセッションを提供する関数.
 
-    Explicitly rolls back on exceptions so that any partially-applied work
-    is discarded before the connection returns to the pool. The default
-    `async with` behavior is driver-dependent; making the rollback explicit
-    keeps the connection state predictable across versions.
+    例外発生時は明示的に rollback してから再送出し、部分的に適用された変更が
+    接続プールに戻る前に破棄されるようにする. async generator 内の `async with` は
+    消費側が generator を閉じない場合に cleanup が保証されないため、
+    セッションのクローズも try/finally で明示的に行う.
+
+    Yields:
+        AsyncSession: リクエスト処理中に使用するデータベースセッション.
     """
-    async with async_session() as session:
-        try:
-            yield session
-        except BaseException:
-            await session.rollback()
-            raise
+    session = async_session()
+    try:
+        yield session
+    except BaseException:
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
 
 
 SessionDep = Annotated[AsyncSession, Depends(get_session)]
