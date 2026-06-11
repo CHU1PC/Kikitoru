@@ -37,7 +37,9 @@ db = [
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["tests"]
+# Default runs only the fast, fully-mocked unit tests. The integration suite
+# loads real models (GPU + HF_TOKEN) and is opt-in: `uv run pytest tests/integration`.
+testpaths = ["tests/unit"]
 
 [tool.pyrefly]
 project-includes = ["app", "tests"]  # ← プロジェクトのソースディレクトリに合わせて変更
