@@ -57,7 +57,7 @@ def test_get_summary_returns_404_when_missing() -> None:
     session.get.return_value = None
     _install_session(session)
 
-    response = client.get(f"/summaries/{uuid4()}")
+    response = client.get(f"/api/v1/summaries/{uuid4()}")
 
     assert response.status_code == HTTPStatus.NOT_FOUND
 
@@ -72,7 +72,7 @@ def test_get_summary_returns_detail_with_children() -> None:
     session.exec.return_value = result
     _install_session(session)
 
-    response = client.get(f"/summaries/{summary.id}")
+    response = client.get(f"/api/v1/summaries/{summary.id}")
 
     assert response.status_code == HTTPStatus.OK
     body = response.json()
@@ -96,7 +96,7 @@ def test_list_summaries_uses_window_total_for_nonempty_page() -> None:
     session.exec.return_value = result
     _install_session(session)
 
-    response = client.get("/summaries", params={"limit": 2, "offset": 0})
+    response = client.get("/api/v1/summaries", params={"limit": 2, "offset": 0})
 
     assert response.status_code == HTTPStatus.OK
     body = response.json()
@@ -116,7 +116,7 @@ def test_list_summaries_empty_page_falls_back_to_count_query() -> None:
     session.exec.side_effect = [page_result, count_result]
     _install_session(session)
 
-    response = client.get("/summaries", params={"limit": 50, "offset": 100})
+    response = client.get("/api/v1/summaries", params={"limit": 50, "offset": 100})
 
     assert response.status_code == HTTPStatus.OK
     body = response.json()

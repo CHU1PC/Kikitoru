@@ -88,7 +88,7 @@ def test_summarize_audio_returns_summary() -> None:
         mock_magic.from_buffer.return_value = _VALID_CONTENT_TYPE
         mock_chain.ainvoke = AsyncMock(return_value=_EMPTY_SUMMARY)
         response = client.post(
-            "/audio/summarize",
+            "/api/v1/audio/summarize",
             files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
         )
 
@@ -98,7 +98,7 @@ def test_summarize_audio_returns_summary() -> None:
 def test_summarize_audio_rejects_unsupported_content_type() -> None:
     """サポートされていないコンテンツタイプをHTTP 415 Unsupported Media Typeで拒否することを確認するテスト."""
     response = client.post(
-        "/audio/summarize",
+        "/api/v1/audio/summarize",
         files={"file": ("test.txt", _DUMMY_AUDIO, "text/plain")},
     )
 
@@ -110,7 +110,7 @@ def test_summarize_audio_rejects_oversized_file() -> None:
     oversized = b"x" * (200 * 1024 * 1024 + 1)
 
     response = client.post(
-        "/audio/summarize",
+        "/api/v1/audio/summarize",
         files={"file": ("big.mp3", oversized, _VALID_CONTENT_TYPE)},
     )
 
@@ -149,7 +149,7 @@ def test_summarize_audio_idempotent_skips_pipeline() -> None:
         mock_magic.from_buffer.return_value = _VALID_CONTENT_TYPE
         mock_chain.ainvoke = AsyncMock()
         response = client.post(
-            "/audio/summarize",
+            "/api/v1/audio/summarize",
             files={"file": ("dup.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
         )
 
