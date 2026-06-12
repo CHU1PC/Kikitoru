@@ -34,14 +34,16 @@ def test_returns_whisper_segments() -> None:
 
 
 def test_transcribes_in_japanese() -> None:
-    """Transcribeがlanguage=ja・vad_filter=Trueで呼ばれることを確認するテスト."""
+    """Transcribeがlanguage=ja・vad_filter=True・文脈条件付け無効で呼ばれることを確認するテスト."""
     audio = np.zeros(16000, dtype=np.float32)
     mock_whisper = MagicMock()
     mock_whisper.transcribe.return_value = ([], MagicMock())
 
     transcribe(audio, mock_whisper)
 
-    mock_whisper.transcribe.assert_called_once_with(audio, language="ja", vad_filter=True)
+    mock_whisper.transcribe.assert_called_once_with(
+        audio, language="ja", vad_filter=True, condition_on_previous_text=False
+    )
 
 
 def test_empty_audio_returns_empty_list() -> None:
