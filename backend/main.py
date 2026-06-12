@@ -19,5 +19,5 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 
-app.include_router(audio_router)
-app.include_router(summaries_router)
+app.include_router(audio_router, prefix="/api/v1")
+app.include_router(summaries_router, prefix="/api/v1")
