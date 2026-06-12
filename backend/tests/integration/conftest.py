@@ -7,13 +7,8 @@ from dotenv import load_dotenv
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
-# Load the real HF_TOKEN from the project .env (needed to download / load the
-# pyannote pipeline), then fill in placeholder values for the settings the STT
-# path never touches. `app.settings.config` instantiates a single `Settings()`
-# at import time that requires DB / OAuth / LLM config, so importing any app.stt
-# module would fail without these. Unlike tests/unit/conftest.py, this subtree
-# does NOT mock torch / faster_whisper / pyannote -- the real models run here.
 load_dotenv(_PROJECT_ROOT / ".env")
+os.environ.setdefault("HF_TOKEN", "")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://unused:unused@localhost/unused")
 os.environ.setdefault("GOOGLE_API_KEY", "unused")
 os.environ.setdefault("GOOGLE_CLIENT_ID", "unused")
