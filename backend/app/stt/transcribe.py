@@ -22,5 +22,10 @@ def transcribe(audio: AudioArray, whisper: WhisperModel) -> list[WhisperSegment]
     Returns:
         list[WhisperSegment]: A list of transcribed segments.
     """
-    segments, _ = whisper.transcribe(audio, language="ja", vad_filter=True)  # type: ignore[reportUnknownMemberType]
+    segments, _ = whisper.transcribe(  # type: ignore[reportUnknownMemberType]
+        audio,
+        language="ja",
+        vad_filter=True,
+        condition_on_previous_text=False,
+    )
     return [WhisperSegment(start=s.start, end=s.end, text=s.text) for s in segments]
