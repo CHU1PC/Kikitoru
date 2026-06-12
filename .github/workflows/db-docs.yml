@@ -24,7 +24,7 @@ permissions:
   contents: write
 
 jobs:
-  generate-and-deploy:
+  deploy-db-docs:
     runs-on: ubuntu-latest
 
     services:
@@ -49,7 +49,6 @@ jobs:
       - name: Sanitize branch name
         id: branch
         run: |
-          # KKT/10 → KKT-10 のように、URL に使えない文字を変換
           SANITIZED="${{ github.ref_name }}"
           SANITIZED="${SANITIZED//\//-}"
           echo "dir=${SANITIZED}" >> "$GITHUB_OUTPUT"
