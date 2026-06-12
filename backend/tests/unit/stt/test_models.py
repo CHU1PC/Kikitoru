@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
@@ -141,16 +142,14 @@ def _idle_slot(last_used: float) -> _Slot:
 def test_evict_idle_removes_only_stale_slots() -> None:
     """アイドル状態のSlotのうち、古いもの(stale)だけが削除されることを確認するテスト."""
     pool = ModelPool(max_size=5, idle_timeout=300)
-    fresh = _idle_slot(1000.0)
-    stale = _idle_slot(500.0)
+    now = time.monotonic()
+    fresh = _idle_slot(now - 50)
+    stale = _idle_slot(now - 550)
 
     pool._idle.put_nowait(fresh)  # noqa: SLF001  # type: ignore[reportPrivateUsage]
     pool._idle.put_nowait(stale)  # noqa: SLF001  # type: ignore[reportPrivateUsage]
 
-    with (
-        patch("app.stt.models.time.monotonic", return_value=1050.0),
-        patch("app.stt.models.torch") as mock_torch,
-    ):
+    with patch("app.stt.models.torch") as mock_torch:
         mock_torch.cuda.is_available.return_value = False
         asyncio.run(pool._evict_idle())  # noqa: SLF001  # type: ignore[reportPrivateUsage]
 
