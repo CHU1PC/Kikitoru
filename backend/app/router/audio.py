@@ -125,18 +125,20 @@ async def _spool_upload(file: UploadFile) -> tuple[tempfile.SpooledTemporaryFile
     return spooled, hasher.hexdigest(), detected_mime
 
 
-async def _transcribe(spooled: tempfile.SpooledTemporaryFile[bytes]) -> list[Segment]:
+async def _transcribe(spooled: tempfile.SpooledTemporaryFile[bytes], num_speakers: int | None = None) -> list[Segment]:
     """Run STT + diarization on the spooled upload, then release the temp file.
 
     Args:
         spooled (SpooledTemporaryFile): The rewound upload, owned and closed here.
+        num_speakers (int | None): Optional number of speakers to detect. If None, the pipeline will
+            determine the number of speakers automatically.
 
     Returns:
         list[Segment]: Transcribed, speaker-labeled segments.
     """
     try:
         async with pool.acquire() as (whisper, pipeline):
-            return await asyncio.to_thread(transcribe_with_diarization, spooled, whisper, pipeline)
+            return await asyncio.to_thread(transcribe_with_diarization, spooled, whisper, pipeline, num_speakers)
     finally:
         spooled.close()
 
@@ -218,6 +220,7 @@ async def summarize_audio(
     file: UploadFile,
     session: SessionDep,
     recorded_at: Annotated[date | None, Form()] = None,
+    num_speakers: Annotated[int | None, Form(ge=1, le=10)] = None,
 ) -> SummaryRead:
     """Accepts an audio file, summarizes it, persists the result, and returns it.
 
@@ -227,6 +230,8 @@ async def summarize_audio(
         recorded_at (date | None): Date when the meeting was recorded (ISO 8601:
             YYYY-MM-DD). Used as the reference date for relative date expressions
             in the audio (e.g., "来週月曜"). Defaults to today in Asia/Tokyo (JST).
+        num_speakers (int | None): Optional number of speakers to detect. If None, the pipeline will
+            determine the number of speakers automatically.
 
     Returns:
         SummaryRead: Persisted summary including topics, decisions, and action items.
@@ -249,7 +254,7 @@ async def summarize_audio(
         spooled.close()
         return await build_summary_read(session, existing)
 
-    segments = await _transcribe(spooled)
+    segments = await _transcribe(spooled, num_speakers)
 
     reference_date = recorded_at or datetime.now(_MEETING_TZ).date()
     async with llm_semaphore:
