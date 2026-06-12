@@ -1,0 +1,69 @@
+name: Backend CI
+
+# バックエンドのテストスイート検証パイプライン:
+#   lint       — ruff (dev グループのみの軽量インストール)
+#   unit-tests — tests/unit
+# 結合テスト (tests/integration) は GPU + HF_TOKEN が必要なため CI では実行しない (ローカルで opt-in)。
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+  push:
+    branches:
+      - develop
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+  workflow_dispatch:
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: Install lint dependencies (dev group only)
+        working-directory: backend
+        run: uv sync --frozen --only-group dev
+
+      - name: Run ruff
+        working-directory: backend
+        run: uv run --no-sync ruff check app/ tests/ main.py
+
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: Install test dependencies (no ML deps)
+        working-directory: backend
+        run: uv sync --frozen --only-group test
+
+      - name: Run unit tests
+        working-directory: backend
+        run: uv run --no-sync pytest
