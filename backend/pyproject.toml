@@ -34,6 +34,22 @@ db = [
     "sqlmodel>=0.0.22",
     "asyncpg>=0.31.0",
 ]
+# CI のユニットテスト用: ML 依存 (torch/faster-whisper/pyannote) を除いた最小セット。
+# tests/unit/conftest.py が ML ライブラリを mock するため実体は不要。
+# numpy は本体では torch 経由の推移的依存なので、ここでは明示する。
+test = [
+    "pytest>=8.3",
+    "fastapi[standard]>=0.100.0",
+    "sqlmodel>=0.0.22",
+    "asyncpg>=0.31.0",
+    "pydantic>=2.13.3",
+    "pydantic-settings>=2.5",
+    "langchain-core>=0.3",
+    "langchain-google-genai>=4.2.2",
+    "loguru>=0.7.3",
+    "python-magic>=0.4",
+    "numpy>=1.26",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
