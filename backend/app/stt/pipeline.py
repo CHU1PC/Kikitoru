@@ -22,6 +22,7 @@ def transcribe_with_diarization(
     audio: IO[bytes],
     whisper: WhisperModel,
     pipeline: Pipeline,
+    num_speakers: int | None = None,
 ) -> list[Segment]:
     """Transcribes the given audio and performs speaker diarization, returning aligned segments.
 
@@ -30,6 +31,8 @@ def transcribe_with_diarization(
             or tempfile.SpooledTemporaryFile).
         whisper (WhisperModel): Whisper model instance to use for transcription.
         pipeline (Pipeline): pyannote diarization pipeline instance to use.
+        num_speakers (int | None): Optional number of speakers to detect. If None, the pipeline will
+            determine the number of speakers automatically.
 
     Returns:
         list[Segment]: A list of aligned segments with speaker labels and transcribed text.
@@ -43,6 +46,6 @@ def transcribe_with_diarization(
     audio_np: np.ndarray = waveform.mean(dim=0).numpy().astype(np.float32)  # type: ignore[reportUnknownMemberType]
 
     transcript = transcribe(audio_np, whisper)
-    diarization_turns = diarize(waveform, sample_rate, pipeline)
+    diarization_turns = diarize(waveform, sample_rate, pipeline, num_speakers)
 
     return align(transcript, diarization_turns)
