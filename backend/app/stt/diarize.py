@@ -9,18 +9,26 @@ if TYPE_CHECKING:
 from app.stt.types import DiarizationTurn
 
 
-def diarize(waveform: Tensor, sample_rate: int, pipeline: Pipeline) -> list[DiarizationTurn]:
+def diarize(
+    waveform: Tensor,
+    sample_rate: int,
+    pipeline: Pipeline,
+    num_speakers: int | None = None,
+) -> list[DiarizationTurn]:
     """Performs speaker diarization on the given audio waveform.
 
     Args:
         waveform (torch.Tensor): Audio waveform tensor of shape (channels, samples).
         sample_rate (int): Sample rate of the waveform in Hz.
         pipeline (Pipeline): pyannote diarization pipeline instance to use.
+        num_speakers (int | None): Optional number of speakers to detect. If None, the pipeline will
+            determine the number of speakers automatically.
 
     Returns:
         list[DiarizationTurn]: A list of diarization turns.
     """
-    diarization: Any = pipeline({"waveform": waveform, "sample_rate": sample_rate})  # type: ignore[reportUnknownMemberType]
+    kwargs: dict[str, Any] = {"num_speakers": num_speakers} if num_speakers is not None else {}
+    diarization: Any = pipeline({"waveform": waveform, "sample_rate": sample_rate}, **kwargs)  # type: ignore[reportUnknownMemberType]
     return [
         DiarizationTurn(start=segment.start, end=segment.end, speaker=label)
         for segment, _, label in diarization.speaker_diarization.itertracks(yield_label=True)  # type: ignore[union-attr]
