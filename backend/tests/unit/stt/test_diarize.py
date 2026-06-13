@@ -44,6 +44,20 @@ def test_passes_waveform_dict_to_pipeline() -> None:
     mock_pipeline.assert_called_once_with({"waveform": waveform, "sample_rate": sample_rate})
 
 
+def test_passes_num_speakers_to_pipeline_when_given() -> None:
+    """num_speakers を指定したとき pipeline に num_speakers が渡ることを確認するテスト."""
+    waveform = MagicMock()
+    sample_rate = 16000
+    mock_pipeline = MagicMock()
+    mock_pipeline.return_value.speaker_diarization.itertracks.return_value = []
+
+    diarize(waveform, sample_rate, mock_pipeline, num_speakers=2)
+
+    mock_pipeline.assert_called_once_with(
+        {"waveform": waveform, "sample_rate": sample_rate}, num_speakers=2
+    )
+
+
 def test_empty_audio_returns_empty_list() -> None:
     """話者ターンが無いとき空リストを返すことを確認するテスト."""
     waveform = MagicMock()
