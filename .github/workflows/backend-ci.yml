@@ -6,15 +6,8 @@ name: Backend CI
 # 結合テスト (tests/integration) は GPU + HF_TOKEN が必要なため CI では実行しない (ローカルで opt-in)。
 
 on:
-  pull_request:
-    paths:
-      - 'backend/**'
-      - '.github/workflows/backend-ci.yml'
 
-  push:
-    branches:
-      - develop
-      - main
+  pull_request:
     paths:
       - 'backend/**'
       - '.github/workflows/backend-ci.yml'
