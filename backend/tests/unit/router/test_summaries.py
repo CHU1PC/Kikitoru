@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-import pytest
 from fastapi.testclient import TestClient
 
 from app.db.engine import get_session
@@ -18,17 +17,6 @@ if TYPE_CHECKING:
 client = TestClient(app)
 
 _PAGE_AND_COUNT_QUERIES = 2
-
-
-@pytest.fixture(autouse=True)
-def clear_session_override() -> Generator[None]:
-    """テスト後に dependency_overrides をクリアする pytest フィクスチャ.
-
-    Yields:
-        None: テスト本体に制御を返すためのジェネレーター.
-    """
-    yield
-    app.dependency_overrides.clear()  # テスト終了後に dependency_overrides をクリアして、テスト間の副作用を防止
 
 
 def _install_session(session: AsyncMock) -> None:

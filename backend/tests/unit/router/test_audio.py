@@ -48,23 +48,22 @@ def _make_session_mock(existing: object = None) -> AsyncMock:
     return session
 
 
-@pytest.fixture(autouse=True)
-def override_session() -> Generator[None]:
-    """get_sessionをモックに置き換えるpytestフィクスチャ.
+@pytest.fixture(autouse=True)  # noqa: RUF076 - DB の Mock は全てのテストに一律で適用する必要があるため autouse が適切
+def override_session() -> None:
+    """get_session をデフォルトのモックに置き換える pytestフィクスチャ.
 
     これで、テスト中に実際のデータベースセッションを使用せず、テスト用のセッションのモックを提供できるようになる.
+    後始末 (dependency_overrides のクリア) は router 配下共通の conftest フィクスチャが行う.
     """
     def override_get_session() -> Generator[AsyncMock]:
         """get_sessionのモックで、テスト用のセッションを提供するジェネレーター関数.
 
         Yields:
-            None: テスト用のセッションのモックを提供するためのジェネレーター.
+            AsyncMock: テスト用のセッションのモックを提供するためのジェネレーター.
         """
         yield _make_session_mock()
 
     app.dependency_overrides[get_session] = override_get_session
-    yield
-    app.dependency_overrides.clear()
 
 
 def test_summarize_audio_returns_summary() -> None:
