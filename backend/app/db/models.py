@@ -21,7 +21,10 @@ class Summary(SQLModel, table=True):
         max_length=64,
         index=True,
         unique=True,
-        description="SHA-256 hex digest of the uploaded audio; makes re-uploads idempotent",
+        description=(
+            "SHA-256 hex digest of the audio combined with num_speakers; "
+            "makes re-uploads idempotent per speaker-count setting"
+        ),
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
