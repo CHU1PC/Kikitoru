@@ -14,7 +14,7 @@ os.environ.setdefault("GOOGLE_API_KEY", "unused")
 os.environ.setdefault("LLM_TIMEOUT_SECONDS", "30")
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="module", autouse=True)  # noqa: RUF076 - GPU と HF_TOKEN の両方がない場合は、モジュール全体のテストをスキップする
 def require_gpu_and_token() -> None:
     """GPU と HF_TOKEN の両方がない場合は、モジュール全体のテストをスキップする fixture."""
     if not torch.cuda.is_available():
