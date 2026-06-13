@@ -243,12 +243,13 @@ async def summarize_audio(
     if file.size is not None and file.size > _MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="File exceeds the 200 MB limit")
 
-    spooled, content_hash, detected_mime = await _spool_upload(file)
+    spooled, audio_digest, detected_mime = await _spool_upload(file)
 
     if detected_mime not in _ALLOWED_MIME_TYPES:
         spooled.close()
         raise HTTPException(status_code=415, detail="Unsupported audio format")
 
+    content_hash = hashlib.sha256(f"{audio_digest}:{num_speakers}".encode()).hexdigest()
     existing = await _find_by_content_hash(session, content_hash)
     if existing is not None:
         spooled.close()
