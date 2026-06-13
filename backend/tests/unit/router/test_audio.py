@@ -95,6 +95,49 @@ def test_summarize_audio_returns_summary() -> None:
     assert response.status_code == HTTPStatus.OK
 
 
+def test_summarize_audio_forwards_num_speakers() -> None:
+    """num_speakers を渡すと transcribe_with_diarization まで届くことを確認するテスト."""
+    expected_speakers = 2
+
+    @asynccontextmanager
+    async def mock_acquire() -> AsyncGenerator[tuple[MagicMock, MagicMock]]:
+        """ModelPool.acquire() のモックで、テスト用の (WhisperModel, Pipeline) を返す.
+
+        Yields:
+            tuple[MagicMock, MagicMock]: テスト用の WhisperModel と Pipeline のタプル.
+        """
+        yield (MagicMock(), MagicMock())
+
+    with (
+        patch.object(stt_models.pool, "acquire", mock_acquire),
+        patch("app.router.audio.transcribe_with_diarization", return_value=[]) as mock_transcribe,
+        patch("app.router.audio.summarize_chain") as mock_chain,
+        patch("app.router.audio._magic_mime") as mock_magic,
+    ):
+        mock_magic.from_buffer.return_value = _VALID_CONTENT_TYPE
+        mock_chain.ainvoke = AsyncMock(return_value=_EMPTY_SUMMARY)
+        response = client.post(
+            "/api/v1/audio/summarize",
+            files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
+            data={"num_speakers": str(expected_speakers)},
+        )
+
+    assert response.status_code == HTTPStatus.OK
+    # transcribe_with_diarization(spooled, whisper, pipeline, num_speakers) の末尾引数
+    assert mock_transcribe.call_args.args[-1] == expected_speakers
+
+
+def test_summarize_audio_rejects_invalid_num_speakers() -> None:
+    """num_speakers=0 が 422 Unprocessable Entity で弾かれることを確認するテスト."""
+    response = client.post(
+        "/api/v1/audio/summarize",
+        files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
+        data={"num_speakers": "0"},
+    )
+
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
 def test_summarize_audio_rejects_unsupported_content_type() -> None:
     """サポートされていないコンテンツタイプをHTTP 415 Unsupported Media Typeで拒否することを確認するテスト."""
     response = client.post(
