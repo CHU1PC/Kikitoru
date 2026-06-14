@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     )
 
     # Google OAuth (sign-in)
-    GOOGLE_CLIENT_ID: SecretStr = Field(
+    GOOGLE_CLIENT_ID: str = Field(
         ..., description="OAuth 2.0 Client ID for Google authentication"
     )
     GOOGLE_CLIENT_SECRET: SecretStr = Field(
