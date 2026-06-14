@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING
 
-from fastapi import Depends
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -43,6 +42,3 @@ async def get_db_session() -> AsyncGenerator[AsyncSession]:
         # 持っていたキャンセル耐性を失ってしまうため close は shield で保護する.
         # クライアント切断等でタスクがキャンセルされても close を完走させ、接続を確実にプールへ返す.
         await asyncio.shield(db_session.close())
-
-
-DbSessionDep = Annotated[AsyncSession, Depends(get_db_session)]
