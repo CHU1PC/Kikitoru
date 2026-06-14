@@ -15,8 +15,8 @@ from fastapi import APIRouter, Form, HTTPException, UploadFile
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, select
 
-from app.db.engine import DbSessionDep  # noqa: TC001 — FastAPI resolves the dependency annotation at runtime
 from app.db.models import ActionItem, Decision, Summary, Topic
+from app.dependencies import DbSessionDep  # noqa: TC001 — FastAPI resolves the dependency annotation at runtime
 from app.llm.summarize import summarize_chain
 from app.router.summaries import build_summary_read
 from app.schema.summaries import (
