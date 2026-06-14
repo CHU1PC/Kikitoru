@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<database name="kikitoru" schema="public" type="PostgreSQL - 16.14">
+   <sequences>
+      <sequence increment="1" name="action_items_id_seq" startValue="1"/>
+      <sequence increment="1" name="decisions_id_seq" startValue="1"/>
+      <sequence increment="1" name="topics_id_seq" startValue="1"/>
+   </sequences>
+   <tables>
+      <table name="action_items" remarks="" schema="public" type="TABLE">
+         <column autoUpdated="true" defaultValue="nextval('action_items_id_seq'::regclass)" digits="0" id="0" name="id" nullable="false" remarks="" size="10" type="serial" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="summary_id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="action_items_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="summaries"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="description" nullable="false" remarks="" size="2147483647" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="assignee" nullable="true" remarks="" size="2147483647" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="due_date" nullable="true" remarks="" size="13" type="date" typeCode="91"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="action_items_pkey" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="ix_action_items_summary_id" unique="false">
+            <column ascending="true" name="summary_id"/>
+         </index>
+      </table>
+      <table name="alembic_version" remarks="" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="version_num" nullable="false" remarks="" size="32" type="varchar" typeCode="12"/>
+         <primaryKey column="version_num" sequenceNumberInPK="1"/>
+         <index name="alembic_version_pkc" unique="true">
+            <column ascending="true" name="version_num"/>
+         </index>
+      </table>
+      <table name="decisions" remarks="" schema="public" type="TABLE">
+         <column autoUpdated="true" defaultValue="nextval('decisions_id_seq'::regclass)" digits="0" id="0" name="id" nullable="false" remarks="" size="10" type="serial" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="summary_id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="decisions_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="summaries"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="description" nullable="false" remarks="" size="2147483647" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="decided_by" nullable="true" remarks="" size="2147483647" type="varchar" typeCode="12"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="decisions_pkey" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="ix_decisions_summary_id" unique="false">
+            <column ascending="true" name="summary_id"/>
+         </index>
+      </table>
+      <table name="summaries" remarks="" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111">
+            <child column="summary_id" foreignKey="action_items_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="action_items"/>
+            <child column="summary_id" foreignKey="decisions_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="decisions"/>
+            <child column="summary_id" foreignKey="topics_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="topics"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="filename" nullable="false" remarks="" size="255" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="2" name="created_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="overall_summary" nullable="false" remarks="" size="2147483647" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="content_hash" nullable="true" remarks="" size="64" type="varchar" typeCode="12"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="summaries_pkey" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="ix_summaries_content_hash" unique="true">
+            <column ascending="true" name="content_hash"/>
+         </index>
+      </table>
+      <table name="topics" remarks="" schema="public" type="TABLE">
+         <column autoUpdated="true" defaultValue="nextval('topics_id_seq'::regclass)" digits="0" id="0" name="id" nullable="false" remarks="" size="10" type="serial" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="summary_id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="topics_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="summaries"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="title" nullable="false" remarks="" size="2147483647" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="summary" nullable="false" remarks="" size="2147483647" type="varchar" typeCode="12"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="topics_pkey" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="ix_topics_summary_id" unique="false">
+            <column ascending="true" name="summary_id"/>
+         </index>
+      </table>
+   </tables>
+</database>
