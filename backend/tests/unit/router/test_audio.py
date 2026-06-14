@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
 import app.stt.models as stt_models
-from app.db.engine import get_session
+from app.db.engine import get_db_session
 from app.db.models import Summary as DBSummary
 from app.llm.summarize.schema import ActionItem, Decision, Summary, Topic
 from app.router.audio import (
@@ -39,31 +39,31 @@ _EMPTY_SUMMARY = Summary(overall_summary="test", topics=[], decisions=[], action
 
 
 def _make_session_mock(existing: object = None) -> AsyncMock:
-    session = AsyncMock()
-    session.add = MagicMock()
+    db_session = AsyncMock()
+    db_session.add = MagicMock()
     result = MagicMock()
     result.first.return_value = existing
     result.all.return_value = []
-    session.exec.return_value = result
-    return session
+    db_session.exec.return_value = result
+    return db_session
 
 
 @pytest.fixture(autouse=True)  # noqa: RUF076 - DB の Mock は全てのテストに一律で適用する必要があるため autouse が適切
 def override_session() -> None:
-    """get_session をデフォルトのモックに置き換える pytestフィクスチャ.
+    """get_db_session をデフォルトのモックに置き換える pytestフィクスチャ.
 
     これで、テスト中に実際のデータベースセッションを使用せず、テスト用のセッションのモックを提供できるようになる.
     後始末 (dependency_overrides のクリア) は router 配下共通の conftest フィクスチャが行う.
     """
     def override_get_session() -> Generator[AsyncMock]:
-        """get_sessionのモックで、テスト用のセッションを提供するジェネレーター関数.
+        """get_db_sessionのモックで、テスト用のセッションを提供するジェネレーター関数.
 
         Yields:
             AsyncMock: テスト用のセッションのモックを提供するためのジェネレーター.
         """
         yield _make_session_mock()
 
-    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_db_session] = override_get_session
 
 
 def test_summarize_audio_returns_summary() -> None:
@@ -164,14 +164,14 @@ def test_summarize_audio_idempotent_skips_pipeline() -> None:
     existing = DBSummary(filename="prev.mp3", content_hash="abc", overall_summary="previous run")
 
     def override_get_session() -> Generator[AsyncMock]:
-        """get_sessionのモックで、既存のDBSummaryを返すセッションを提供するジェネレーター関数.
+        """get_db_sessionのモックで、既存のDBSummaryを返すセッションを提供するジェネレーター関数.
 
         Yields:
             AsyncMock: 既存のDBSummaryを返すセッションのモック.
         """
         yield _make_session_mock(existing=existing)
 
-    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_db_session] = override_get_session
 
     @asynccontextmanager
     async def mock_acquire() -> AsyncGenerator[tuple[MagicMock, MagicMock]]:
@@ -329,31 +329,31 @@ def test_spool_upload_handles_empty_file() -> None:
 def test_create_summary_returns_existing_on_content_hash_race() -> None:
     """Commit 時に content_hash が重複したら rollback して既存の要約を返すことを確認するテスト."""
     existing = DBSummary(filename="prev.mp3", content_hash="abc", overall_summary="previous run")
-    session = _make_session_mock(existing=existing)
-    session.flush = AsyncMock(side_effect=IntegrityError("stmt", None, Exception("duplicate")))
+    db_session = _make_session_mock(existing=existing)
+    db_session.flush = AsyncMock(side_effect=IntegrityError("stmt", None, Exception("duplicate")))
     data = Summary(overall_summary="new run", topics=[], decisions=[], action_items=[])
 
-    result = asyncio.run(_create_summary(session, "new.mp3", "abc", data))
+    result = asyncio.run(_create_summary(db_session, "new.mp3", "abc", data))
 
     assert result.filename == "prev.mp3"
     assert result.overall_summary == "previous run"
-    session.rollback.assert_awaited_once()
+    db_session.rollback.assert_awaited_once()
 
 
 def test_create_summary_reraises_unrelated_integrity_error() -> None:
     """Content_hash 重複以外の IntegrityError は握りつぶさず再送出することを確認するテスト."""
-    session = _make_session_mock(existing=None)
-    session.flush = AsyncMock(side_effect=IntegrityError("stmt", None, Exception("not a dup")))
+    db_session = _make_session_mock(existing=None)
+    db_session.flush = AsyncMock(side_effect=IntegrityError("stmt", None, Exception("not a dup")))
     data = Summary(overall_summary="new", topics=[], decisions=[], action_items=[])
 
     with pytest.raises(IntegrityError):
-        asyncio.run(_create_summary(session, "x.mp3", "hash", data))
+        asyncio.run(_create_summary(db_session, "x.mp3", "hash", data))
 
-    session.rollback.assert_awaited_once()
+    db_session.rollback.assert_awaited_once()
 
 
 def test_add_children_stages_topics_decisions_and_action_items() -> None:
-    """topics/decisions/action_items が summary_id 付きで session に add されることを確認するテスト."""
+    """topics/decisions/action_items が summary_id 付きで db_session に add されることを確認するテスト."""
     summary_id = uuid4()
     data = Summary(
         overall_summary="o",
@@ -361,11 +361,11 @@ def test_add_children_stages_topics_decisions_and_action_items() -> None:
         decisions=[Decision(description="D1", decided_by="alice", segment_ids=[1])],
         action_items=[ActionItem(description="A1", assignee="bob", due_date=date(2025, 6, 1), segment_ids=[2])],
     )
-    session = MagicMock()
+    db_session = MagicMock()
 
-    _add_children(session, summary_id, data)
+    _add_children(db_session, summary_id, data)
 
-    added = [call.args[0] for call in session.add.call_args_list]
+    added = [call.args[0] for call in db_session.add.call_args_list]
     assert len(added) == len(data.topics) + len(data.decisions) + len(data.action_items)
     topic, decision, action = added
     assert topic.summary_id == summary_id

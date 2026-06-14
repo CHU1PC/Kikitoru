@@ -15,7 +15,7 @@ from fastapi import APIRouter, Form, HTTPException, UploadFile
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, select
 
-from app.db.engine import SessionDep  # noqa: TC001 — FastAPI resolves the dependency annotation at runtime
+from app.db.engine import DbSessionDep  # noqa: TC001 — FastAPI resolves the dependency annotation at runtime
 from app.db.models import ActionItem, Decision, Summary, Topic
 from app.llm.summarize import summarize_chain
 from app.router.summaries import build_summary_read
@@ -143,35 +143,35 @@ async def _transcribe(spooled: tempfile.SpooledTemporaryFile[bytes], num_speaker
         spooled.close()
 
 
-async def _find_by_content_hash(session: AsyncSession, content_hash: str) -> Summary | None:
+async def _find_by_content_hash(db_session: AsyncSession, content_hash: str) -> Summary | None:
     """Return the summary already stored for this audio content, or None.
 
     Args:
-        session (AsyncSession): Database session.
+        db_session (AsyncSession): Database session.
         content_hash (str): SHA-256 hex digest of the uploaded audio.
 
     Returns:
         Summary | None: The matching summary row, or None if not yet stored.
     """
     return (
-        await session.exec(select(Summary).where(col(Summary.content_hash) == content_hash))
+        await db_session.exec(select(Summary).where(col(Summary.content_hash) == content_hash))
     ).first()
 
 
-def _add_children(session: AsyncSession, summary_id: UUID, data: LLMSummary) -> None:
+def _add_children(db_session: AsyncSession, summary_id: UUID, data: LLMSummary) -> None:
     """Stage the summary's topics, decisions, and action items for insert.
 
     Args:
-        session (AsyncSession): Database session.
+        db_session (AsyncSession): Database session.
         summary_id (UUID): Parent summary id (set after flush).
         data (LLMSummary): Structured summary from the LLM.
     """
     for t in data.topics:
-        session.add(Topic(summary_id=summary_id, title=t.title, summary=t.summary))
+        db_session.add(Topic(summary_id=summary_id, title=t.title, summary=t.summary))
     for d in data.decisions:
-        session.add(Decision(summary_id=summary_id, description=d.description, decided_by=d.decided_by))
+        db_session.add(Decision(summary_id=summary_id, description=d.description, decided_by=d.decided_by))
     for action_item in data.action_items:
-        session.add(
+        db_session.add(
             ActionItem(
                 summary_id=summary_id,
                 description=action_item.description,
@@ -182,12 +182,12 @@ def _add_children(session: AsyncSession, summary_id: UUID, data: LLMSummary) -> 
 
 
 async def _create_summary(
-    session: AsyncSession, filename: str, content_hash: str, data: LLMSummary
+    db_session: AsyncSession, filename: str, content_hash: str, data: LLMSummary
 ) -> SummaryRead:
     """Persist a summary and its related topics, decisions, and action items.
 
     Args:
-        session (AsyncSession): Database session.
+        db_session (AsyncSession): Database session.
         filename (str): Name of the uploaded audio file.
         content_hash (str): SHA-256 hex digest of the uploaded audio.
         data (LLMSummary): Structured summary from the LLM.
@@ -201,24 +201,24 @@ async def _create_summary(
     """
     summary = Summary(filename=filename, content_hash=content_hash, overall_summary=data.overall_summary)
     try:
-        session.add(summary)
-        await session.flush()
-        _add_children(session, summary.id, data)
-        await session.commit()
+        db_session.add(summary)
+        await db_session.flush()
+        _add_children(db_session, summary.id, data)
+        await db_session.commit()
     except IntegrityError:
-        await session.rollback()
-        existing = await _find_by_content_hash(session, content_hash)
+        await db_session.rollback()
+        existing = await _find_by_content_hash(db_session, content_hash)
         if existing is not None:
-            return await build_summary_read(session, existing)
+            return await build_summary_read(db_session, existing)
         raise
 
-    return await build_summary_read(session, summary)
+    return await build_summary_read(db_session, summary)
 
 
 @router.post("/summarize")
 async def summarize_audio(
     file: UploadFile,
-    session: SessionDep,
+    db_session: DbSessionDep,
     recorded_at: Annotated[date | None, Form()] = None,
     num_speakers: Annotated[int | None, Form(ge=1, le=10)] = None,
 ) -> SummaryRead:
@@ -226,7 +226,7 @@ async def summarize_audio(
 
     Args:
         file (UploadFile): The audio file to process (mp3, m4a, wav, flac). Max 200 MB.
-        session (AsyncSession): Database session.
+        db_session (AsyncSession): Database session.
         recorded_at (date | None): Date when the meeting was recorded (ISO 8601:
             YYYY-MM-DD). Used as the reference date for relative date expressions
             in the audio (e.g., "来週月曜"). Defaults to today in Asia/Tokyo (JST).
@@ -250,10 +250,10 @@ async def summarize_audio(
         raise HTTPException(status_code=415, detail="Unsupported audio format")
 
     content_hash = hashlib.sha256(f"{audio_digest}:{num_speakers}".encode()).hexdigest()
-    existing = await _find_by_content_hash(session, content_hash)
+    existing = await _find_by_content_hash(db_session, content_hash)
     if existing is not None:
         spooled.close()
-        return await build_summary_read(session, existing)
+        return await build_summary_read(db_session, existing)
 
     segments = await _transcribe(spooled, num_speakers)
 
@@ -262,4 +262,4 @@ async def summarize_audio(
         llm_result = await summarize_chain.ainvoke((segments, reference_date))
 
     filename = _sanitize_filename(file.filename)
-    return await _create_summary(session, filename, content_hash, llm_result)
+    return await _create_summary(db_session, filename, content_hash, llm_result)

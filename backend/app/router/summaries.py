@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.db.engine import SessionDep
+from app.db.engine import DbSessionDep
 from app.db.models import ActionItem, Decision, Summary, Topic
 from app.schema.summaries import (
     ActionItemRead,
@@ -20,31 +20,31 @@ from app.schema.summaries import (
 router = APIRouter(prefix="/summaries", tags=["summaries"])
 
 
-async def build_summary_read(session: AsyncSession, summary: Summary) -> SummaryRead:
+async def build_summary_read(db_session: AsyncSession, summary: Summary) -> SummaryRead:
     """Load a summary's children in stable id order and assemble the read model.
 
     Shared by the detail endpoint and the audio router's idempotency hit so both
     return identical, deterministically-ordered payloads from the database.
 
     Args:
-        session (AsyncSession): Database session.
+        db_session (AsyncSession): Database session.
         summary (Summary): The already-loaded parent summary row.
 
     Returns:
         SummaryRead: The summary with its topics, decisions, and action items.
     """
     topics = (
-        await session.exec(
+        await db_session.exec(
             select(Topic).where(col(Topic.summary_id) == summary.id).order_by(col(Topic.id))
         )
     ).all()
     decisions = (
-        await session.exec(
+        await db_session.exec(
             select(Decision).where(col(Decision.summary_id) == summary.id).order_by(col(Decision.id))
         )
     ).all()
     action_items = (
-        await session.exec(
+        await db_session.exec(
             select(ActionItem).where(col(ActionItem.summary_id) == summary.id).order_by(col(ActionItem.id))
         )
     ).all()
@@ -62,7 +62,7 @@ async def build_summary_read(session: AsyncSession, summary: Summary) -> Summary
 
 @router.get("")
 async def list_summaries_endpoint(
-    session: SessionDep,
+    db_session: DbSessionDep,
     limit: Annotated[int, Query(ge=1, le=100, description="Page size")] = 50,
     offset: Annotated[int, Query(ge=0, description="Number of items to skip")] = 0,
 ) -> SummaryPageResponse:
@@ -80,27 +80,27 @@ async def list_summaries_endpoint(
         .limit(limit)
         .offset(offset)
     )
-    rows = (await session.exec(stmt)).all()
+    rows = (await db_session.exec(stmt)).all()
 
     if rows:
         total = int(rows[0][1])
         items = [SummaryListItem.model_validate(summary) for summary, _ in rows]
     else:
-        total = (await session.exec(select(func.count()).select_from(Summary))).one()
+        total = (await db_session.exec(select(func.count()).select_from(Summary))).one()
         items = []
 
     return SummaryPageResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get("/{summary_id}")
-async def get_summary_endpoint(summary_id: UUID, session: SessionDep) -> SummaryRead:
+async def get_summary_endpoint(summary_id: UUID, db_session: DbSessionDep) -> SummaryRead:
     """Return a single summary with full detail.
 
     Raises:
         HTTPException: 404 if the summary does not exist.
     """
-    row = await session.get(Summary, summary_id)
+    row = await db_session.get(Summary, summary_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Summary not found")
 
-    return await build_summary_read(session, row)
+    return await build_summary_read(db_session, row)
