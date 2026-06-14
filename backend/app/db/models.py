@@ -8,11 +8,10 @@ from sqlmodel import Field, SQLModel
 class User(SQLModel, table=True):
     """A User of the system."""
 
-    __tablename__ = "users"  # type: ignore[assignment]
+    __tablename__ = "users"  # pyright: ignore[reportAssignmentType]
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, description="Unique identifier of the user")
-    google_sub: str = Field(..., unique=True, max_length=255, description="Google OIDC Subject Identifier")
-    email: str = Field(..., unique=True, max_length=320, description="Email address of the user")
+    email: str | None = Field(default=None, max_length=320, description="Email address of the user")
     name: str = Field(default="", max_length=255, description="Full name of the user")
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
@@ -26,10 +25,43 @@ class User(SQLModel, table=True):
     )
 
 
+class OAuthIdentity(SQLModel, table=True):
+    """ユーザーの外部 IdP アカウント(provider, subjectのペア)."""
+
+    __tablename__ = "oauth_identities"  # pyright: ignore[reportAssignmentType]
+    __table_args__ = (
+        UniqueConstraint("provider", "subject", name="uq_provider_subject"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True, description="Unique identifier of the OAuth identity")
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        ondelete="CASCADE",
+        index=True,
+        description="このOAuthIdentityが属するユーザーのID",
+    )
+    provider: str = Field(..., max_length=50, description="OAuth provider name (e.g., 'google', 'github')")
+    subject: str = Field(
+        ...,
+        max_length=255,
+        description="The unique identifier for the user within the provider's system"
+    )
+    email: str | None = Field(
+        default=None,
+        max_length=320,
+        description="Email address from the OAuth provider, if available"
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="Timestamp when the OAuth identity was created (UTC)",
+    )
+
+
 class UserSession(SQLModel, table=True):
     """ログインを維持するためのユーザーセッション."""
 
-    __tablename__ = "user_sessions"  # type: ignore[assignment]
+    __tablename__ = "user_sessions"  # pyright: ignore[reportAssignmentType]
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, description="セッションの一意識別子")
     user_id: UUID = Field(
@@ -74,9 +106,9 @@ class UserSession(SQLModel, table=True):
 class Summary(SQLModel, table=True):
     """Persisted meeting summary."""
 
-    __tablename__ = "summaries"  # type: ignore[assignment]
+    __tablename__ = "summaries"  # pyright: ignore[reportAssignmentType]
     __table_args__ = (
-        UniqueConstraint("user_id", "content_hash", name="uq_user_content_hash"),
+        UniqueConstraint("user_id", "content_hash", name="uq_summaries_user_content_hash"),
     )
 
     id: UUID = Field(
@@ -111,7 +143,7 @@ class Summary(SQLModel, table=True):
 class Topic(SQLModel, table=True):
     """A topic discussed in the meeting."""
 
-    __tablename__ = "topics"  # type: ignore[assignment]
+    __tablename__ = "topics"  # pyright: ignore[reportAssignmentType]
 
     id: int | None = Field(default=None, primary_key=True, description="Primary key")
     summary_id: UUID = Field(
@@ -127,7 +159,7 @@ class Topic(SQLModel, table=True):
 class Decision(SQLModel, table=True):
     """A decision made during the meeting."""
 
-    __tablename__ = "decisions"  # type: ignore[assignment]
+    __tablename__ = "decisions"  # pyright: ignore[reportAssignmentType]
 
     id: int | None = Field(default=None, primary_key=True, description="Primary key")
     summary_id: UUID = Field(
@@ -143,7 +175,7 @@ class Decision(SQLModel, table=True):
 class ActionItem(SQLModel, table=True):
     """An action item assigned during the meeting."""
 
-    __tablename__ = "action_items"  # type: ignore[assignment]
+    __tablename__ = "action_items"  # pyright: ignore[reportAssignmentType]
 
     id: int | None = Field(default=None, primary_key=True, description="Primary key")
     summary_id: UUID = Field(
