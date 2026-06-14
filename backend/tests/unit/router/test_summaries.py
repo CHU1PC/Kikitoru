@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from app.db.engine import get_session
+from app.db.engine import get_db_session
 from app.db.models import Summary as DBSummary
 from main import app
 
@@ -19,31 +19,31 @@ client = TestClient(app)
 _PAGE_AND_COUNT_QUERIES = 2
 
 
-def _install_session(session: AsyncMock) -> None:
-    """指定したセッションモックを get_session の override として登録する関数.
+def _install_session(db_session: AsyncMock) -> None:
+    """指定したセッションモックを get_db_session の override として登録する関数.
 
     Args:
-        session (AsyncMock): エンドポイントに注入するセッションのモック.
+        db_session (AsyncMock): エンドポイントに注入するセッションのモック.
     """
 
     def override_get_session() -> Generator[AsyncMock]:
-        """get_session のモックで、テスト用のセッションを提供するジェネレーター関数.
+        """get_db_session のモックで、テスト用のセッションを提供するジェネレーター関数.
 
         Yields:
             AsyncMock: テスト用のセッションのモック.
         """
-        yield session
+        yield db_session
 
-    # get_session を override_get_session に置き換えて、
+    # get_db_session を override_get_session に置き換えて、
     # テスト中はエンドポイントがテスト用のセッションモックを受け取るようにする
-    app.dependency_overrides[get_session] = override_get_session
+    app.dependency_overrides[get_db_session] = override_get_session
 
 
 def test_get_summary_returns_404_when_missing() -> None:
     """存在しない summary_id への GET が 404 を返すことを確認するテスト."""
-    session = AsyncMock()
-    session.get.return_value = None
-    _install_session(session)
+    db_session = AsyncMock()
+    db_session.get.return_value = None
+    _install_session(db_session)
 
     response = client.get(f"/api/v1/summaries/{uuid4()}")
 
@@ -53,12 +53,12 @@ def test_get_summary_returns_404_when_missing() -> None:
 def test_get_summary_returns_detail_with_children() -> None:
     """存在する summary の GET が子要素込みの詳細を返すことを確認するテスト."""
     summary = DBSummary(filename="meeting.mp3", content_hash="abc", overall_summary="overall")
-    session = AsyncMock()
-    session.get.return_value = summary
+    db_session = AsyncMock()
+    db_session.get.return_value = summary
     result = MagicMock()
     result.all.return_value = []
-    session.exec.return_value = result
-    _install_session(session)
+    db_session.exec.return_value = result
+    _install_session(db_session)
 
     response = client.get(f"/api/v1/summaries/{summary.id}")
 
@@ -80,9 +80,9 @@ def test_list_summaries_uses_window_total_for_nonempty_page() -> None:
     ]
     result = MagicMock()
     result.all.return_value = rows
-    session = AsyncMock()
-    session.exec.return_value = result
-    _install_session(session)
+    db_session = AsyncMock()
+    db_session.exec.return_value = result
+    _install_session(db_session)
 
     response = client.get("/api/v1/summaries", params={"limit": 2, "offset": 0})
 
@@ -90,7 +90,7 @@ def test_list_summaries_uses_window_total_for_nonempty_page() -> None:
     body = response.json()
     assert body["total"] == total
     assert [item["filename"] for item in body["items"]] == ["a.mp3", "b.mp3"]
-    session.exec.assert_awaited_once()
+    db_session.exec.assert_awaited_once()
 
 
 def test_list_summaries_empty_page_falls_back_to_count_query() -> None:
@@ -100,9 +100,9 @@ def test_list_summaries_empty_page_falls_back_to_count_query() -> None:
     page_result.all.return_value = []
     count_result = MagicMock()
     count_result.one.return_value = total
-    session = AsyncMock()
-    session.exec.side_effect = [page_result, count_result]
-    _install_session(session)
+    db_session = AsyncMock()
+    db_session.exec.side_effect = [page_result, count_result]
+    _install_session(db_session)
 
     response = client.get("/api/v1/summaries", params={"limit": 50, "offset": 100})
 
@@ -110,4 +110,4 @@ def test_list_summaries_empty_page_falls_back_to_count_query() -> None:
     body = response.json()
     assert body["items"] == []
     assert body["total"] == total
-    assert session.exec.await_count == _PAGE_AND_COUNT_QUERIES
+    assert db_session.exec.await_count == _PAGE_AND_COUNT_QUERIES
