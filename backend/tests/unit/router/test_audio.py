@@ -161,7 +161,7 @@ def test_summarize_audio_rejects_oversized_file() -> None:
 
 def test_summarize_audio_idempotent_skips_pipeline() -> None:
     """要約がidempotentであることを確認するテスト. 既存の要約がある場合、STT/LLMパイプラインをスキップすること."""
-    existing = DBSummary(filename="prev.mp3", content_hash="abc", overall_summary="previous run")
+    existing = DBSummary(user_id=uuid4(), filename="prev.mp3", content_hash="abc", overall_summary="previous run")
 
     def override_get_session() -> Generator[AsyncMock]:
         """get_db_sessionのモックで、既存のDBSummaryを返すセッションを提供するジェネレーター関数.
@@ -328,7 +328,7 @@ def test_spool_upload_handles_empty_file() -> None:
 
 def test_create_summary_returns_existing_on_content_hash_race() -> None:
     """Commit 時に content_hash が重複したら rollback して既存の要約を返すことを確認するテスト."""
-    existing = DBSummary(filename="prev.mp3", content_hash="abc", overall_summary="previous run")
+    existing = DBSummary(user_id=uuid4(), filename="prev.mp3", content_hash="abc", overall_summary="previous run")
     db_session = _make_session_mock(existing=existing)
     db_session.flush = AsyncMock(side_effect=IntegrityError("stmt", None, Exception("duplicate")))
     data = Summary(overall_summary="new run", topics=[], decisions=[], action_items=[])
