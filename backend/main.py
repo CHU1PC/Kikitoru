@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.router.audio import router as audio_router
+from app.router.oauth import oauth_router
 from app.router.summaries import router as summaries_router
 from app.settings.config import settings
 
@@ -21,3 +22,4 @@ app.add_middleware(
 
 app.include_router(audio_router, prefix="/api/v1")
 app.include_router(summaries_router, prefix="/api/v1")
+app.include_router(oauth_router)
