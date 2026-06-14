@@ -6,8 +6,8 @@ from sqlalchemy import func
 from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.db.engine import DbSessionDep
 from app.db.models import ActionItem, Decision, Summary, Topic
+from app.dependencies import DbSessionDep
 from app.schema.summaries import (
     ActionItemRead,
     DecisionRead,

@@ -9,7 +9,7 @@ from google.oauth2 import id_token as google_id_token
 
 from app.auth.identities import upsert_user_from_identity
 from app.auth.user_sessions import SESSION_COOKIE, SESSION_MAX_AGE, create_user_session
-from app.db.engine import DbSessionDep
+from app.dependencies import DbSessionDep
 from app.settings.config import settings
 
 router = APIRouter(prefix="/google")
