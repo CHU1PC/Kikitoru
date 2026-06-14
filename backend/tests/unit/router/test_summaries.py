@@ -52,7 +52,7 @@ def test_get_summary_returns_404_when_missing() -> None:
 
 def test_get_summary_returns_detail_with_children() -> None:
     """存在する summary の GET が子要素込みの詳細を返すことを確認するテスト."""
-    summary = DBSummary(filename="meeting.mp3", content_hash="abc", overall_summary="overall")
+    summary = DBSummary(user_id=uuid4(), filename="meeting.mp3", content_hash="abc", overall_summary="overall")
     db_session = AsyncMock()
     db_session.get.return_value = summary
     result = MagicMock()
@@ -75,8 +75,8 @@ def test_list_summaries_uses_window_total_for_nonempty_page() -> None:
     """ページに行があるとき window 関数の total が使われ、追加の COUNT が走らないことを確認するテスト."""
     total = 5
     rows = [
-        (DBSummary(filename="a.mp3", overall_summary="o1"), total),
-        (DBSummary(filename="b.mp3", overall_summary="o2"), total),
+        (DBSummary(user_id=uuid4(), filename="a.mp3", overall_summary="o1"), total),
+        (DBSummary(user_id=uuid4(), filename="b.mp3", overall_summary="o2"), total),
     ]
     result = MagicMock()
     result.all.return_value = rows
