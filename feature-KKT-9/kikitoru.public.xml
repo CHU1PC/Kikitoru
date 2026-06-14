@@ -44,6 +44,27 @@
             <column ascending="true" name="summary_id"/>
          </index>
       </table>
+      <table name="oauth_identities" remarks="" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="user_id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="oauth_identities_user_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="users"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="provider" nullable="false" remarks="" size="50" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="subject" nullable="false" remarks="" size="255" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="email" nullable="true" remarks="" size="320" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="5" name="created_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="oauth_identities_pkey" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="ix_oauth_identities_user_id" unique="false">
+            <column ascending="true" name="user_id"/>
+         </index>
+         <index name="uq_provider_subject" unique="true">
+            <column ascending="true" name="provider"/>
+            <column ascending="true" name="subject"/>
+         </index>
+      </table>
       <table name="summaries" remarks="" schema="public" type="TABLE">
          <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111">
             <child column="summary_id" foreignKey="action_items_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="action_items"/>
@@ -115,23 +136,17 @@
       </table>
       <table name="users" remarks="" schema="public" type="TABLE">
          <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111">
+            <child column="user_id" foreignKey="oauth_identities_user_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="oauth_identities"/>
             <child column="user_id" foreignKey="fk_summaries_user_id" implied="false" onDeleteCascade="true" schema="public" table="summaries"/>
             <child column="user_id" foreignKey="user_sessions_user_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="user_sessions"/>
          </column>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="google_sub" nullable="false" remarks="" size="255" type="varchar" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="email" nullable="false" remarks="" size="320" type="varchar" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="name" nullable="false" remarks="" size="255" type="varchar" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="6" id="4" name="created_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="null" digits="6" id="5" name="updated_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="email" nullable="true" remarks="" size="320" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="name" nullable="false" remarks="" size="255" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="3" name="created_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="4" name="updated_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="users_pkey" unique="true">
             <column ascending="true" name="id"/>
-         </index>
-         <index name="users_email_key" unique="true">
-            <column ascending="true" name="email"/>
-         </index>
-         <index name="users_google_sub_key" unique="true">
-            <column ascending="true" name="google_sub"/>
          </index>
       </table>
    </tables>
