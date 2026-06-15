@@ -5,6 +5,7 @@ import hashlib
 from contextlib import asynccontextmanager
 from datetime import date
 from http import HTTPStatus
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -70,30 +71,45 @@ def override_session() -> None:
     app.dependency_overrides[get_current_user] = lambda: _USER
 
 
-def test_summarize_audio_returns_summary() -> None:
-    """音声ファイルをPOSTして要約が返ることを確認するテスト."""
+@pytest.fixture
+def audio_pipeline_mocks() -> Generator[SimpleNamespace]:
+    """STT/LLM パイプラインを一括モックする pytest フィクスチャ.
+
+    ModelPool.acquire / transcribe_with_diarization / summarize_chain / _magic_mime を patch し、
+    既定で MIME は有効な音声、transcribe は空セグメント、要約は空の Summary を返す. 各テストは
+    返り値の namespace 経由で必要なモック (transcribe / chain / magic) だけ上書きする.
+
+    Yields:
+        SimpleNamespace: transcribe / chain / magic のモックを持つ namespace.
+    """
 
     @asynccontextmanager
     async def mock_acquire() -> AsyncGenerator[tuple[MagicMock, MagicMock]]:
-        """ModelPool.acquire()のモックで、テスト用のWhisperModelとPipelineのタプルを返すコンテキストマネージャー.
+        """ModelPool.acquire() のモックで、テスト用の (WhisperModel, Pipeline) を返す.
 
         Yields:
-            tuple[MagicMock, MagicMock]: テスト用のWhisperModelとPipelineのタプル.
+            tuple[MagicMock, MagicMock]: テスト用の WhisperModel と Pipeline のタプル.
         """
         yield (MagicMock(), MagicMock())
 
     with (
         patch.object(stt_models.pool, "acquire", mock_acquire),
-        patch("app.router.audio.transcribe_with_diarization", return_value=[]),
-        patch("app.router.audio.summarize_chain") as mock_chain,
-        patch("app.router.audio._magic_mime") as mock_magic,
+        patch("app.router.audio.transcribe_with_diarization", return_value=[]) as transcribe,
+        patch("app.router.audio.summarize_chain") as chain,
+        patch("app.router.audio._magic_mime") as magic,
     ):
-        mock_magic.from_buffer.return_value = _VALID_CONTENT_TYPE
-        mock_chain.ainvoke = AsyncMock(return_value=_EMPTY_SUMMARY)
-        response = client.post(
-            "/api/v1/audio/summarize",
-            files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
-        )
+        magic.from_buffer.return_value = _VALID_CONTENT_TYPE
+        chain.ainvoke = AsyncMock(return_value=_EMPTY_SUMMARY)
+        yield SimpleNamespace(transcribe=transcribe, chain=chain, magic=magic)
+
+
+@pytest.mark.usefixtures("audio_pipeline_mocks")
+def test_summarize_audio_returns_summary() -> None:
+    """音声ファイルをPOSTして要約が返ることを確認するテスト."""
+    response = client.post(
+        "/api/v1/audio/summarize",
+        files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
+    )
 
     assert response.status_code == HTTPStatus.OK
 
@@ -110,36 +126,19 @@ def test_summarize_audio_requires_authentication() -> None:
     assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
-def test_summarize_audio_forwards_num_speakers() -> None:
+def test_summarize_audio_forwards_num_speakers(audio_pipeline_mocks: SimpleNamespace) -> None:
     """num_speakers を渡すと transcribe_with_diarization まで届くことを確認するテスト."""
     expected_speakers = 2
 
-    @asynccontextmanager
-    async def mock_acquire() -> AsyncGenerator[tuple[MagicMock, MagicMock]]:
-        """ModelPool.acquire() のモックで、テスト用の (WhisperModel, Pipeline) を返す.
-
-        Yields:
-            tuple[MagicMock, MagicMock]: テスト用の WhisperModel と Pipeline のタプル.
-        """
-        yield (MagicMock(), MagicMock())
-
-    with (
-        patch.object(stt_models.pool, "acquire", mock_acquire),
-        patch("app.router.audio.transcribe_with_diarization", return_value=[]) as mock_transcribe,
-        patch("app.router.audio.summarize_chain") as mock_chain,
-        patch("app.router.audio._magic_mime") as mock_magic,
-    ):
-        mock_magic.from_buffer.return_value = _VALID_CONTENT_TYPE
-        mock_chain.ainvoke = AsyncMock(return_value=_EMPTY_SUMMARY)
-        response = client.post(
-            "/api/v1/audio/summarize",
-            files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
-            data={"num_speakers": str(expected_speakers)},
-        )
+    response = client.post(
+        "/api/v1/audio/summarize",
+        files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
+        data={"num_speakers": str(expected_speakers)},
+    )
 
     assert response.status_code == HTTPStatus.OK
     # transcribe_with_diarization(spooled, whisper, pipeline, num_speakers) の末尾引数
-    assert mock_transcribe.call_args.args[-1] == expected_speakers
+    assert audio_pipeline_mocks.transcribe.call_args.args[-1] == expected_speakers
 
 
 def test_summarize_audio_rejects_invalid_num_speakers() -> None:
@@ -175,7 +174,7 @@ def test_summarize_audio_rejects_oversized_file() -> None:
     assert response.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
 
 
-def test_summarize_audio_idempotent_skips_pipeline() -> None:
+def test_summarize_audio_idempotent_skips_pipeline(audio_pipeline_mocks: SimpleNamespace) -> None:
     """要約がidempotentであることを確認するテスト. 既存の要約がある場合、STT/LLMパイプラインをスキップすること."""
     existing = DBSummary(user_id=uuid4(), filename="prev.mp3", content_hash="abc", overall_summary="previous run")
 
@@ -189,35 +188,18 @@ def test_summarize_audio_idempotent_skips_pipeline() -> None:
 
     app.dependency_overrides[get_db_session] = override_get_session
 
-    @asynccontextmanager
-    async def mock_acquire() -> AsyncGenerator[tuple[MagicMock, MagicMock]]:
-        """ModelPool.acquire()のモックで、テスト用のWhisperModelとPipelineのタプルを返すコンテキストマネージャー.
-
-        Yields:
-            tuple[MagicMock, MagicMock]: テスト用のWhisperModelとPipelineのタプル.
-        """
-        yield (MagicMock(), MagicMock())
-
-    with (
-        patch.object(stt_models.pool, "acquire", mock_acquire),
-        patch("app.router.audio.transcribe_with_diarization") as mock_transcribe,
-        patch("app.router.audio.summarize_chain") as mock_chain,
-        patch("app.router.audio._magic_mime") as mock_magic,
-    ):
-        mock_magic.from_buffer.return_value = _VALID_CONTENT_TYPE
-        mock_chain.ainvoke = AsyncMock()
-        response = client.post(
-            "/api/v1/audio/summarize",
-            files={"file": ("dup.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
-        )
+    response = client.post(
+        "/api/v1/audio/summarize",
+        files={"file": ("dup.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
+    )
 
     assert response.status_code == HTTPStatus.OK
     body = response.json()
     assert body["filename"] == "prev.mp3"
     assert body["overall_summary"] == "previous run"
     # 既存の要約がある場合、STT/LLMパイプラインは実行されないことを確認するため、モックの呼び出し回数を検証する.
-    mock_transcribe.assert_not_called()
-    mock_chain.ainvoke.assert_not_called()
+    audio_pipeline_mocks.transcribe.assert_not_called()
+    audio_pipeline_mocks.chain.ainvoke.assert_not_called()
 
 
 @pytest.mark.parametrize(
