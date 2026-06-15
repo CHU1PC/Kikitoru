@@ -52,6 +52,7 @@ test = [
     "loguru>=0.7.3",
     "python-magic>=0.4",
     "numpy>=1.26",
+    "slowapi>=0.1.10",
 ]
 
 [tool.pytest.ini_options]
