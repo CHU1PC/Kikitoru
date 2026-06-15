@@ -7,7 +7,7 @@ from sqlmodel import col, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.db.models import ActionItem, Decision, Summary, Topic
-from app.dependencies import DbSessionDep
+from app.dependencies import CurrentUser, DbSessionDep
 from app.schema.summaries import (
     ActionItemRead,
     DecisionRead,
@@ -63,10 +63,11 @@ async def build_summary_read(db_session: AsyncSession, summary: Summary) -> Summ
 @router.get("")
 async def list_summaries_endpoint(
     db_session: DbSessionDep,
+    user: CurrentUser,
     limit: Annotated[int, Query(ge=1, le=100, description="Page size")] = 50,
     offset: Annotated[int, Query(ge=0, description="Number of items to skip")] = 0,
 ) -> SummaryPageResponse:
-    """Return a page of summaries ordered by creation date descending.
+    """Return a page of the current user's summaries ordered by creation date descending.
 
     Uses a single query with `COUNT(*) OVER ()` so that `total` and `items`
     come from the same snapshot — avoiding the inconsistency that would
@@ -76,6 +77,7 @@ async def list_summaries_endpoint(
     total_col = func.count().over().label("total")
     stmt = (
         select(Summary, total_col)
+        .where(col(Summary.user_id) == user.id)
         .order_by(col(Summary.created_at).desc(), col(Summary.id).desc())
         .limit(limit)
         .offset(offset)
@@ -86,21 +88,26 @@ async def list_summaries_endpoint(
         total = int(rows[0][1])
         items = [SummaryListItem.model_validate(summary) for summary, _ in rows]
     else:
-        total = (await db_session.exec(select(func.count()).select_from(Summary))).one()
+        total = (
+            await db_session.exec(
+                select(func.count()).select_from(Summary).where(col(Summary.user_id) == user.id)
+            )
+        ).one()
         items = []
 
     return SummaryPageResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get("/{summary_id}")
-async def get_summary_endpoint(summary_id: UUID, db_session: DbSessionDep) -> SummaryRead:
-    """Return a single summary with full detail.
+async def get_summary_endpoint(summary_id: UUID, db_session: DbSessionDep, user: CurrentUser) -> SummaryRead:
+    """Return a single summary owned by the current user with full detail.
 
     Raises:
-        HTTPException: 404 if the summary does not exist.
+        HTTPException: 404 if the summary does not exist or belongs to another
+            user (existence is hidden from non-owners).
     """
     row = await db_session.get(Summary, summary_id)
-    if row is None:
+    if row is None or row.user_id != user.id:
         raise HTTPException(status_code=404, detail="Summary not found")
 
     return await build_summary_read(db_session, row)
