@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from app.rate_limit import limiter
 from main import app
 
 if TYPE_CHECKING:
@@ -19,3 +20,9 @@ def clear_dependency_overrides() -> Generator[None]:
     """
     yield
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)  # noqa: RUF076 - 全テストでレート制限カウンタを初期化する必要があるため autouse が適切
+def reset_rate_limiter() -> None:
+    """各テスト前にレート制限のカウンタを reset し、テスト間でカウントが漏れるのを防ぐ pytest フィクスチャ."""
+    limiter.reset()
