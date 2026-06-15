@@ -90,6 +90,16 @@ class Settings(BaseSettings):
             return [origin.strip() for origin in text.split(",") if origin.strip()]
         return value
 
+    # Rate limiting
+    RATE_LIMIT_STORAGE_URI: str = Field(
+        default="memory://",
+        description=(
+            "Storage backend for rate-limit counters. 'memory://' is per-process "
+            "(correct for a single worker); switch to 'redis://...' when running "
+            "multiple workers or replicas so the counters are shared."
+        ),
+    )
+
     # Deployment
     ENABLE_DOCS: bool = Field(
         default=False,

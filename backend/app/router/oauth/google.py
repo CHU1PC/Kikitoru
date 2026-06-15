@@ -10,6 +10,7 @@ from google.oauth2 import id_token as google_id_token
 from app.auth.identities import upsert_user_from_identity
 from app.auth.user_sessions import SESSION_COOKIE, SESSION_MAX_AGE, create_user_session
 from app.dependencies import DbSessionDep
+from app.rate_limit import OAUTH_RATE_LIMIT, limiter
 from app.settings.config import settings
 
 router = APIRouter(prefix="/google")
@@ -23,11 +24,15 @@ _GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"  # noqa: S105
 
 
 @router.get("/start")
-async def start_oauth() -> RedirectResponse:
+@limiter.limit(OAUTH_RATE_LIMIT)  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
+async def start_oauth(request: Request) -> RedirectResponse:  # noqa: ARG001
     """Googleの認可画面へリダイレクトしてCSRF対策のstateをCookieに保存する.
 
+    Args:
+        request (Request): The incoming request, used by the rate limiter.
+
     Returns:
-        RedirectResponse: _description_
+        RedirectResponse: Googleの認可画面へのリダイレクト.
     """
     state = secrets.token_urlsafe(32)
 
@@ -53,6 +58,7 @@ async def start_oauth() -> RedirectResponse:
 
 
 @router.get("/callback")
+@limiter.limit(OAUTH_RATE_LIMIT)  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
 async def oauth_callback(
     request: Request, code: str, state: str, db_session: DbSessionDep
 ) -> RedirectResponse:
