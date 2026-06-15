@@ -43,7 +43,14 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Restore users.google_sub / unique email and drop oauth_identities."""
+    """Restore users.google_sub / unique email and drop oauth_identities.
+
+    警告: この downgrade は既存データがある状態では安全に実行できない (不可逆)。
+    - google_sub を NOT NULL・デフォルト無しで復活させるため、users に行があると失敗する。
+    - email に UNIQUE / NOT NULL を復活させるため、upgrade で許容した NULL・重複メールがあると失敗する。
+    - google_sub の値は upgrade で破棄済みのため復元できない。
+    本番でロールバックが要る場合は、別途データ移行を伴う手順を用意すること。
+    """
     op.add_column("users", sa.Column("google_sub", sa.VARCHAR(length=255), autoincrement=False, nullable=False))
     op.create_unique_constraint(
         op.f("users_google_sub_key"), "users", ["google_sub"], postgresql_nulls_not_distinct=False
