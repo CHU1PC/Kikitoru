@@ -1,5 +1,8 @@
+users
 summaries
 action_items
 decisions
+oauth_identities
 topics
+user_sessions
 alembic_version
