@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Annotated
 from zoneinfo import ZoneInfo
 
 import magic
-from fastapi import APIRouter, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, select
 
@@ -21,6 +21,7 @@ from app.dependencies import (
     DbSessionDep,  # noqa: TC001 — FastAPI resolves the dependency annotation at runtime
 )
 from app.llm.summarize import summarize_chain
+from app.rate_limit import AUDIO_SUMMARIZE_RATE_LIMIT, limiter
 from app.router.summaries import build_summary_read
 from app.schema.summaries import (
     SummaryRead,  # noqa: TC001 — FastAPI resolves the return annotation at runtime for response_model
@@ -229,7 +230,9 @@ async def _create_summary(
 
 
 @router.post("/summarize")
+@limiter.limit(AUDIO_SUMMARIZE_RATE_LIMIT)  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
 async def summarize_audio(
+    request: Request,  # noqa: ARG001 — slowapi のレート制限がシグネチャから参照する
     file: UploadFile,
     db_session: DbSessionDep,
     user: CurrentUser,
@@ -239,6 +242,7 @@ async def summarize_audio(
     """Accepts an audio file, summarizes it, persists the result, and returns it.
 
     Args:
+        request (Request): The incoming request, used by the rate limiter.
         file (UploadFile): The audio file to process (mp3, m4a, wav, flac). Max 200 MB.
         db_session (AsyncSession): Database session.
         user (User): The authenticated owner the summary is created for.
