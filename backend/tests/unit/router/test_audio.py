@@ -17,6 +17,8 @@ from sqlalchemy.exc import IntegrityError
 import app.stt.models as stt_models
 from app.db.engine import get_db_session
 from app.db.models import Summary as DBSummary
+from app.db.models import User
+from app.dependencies import get_current_user
 from app.llm.summarize.schema import ActionItem, Decision, Summary, Topic
 from app.router.audio import (
     _MAGIC_SNIFF_BYTES,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
@@ -33,6 +35,7 @@ if TYPE_CHECKING:
 
 client = TestClient(app)
 
+_USER = User(id=uuid4(), email="owner@example.com", name="Owner")
 _VALID_CONTENT_TYPE = "audio/mpeg"
 _DUMMY_AUDIO = b"dummy audio content"
 _EMPTY_SUMMARY = Summary(overall_summary="test", topics=[], decisions=[], action_items=[])
@@ -64,6 +67,7 @@ def override_session() -> None:
         yield _make_session_mock()
 
     app.dependency_overrides[get_db_session] = override_get_session
+    app.dependency_overrides[get_current_user] = lambda: _USER
 
 
 def test_summarize_audio_returns_summary() -> None:
@@ -92,6 +96,18 @@ def test_summarize_audio_returns_summary() -> None:
         )
 
     assert response.status_code == HTTPStatus.OK
+
+
+def test_summarize_audio_requires_authentication() -> None:
+    """未認証のとき /audio/summarize が 401 を返すことを確認するテスト."""
+    app.dependency_overrides.pop(get_current_user, None)
+
+    response = client.post(
+        "/api/v1/audio/summarize",
+        files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
+    )
+
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
 def test_summarize_audio_forwards_num_speakers() -> None:
@@ -333,7 +349,7 @@ def test_create_summary_returns_existing_on_content_hash_race() -> None:
     db_session.flush = AsyncMock(side_effect=IntegrityError("stmt", None, Exception("duplicate")))
     data = Summary(overall_summary="new run", topics=[], decisions=[], action_items=[])
 
-    result = asyncio.run(_create_summary(db_session, "new.mp3", "abc", data))
+    result = asyncio.run(_create_summary(db_session, _USER.id, "new.mp3", "abc", data))
 
     assert result.filename == "prev.mp3"
     assert result.overall_summary == "previous run"
@@ -347,7 +363,7 @@ def test_create_summary_reraises_unrelated_integrity_error() -> None:
     data = Summary(overall_summary="new", topics=[], decisions=[], action_items=[])
 
     with pytest.raises(IntegrityError):
-        asyncio.run(_create_summary(db_session, "x.mp3", "hash", data))
+        asyncio.run(_create_summary(db_session, _USER.id, "x.mp3", "hash", data))
 
     db_session.rollback.assert_awaited_once()
 
