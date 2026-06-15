@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from app.db.models import UserSession
+from app.settings.config import settings
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -15,7 +17,8 @@ _SESSION_TOKEN_BYTES = 32
 
 # ログインセッションの Cookie 設定 (provider 非依存。発行・検証・削除で共有する).
 SESSION_COOKIE = "session_token"
-SESSION_MAX_AGE = 60 * 60 * 24  # 1 day (UserSession.expires_at と揃える)
+# Cookie の max-age と DB の UserSession.expires_at は同じ設定から導出して揃える.
+SESSION_MAX_AGE = settings.SESSION_EXPIRY_DAYS * 24 * 60 * 60
 
 
 def hash_user_session_token(token: str) -> str:
@@ -60,6 +63,7 @@ async def create_user_session(
         UserSession(
             user_id=user_id,
             token_hash=hash_user_session_token(token),
+            expires_at=datetime.now(UTC) + timedelta(days=settings.SESSION_EXPIRY_DAYS),
             user_agent=user_agent,
             ip_address=ip_address,
         )
