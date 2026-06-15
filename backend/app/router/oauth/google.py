@@ -99,7 +99,14 @@ async def oauth_callback(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Failed to exchange authorization code for tokens.",
         )
-    raw_id_token = token_response.json().get("id_token")
+    try:
+        raw_id_token = token_response.json()["id_token"]
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Invalid token response from Google.",
+        ) from exc
+
     try:
         claim = google_id_token.verify_oauth2_token(  # pyright: ignore[reportUnknownMemberType]
             raw_id_token,
@@ -118,7 +125,7 @@ async def oauth_callback(
         provider=_PROVIDER,
         subject=subject,
         email=claim.get("email"),
-        name=claim.get("name", ""),
+        name=claim.get("name") or "",
     )
     token = await create_user_session(
         db_session,
@@ -136,5 +143,10 @@ async def oauth_callback(
         secure=settings.COOKIE_SECURE,
         samesite="lax",
     )
-    response.delete_cookie(_STATE_COOKIE)
+    response.delete_cookie(
+        _STATE_COOKIE,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite="lax",
+    )
     return response
