@@ -974,6 +974,7 @@ test = [
     { name = "pydantic-settings" },
     { name = "pytest" },
     { name = "python-magic" },
+    { name = "slowapi" },
     { name = "sqlmodel" },
 ]
 
@@ -1022,6 +1023,7 @@ test = [
     { name = "pydantic-settings", specifier = ">=2.5" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "python-magic", specifier = ">=0.4" },
+    { name = "slowapi", specifier = ">=0.1.10" },
     { name = "sqlmodel", specifier = ">=0.0.22" },
 ]
 
