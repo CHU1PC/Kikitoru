@@ -21,8 +21,7 @@ from app.db.engine import get_db_session
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Sequence
 
-# main は audio router 経由で torch 等の ML 依存を import するため、CI (ML 依存なし) でも
-# テストモジュールが `from main import app` できるよう、先にモック化しておく (db テストは STT を呼ばない).
+# main は audio router 経由で torch 等の ML 依存を import するため、Mockする
 sys.modules.update({
     "torch": MagicMock(),
     "torchaudio": MagicMock(),
