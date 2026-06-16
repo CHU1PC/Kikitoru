@@ -9,7 +9,7 @@ from app.stt.pipeline import transcribe_with_diarization
 from app.stt.types import Segment
 
 # A short two-speaker mock interview shipped with the repo.
-_AUDIO = Path(__file__).resolve().parents[3] / "data" / "interview.mp3"
+_AUDIO = Path(__file__).resolve().parents[4] / "data" / "interview.mp3"
 
 
 async def _run(audio_path: Path) -> list[Segment]:
