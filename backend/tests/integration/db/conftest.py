@@ -19,7 +19,7 @@ from app.db.engine import get_db_session
 from main import app
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable, Generator
+    from collections.abc import AsyncGenerator, Callable, Generator, Sequence
 
 # backend/ ディレクトリ (alembic.ini の場所)
 _BACKEND_DIR = Path(__file__).resolve().parents[3]
@@ -112,9 +112,34 @@ def override_db_session() -> Generator[None]:
     app.dependency_overrides.clear()
 
 
+async def _insert_all_in_test_session(objects: Sequence[SQLModel]) -> None:
+    """渡した objects を FK 親→子順に並べ替え、1件ずつ flush してテスト DB に保存する.
+
+    Args:
+        objects (Sequence[SQLModel]): 保存するモデルインスタンス列.
+    """
+    # sorted_tables は FK 依存順 (親が先)。テーブル名でその順に並べ替えてから1件ずつ flush する。
+    order = {table.name: index for index, table in enumerate(SQLModel.metadata.sorted_tables)}
+    ordered = sorted(objects, key=lambda obj: order[cast("str", obj.__tablename__)])  # pyright: ignore[reportUnknownMemberType]
+    async with AsyncSession(_engine, expire_on_commit=False) as session:
+        for obj in ordered:
+            session.add(obj)
+            await session.flush()
+        await session.commit()
+
+
+def _seed(*objects: SQLModel) -> None:
+    """渡したモデルをテスト DB に保存する (FK 親→子順に自動ソート・同期実行).
+
+    Args:
+        *objects (SQLModel): 保存するモデルインスタンス (可変個).
+    """
+    asyncio.run(_insert_all_in_test_session(objects))
+
+
 @pytest.fixture
 def seed() -> Callable[..., None]:
-    """テスト DB にモデルインスタンスを INSERT+commit するヘルパーを返すフィクスチャ.
+    """テスト DB にモデルインスタンスを保存するヘルパーを返すフィクスチャ.
 
     FK の親→子の順 (users → summaries → ...) に自動で並べ替えて1件ずつ flush するので、
     渡す順序は気にしなくてよい。expire_on_commit=False なので commit 後もオブジェクトの
@@ -123,19 +148,4 @@ def seed() -> Callable[..., None]:
     Returns:
         Callable[..., None]: 可変個のモデルを受け取り、テスト DB に保存する関数.
     """
-
-    def _seed(*objects: SQLModel) -> None:
-        # sorted_tables は FK 依存順 (親が先)。テーブル名でその順に並べ替えてから1件ずつ flush する。
-        order = {table.name: index for index, table in enumerate(SQLModel.metadata.sorted_tables)}
-        ordered = sorted(objects, key=lambda obj: order[cast("str", obj.__tablename__)])  # pyright: ignore[reportUnknownMemberType]
-
-        async def _run() -> None:
-            async with AsyncSession(_engine, expire_on_commit=False) as session:
-                for obj in ordered:
-                    session.add(obj)
-                    await session.flush()
-                await session.commit()
-
-        asyncio.run(_run())
-
     return _seed
