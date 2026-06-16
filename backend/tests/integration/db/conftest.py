@@ -19,7 +19,7 @@ from app.db.engine import get_db_session
 from main import app
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable, Generator, Sequence
+    from collections.abc import AsyncGenerator, Awaitable, Callable, Generator, Sequence
 
 # backend/ ディレクトリ (alembic.ini の場所)
 _BACKEND_DIR = Path(__file__).resolve().parents[3]
@@ -149,3 +149,41 @@ def seed() -> Callable[..., None]:
         Callable[..., None]: 可変個のモデルを受け取り、テスト DB に保存する関数.
     """
     return _seed
+
+
+async def _run_in_test_session[T](fn: Callable[[AsyncSession], Awaitable[T]]) -> T:
+    """テスト DB セッションを開いて fn に渡し、その結果を返す (NullPool で毎回新規接続).
+
+    Args:
+        fn (Callable[[AsyncSession], Awaitable[T]]): session を受け取り値を返す async 関数.
+
+    Returns:
+        T: fn が返した値.
+    """
+    async with AsyncSession(_engine, expire_on_commit=False) as session:
+        return await fn(session)
+
+
+def _call_in_test_session[T](fn: Callable[[AsyncSession], Awaitable[T]]) -> T:
+    """テスト DB セッションで fn を同期的に実行し、結果を返す.
+
+    Args:
+        fn (Callable[[AsyncSession], Awaitable[T]]): session を受け取り何らかの値を返す async 関数.
+
+    Returns:
+        T: fn が返す値の型.
+    """
+    return asyncio.run(_run_in_test_session(fn))
+
+
+@pytest.fixture
+def db_call() -> Callable[..., object]:
+    """Session を受け取る async 関数をテスト DB セッションで実行するヘルパーを返すフィクスチャ.
+
+    upsert_user_from_identity / create_user_session など、内部の async 関数を実 DB に対して
+    直接呼ぶテストで使う (expire_on_commit=False なので戻り値の属性も後で読める).
+
+    Returns:
+        Callable: coroutine 関数を受け取り、テスト DB セッションで実行して結果を返す関数.
+    """
+    return _call_in_test_session
