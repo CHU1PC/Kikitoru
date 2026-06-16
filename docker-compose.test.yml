@@ -1,0 +1,18 @@
+# 結合テスト用の使い捨て Postgres。
+services:
+  db-test:
+    image: postgres:16-alpine
+    container_name: kikitoru-test-db
+    environment:
+      POSTGRES_DB: kikitoru_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test_password  # テスト専用の固定パスワード
+    ports:
+      - "5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
