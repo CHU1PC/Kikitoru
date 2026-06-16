@@ -1,9 +1,10 @@
 name: Backend CI
 
 # バックエンドのテストスイート検証パイプライン:
-#   lint       — ruff (dev グループのみの軽量インストール)
-#   unit-tests — tests/unit
-# 結合テスト (tests/integration) は GPU + HF_TOKEN が必要なため CI では実行しない (ローカルで opt-in)。
+#   lint                 — ruff (dev グループのみの軽量インストール)
+#   unit-tests           — tests/unit
+#   integration-db-tests — tests/integration/db (Postgres service container を使い実 DB で検証)
+# STT 結合テスト (tests/integration/stt) は GPU + HF_TOKEN が必要なため CI では実行しない (ローカルで opt-in)。
 
 on:
 
@@ -60,3 +61,41 @@ jobs:
       - name: Run unit tests
         working-directory: backend
         run: uv run --no-sync pytest
+
+  integration-db-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: kikitoru_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: Install test + db dependencies (no ML deps)
+        working-directory: backend
+        run: uv sync --frozen --only-group test --only-group db
+
+      - name: Run DB integration tests
+        working-directory: backend
+        run: uv run --no-sync pytest tests/integration/db
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://postgres:test_password@localhost:5432/kikitoru_test
