@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: kikitoru-dev-db
     environment:
       POSTGRES_DB: kikitoru
@@ -11,7 +11,7 @@ services:
       # ホスト側に 5432 を公開。alembic / psql / DataGrip 等から localhost:5432 で接続可能。
       - "5432:5432"
     volumes:
-      - postgres_dev_data:/var/lib/postgresql/data
+      - postgres_dev_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
