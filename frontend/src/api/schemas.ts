@@ -42,3 +42,8 @@ export type ActionItem = z.infer<typeof ActionItem>
 export type SummaryListItem = z.infer<typeof SummaryListItem>
 export type Summary = z.infer<typeof Summary>
 export type SummaryListResponse = z.infer<typeof SummaryListResponse>
+
+
+export const ApiErrorBody = z.object({
+    detail: z.string(),
+})
