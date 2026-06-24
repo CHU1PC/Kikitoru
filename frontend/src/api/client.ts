@@ -1,4 +1,4 @@
-import { Summary, ApiErrorBody } from "./schemas"
+import { Summary, SummaryListResponse, ApiErrorBody } from "./schemas"
 
 const API_BASE = "http://localhost:8000"
 
@@ -39,6 +39,18 @@ export async function getSummary(id: string): Promise<Summary> {
     const json = await res.json()
     return Summary.parse(json)
 }
+
+export async function getSummaries(limit: number = 50, offset: number = 0): Promise<SummaryListResponse> {
+    const params = new URLSearchParams({limit: limit.toString(), offset: offset.toString()})
+    const res = await fetch(
+        `${API_BASE}/api/v1/summaries?${params}`,
+        {credentials: "include",}
+    )
+    await throwIfNotOk(res)
+    const json = await res.json()
+    return SummaryListResponse.parse(json)
+}
+
 
 export async function uploadAudio(input: UploadAudioInput): Promise<Summary> {
     const formData = new FormData()
