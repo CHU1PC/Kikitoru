@@ -1,4 +1,4 @@
-import { Summary } from "./schemas"
+import { Summary, ApiErrorBody } from "./schemas"
 
 const API_BASE = "http://localhost:8000"
 
@@ -8,16 +8,34 @@ type UploadAudioInput = {
     num_speakers?: number
 }
 
+export class ApiError extends Error {
+    status: number
+    detail: string
+
+    constructor(status: number, detail: string) {
+        super(detail)
+        this.name = "ApiError"
+        this.status = status
+        this.detail = detail
+    }
+}
+
+async function throwIfNotOk(res: Response): Promise<void> {
+    if(res.ok) return
+    const body = await res.json().catch(() => ({}))
+    const parsed = ApiErrorBody.safeParse(body)
+    const detail = parsed.success ? parsed.data.detail : `HTTP ${res.status}`
+    throw new ApiError(res.status, detail)
+}
+
+
 export async function getSummary(id: string): Promise<Summary> {
     const res = await fetch(
         `${API_BASE}/api/v1/summaries/${id}`, 
         {credentials: "include",}
     )
 
-    if (!res.ok) {
-        throw new Error(`API error: ${res.status}`)
-    }
-
+    await throwIfNotOk(res)
     const json = await res.json()
     return Summary.parse(json)
 }
@@ -41,10 +59,7 @@ export async function uploadAudio(input: UploadAudioInput): Promise<Summary> {
         }
     )
 
-    if (!res.ok) {
-        throw new Error(`API error: ${res.status}`)
-    }
-
+    await throwIfNotOk(res)
     const json = await res.json()
     return Summary.parse(json)
 }
