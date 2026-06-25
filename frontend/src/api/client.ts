@@ -1,4 +1,6 @@
-import { Summary, SummaryListResponse, ApiErrorBody } from "./schemas"
+import { ApiErrorBody } from "./schemas"
+import { summaryReadSchema, summaryPageResponseSchema } from "../gen/zod"
+import type { SummaryRead, SummaryPageResponse } from "../gen/types"
 
 const API_BASE = "http://localhost:8000"
 
@@ -29,7 +31,7 @@ async function throwIfNotOk(res: Response): Promise<void> {
 }
 
 
-export async function getSummary(id: string): Promise<Summary> {
+export async function getSummary(id: string): Promise<SummaryRead> {
     const res = await fetch(
         `${API_BASE}/api/v1/summaries/${id}`, 
         {credentials: "include",}
@@ -37,10 +39,10 @@ export async function getSummary(id: string): Promise<Summary> {
 
     await throwIfNotOk(res)
     const json = await res.json()
-    return Summary.parse(json)
+    return summaryReadSchema.parse(json)
 }
 
-export async function getSummaries(limit: number = 50, offset: number = 0): Promise<SummaryListResponse> {
+export async function getSummaries(limit: number = 50, offset: number = 0): Promise<SummaryPageResponse> {
     const params = new URLSearchParams({limit: limit.toString(), offset: offset.toString()})
     const res = await fetch(
         `${API_BASE}/api/v1/summaries?${params}`,
@@ -48,11 +50,11 @@ export async function getSummaries(limit: number = 50, offset: number = 0): Prom
     )
     await throwIfNotOk(res)
     const json = await res.json()
-    return SummaryListResponse.parse(json)
+    return summaryPageResponseSchema.parse(json)
 }
 
 
-export async function uploadAudio(input: UploadAudioInput): Promise<Summary> {
+export async function uploadAudio(input: UploadAudioInput): Promise<SummaryRead> {
     const formData = new FormData()
     formData.append("file", input.file)
     if (input.recorded_at) {
@@ -73,5 +75,5 @@ export async function uploadAudio(input: UploadAudioInput): Promise<Summary> {
 
     await throwIfNotOk(res)
     const json = await res.json()
-    return Summary.parse(json)
+    return summaryReadSchema.parse(json)
 }
