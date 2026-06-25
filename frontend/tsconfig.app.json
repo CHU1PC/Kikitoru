@@ -16,8 +16,8 @@
     "jsx": "react-jsx",
 
     /* Linting */
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,  // 生成コード(src/gen)が未使用 import を含むため falseに設定
+    "noUnusedParameters": false,  // 生成コード(src/gen)が未使用 import を含むため falseに設定
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
