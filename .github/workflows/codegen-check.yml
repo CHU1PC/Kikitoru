@@ -1,0 +1,60 @@
+name: Codegen Check
+
+# frontend の生成コード(zod)がbackendの現在のAPIと同期しているかを検証する
+# openapi.json と frontend/src/gen を再生成し, commit済みと差分がないことを確認する
+
+on:
+    pull_request:
+        paths:
+            - "backend/**"
+            - "frontend/src/gen/**"
+            - "frontend/kubb.config.ts"
+            - "frontend/package.json"
+            - ".github/workflows/codegen-check.yml"
+    workflow_dispatch:
+
+concurrency:
+    group: codegen-check-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    codegen-check:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+
+            - name: Install libmagic
+              run: sudo apt-get update && sudo apt-get install -y libmagic1
+
+            - name: Install uv
+              uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+              with:
+                enable-cache: true
+                cache-dependency-glob: "backend/uv.lock"
+
+            - name: Install backend dependencies
+              working-directory: backend
+              run: uv sync --frozen --only-group test
+
+            - name: Regenerate openapi.json
+              working-directory: backend
+              run: uv run --no-sync scripts/export_openapi.py
+
+            - name: Setup bun
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6  # v2.2.0
+
+            - name: Install frontend dependencies
+              working-directory: frontend
+              run: bun install --frozen-lockfile
+
+            - name: Regenerate codegen
+              working-directory: frontend
+              run: bun run generate:api
+
+            - name: Check drift
+              run: |
+                git add -A backend/openapi.json frontend/src/gen
+                git diff --cached --exit-code -- backend/openapi.json frontend/src/gen \
+                || (echo "::error::Frontendの生成コードがbackendのAPIと同期していません. exportopenapi.py と bun run generate:api を実行してください" && exit 1)
