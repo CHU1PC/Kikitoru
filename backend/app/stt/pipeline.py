@@ -140,8 +140,10 @@ def _to_segments(transcript: Transcript) -> list[Segment]:
                         text=current_text
                     )
                 )
-            # 新しいセグメントの初期化
-            current_speaker, current_text, current_start, current_end = speaker, content, start, end
+                current_text = ""  # 確定したセグメントのテキストはリセット
+            # 新しいセグメントの初期化。先頭に溜めた句読点が current_text に残っていれば += で引き継ぐ
+            current_speaker, current_start, current_end = speaker, start, end
+            current_text += content
         else:  # 同じ話者の場合、テキストを追加して終了時間を更新する
             current_text += content
             current_end = end
