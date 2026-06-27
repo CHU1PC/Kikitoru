@@ -4,17 +4,17 @@
 */
 
 /**
- * @description Topic in a summary response.
+ * @description 要約レスポンス内の議題.
  * @type object
 */
-export type TopicRead = {
+export type TopicResponse = {
     /**
-     * @description Title of the topic
+     * @description 議題のタイトル
      * @type string
     */
     title: string;
     /**
-     * @description Detailed summary of the topic
+     * @description 議題の詳細な要約
      * @type string
     */
     summary: string;

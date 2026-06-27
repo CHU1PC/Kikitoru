@@ -5,11 +5,11 @@
 
 import * as z from 'zod'
 import { HTTPValidationErrorSchema } from './HTTPValidationErrorSchema.ts'
-import { summaryReadSchema } from './summaryReadSchema.ts'
+import { summaryResponseSchema } from './summaryResponseSchema.ts'
 
 export const getSummaryEndpointApiV1SummariesSummaryIdGetPathSummaryIdSchema = z.uuid()
 
-export const getSummaryEndpointApiV1SummariesSummaryIdGetStatus200Schema = summaryReadSchema.describe('Full summary including all related items.')
+export const getSummaryEndpointApiV1SummariesSummaryIdGetStatus200Schema = summaryResponseSchema.describe('関連項目をすべて含む完全な要約.')
 
 export const getSummaryEndpointApiV1SummariesSummaryIdGetStatus422Schema = HTTPValidationErrorSchema
 

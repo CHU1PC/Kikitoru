@@ -7,11 +7,11 @@ import * as z from 'zod'
 import { HTTPValidationErrorSchema } from './HTTPValidationErrorSchema.ts'
 import { summaryPageResponseSchema } from './summaryPageResponseSchema.ts'
 
-export const listSummariesEndpointApiV1SummariesGetQueryLimitSchema = z.int().min(1).max(100).optional().default(50).describe('Page size')
+export const listSummariesEndpointApiV1SummariesGetQueryLimitSchema = z.int().min(1).max(100).optional().default(50).describe('1ページあたりの件数')
 
-export const listSummariesEndpointApiV1SummariesGetQueryOffsetSchema = z.int().min(0).optional().default(0).describe('Number of items to skip')
+export const listSummariesEndpointApiV1SummariesGetQueryOffsetSchema = z.int().min(0).optional().default(0).describe('スキップする件数')
 
-export const listSummariesEndpointApiV1SummariesGetStatus200Schema = summaryPageResponseSchema.describe('Paginated list of summaries.')
+export const listSummariesEndpointApiV1SummariesGetStatus200Schema = summaryPageResponseSchema.describe('要約のページネーション付きリスト.')
 
 export const listSummariesEndpointApiV1SummariesGetStatus422Schema = HTTPValidationErrorSchema
 

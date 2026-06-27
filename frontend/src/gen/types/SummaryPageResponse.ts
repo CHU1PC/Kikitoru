@@ -6,27 +6,27 @@
 import type { SummaryListItem } from './SummaryListItem.ts'
 
 /**
- * @description Paginated list of summaries.
+ * @description 要約のページネーション付きリスト.
  * @type object
 */
 export type SummaryPageResponse = {
     /**
-     * @description Summaries in the current page
+     * @description 現在のページの要約
      * @type array
     */
     items: SummaryListItem[];
     /**
-     * @description Total number of summaries in the database
+     * @description データベース内の要約の総数
      * @type integer
     */
     total: number;
     /**
-     * @description Maximum number of items returned per page
+     * @description 1ページあたりに返す最大件数
      * @type integer
     */
     limit: number;
     /**
-     * @description Number of items skipped before this page
+     * @description このページの前にスキップした件数
      * @type integer
     */
     offset: number;

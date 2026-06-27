@@ -4,9 +4,13 @@
 */
 
 import * as z from 'zod'
+import { userRoleSchema } from './userRoleSchema.ts'
+import { userStatusSchema } from './userStatusSchema.ts'
 
 export const userPublicSchema = z.object({
-  id: z.uuid().describe('Unique identifier of the user'),
-  email: z.union([z.string(), z.null()]).optional().describe('Email address of the user'),
-  name: z.string().optional().default('').describe('Full name of the user'),
+  id: z.uuid().describe('ユーザーの一意識別子'),
+  email: z.union([z.string(), z.null()]).optional().describe('ユーザーのメールアドレス'),
+  name: z.string().optional().default('').describe('ユーザーのフルネーム'),
+  role: userRoleSchema.describe('ユーザーの役割'),
+  status: userStatusSchema.describe('ユーザーの状態'),
 }).describe('ユーザー本人に返してよい公開プロフィール (ORM の User 行から生成する).')

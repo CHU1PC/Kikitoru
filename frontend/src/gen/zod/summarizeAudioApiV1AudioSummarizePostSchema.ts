@@ -6,9 +6,9 @@
 import * as z from 'zod'
 import { HTTPValidationErrorSchema } from './HTTPValidationErrorSchema.ts'
 import { bodySummarizeAudioApiV1AudioSummarizePostSchema } from './bodySummarizeAudioApiV1AudioSummarizePostSchema.ts'
-import { summaryReadSchema } from './summaryReadSchema.ts'
+import { summaryResponseSchema } from './summaryResponseSchema.ts'
 
-export const summarizeAudioApiV1AudioSummarizePostStatus200Schema = summaryReadSchema.describe('Full summary including all related items.')
+export const summarizeAudioApiV1AudioSummarizePostStatus200Schema = summaryResponseSchema.describe('関連項目をすべて含む完全な要約.')
 
 export const summarizeAudioApiV1AudioSummarizePostStatus422Schema = HTTPValidationErrorSchema
 

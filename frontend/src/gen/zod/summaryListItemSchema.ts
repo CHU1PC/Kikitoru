@@ -6,8 +6,8 @@
 import * as z from 'zod'
 
 export const summaryListItemSchema = z.object({
-  id: z.uuid().describe('Unique identifier of the summary'),
-  filename: z.string().describe('Name of the uploaded audio file'),
-  created_at: z.iso.datetime().describe('Timestamp when the summary was created'),
-  overall_summary: z.string().describe('Overall summary of the meeting'),
-}).describe('Summary metadata for list responses.')
+  id: z.uuid().describe('要約の一意識別子'),
+  filename: z.string().describe('アップロードされた音声ファイル名'),
+  created_at: z.iso.datetime().describe('要約が作成された日時'),
+  overall_summary: z.string().describe('会議全体の要約'),
+}).describe('一覧レスポンス用の要約メタデータ.')

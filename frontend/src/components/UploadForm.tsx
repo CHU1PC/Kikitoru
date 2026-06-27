@@ -1,9 +1,9 @@
 import { useState, type SyntheticEvent } from "react"
 import { uploadAudio, ApiError } from "../api/client"
-import type { SummaryRead } from "../gen/types"
+import type { SummaryResponse } from "../gen/types"
 
 type Props = {
-    onSuccess: (summary: SummaryRead) => void
+    onSuccess: (summary: SummaryResponse) => void
 }
 
 export function UploadForm({ onSuccess }: Props) {
