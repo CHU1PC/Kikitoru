@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 
 from app.rate_limit import limiter, rate_limit_exceeded_handler
+from app.router.admin import router as admin_router
 from app.router.audio import router as audio_router
 from app.router.oauth import oauth_router
 from app.router.summaries import router as summaries_router
@@ -27,4 +28,5 @@ app.add_middleware(
 
 app.include_router(audio_router, prefix="/api/v1")
 app.include_router(summaries_router, prefix="/api/v1")
+app.include_router(admin_router, prefix="/api/v1")
 app.include_router(oauth_router)

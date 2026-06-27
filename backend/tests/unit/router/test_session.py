@@ -42,7 +42,13 @@ def test_me_returns_current_user_public() -> None:
 
     assert response.status_code == HTTPStatus.OK
     body = response.json()
-    assert body == {"id": str(user.id), "email": "taro@example.com", "name": "Taro"}
+    assert body == {
+        "id": str(user.id),
+        "email": "taro@example.com",
+        "name": "Taro",
+        "role": "user",
+        "status": "pending",
+    }
 
 
 def test_logout_revokes_session_and_deletes_cookie() -> None:
