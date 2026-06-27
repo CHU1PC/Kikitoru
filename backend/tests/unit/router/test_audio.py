@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-from contextlib import asynccontextmanager
 from datetime import date
 from http import HTTPStatus
 from types import SimpleNamespace
@@ -15,24 +14,25 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
-import app.stt.models as stt_models
+from app.audio.intake import (
+    _MAGIC_SNIFF_BYTES,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
+    _MAX_FILENAME_LENGTH,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
+    sanitize_filename,
+    spool_upload,
+)
 from app.db.engine import get_db_session
 from app.db.models import Summary as DBSummary
 from app.db.models import User
+from app.db.summaries import (
+    _add_children,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
+    create_summary,
+)
 from app.dependencies import get_current_user
 from app.llm.summarize.schema import ActionItem, Decision, Summary, Topic
-from app.router.audio import (
-    _MAGIC_SNIFF_BYTES,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
-    _MAX_FILENAME_LENGTH,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
-    _add_children,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
-    _create_summary,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
-    _sanitize_filename,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
-    _spool_upload,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
-)
 from main import app
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import Generator
 
 client = TestClient(app)
 
@@ -52,7 +52,7 @@ def _make_session_mock(existing: object = None) -> AsyncMock:
     return db_session
 
 
-@pytest.fixture(autouse=True)  # noqa: RUF076 - DB の Mock は全てのテストに一律で適用する必要があるため autouse が適切
+@pytest.fixture(autouse=True)
 def override_session() -> None:
     """get_db_session をデフォルトのモックに置き換える pytestフィクスチャ.
 
@@ -75,29 +75,19 @@ def override_session() -> None:
 def audio_pipeline_mocks() -> Generator[SimpleNamespace]:
     """STT/LLM パイプラインを一括モックする pytest フィクスチャ.
 
-    ModelPool.acquire / transcribe_with_diarization / summarize_chain / _magic_mime を patch し、
-    既定で MIME は有効な音声、transcribe は空セグメント、要約は空の Summary を返す. 各テストは
-    返り値の namespace 経由で必要なモック (transcribe / chain / magic) だけ上書きする.
+    transcribe_with_diarization / summarize_chain / _magic_mime を patch し、既定で MIME は
+    有効な音声、transcribe は空セグメント、要約は空の Summary を返す. 各テストは返り値の
+    namespace 経由で必要なモック (transcribe / chain / magic) だけ上書きする.
 
     Yields:
         SimpleNamespace: transcribe / chain / magic のモックを持つ namespace.
     """
-
-    @asynccontextmanager
-    async def mock_acquire() -> AsyncGenerator[tuple[MagicMock, MagicMock]]:
-        """ModelPool.acquire() のモックで、テスト用の (WhisperModel, Pipeline) を返す.
-
-        Yields:
-            tuple[MagicMock, MagicMock]: テスト用の WhisperModel と Pipeline のタプル.
-        """
-        yield (MagicMock(), MagicMock())
-
     with (
-        patch.object(stt_models.pool, "acquire", mock_acquire),
-        patch("app.router.audio.transcribe_with_diarization", return_value=[]) as transcribe,
+        patch("app.router.audio.transcribe_with_diarization", new_callable=AsyncMock) as transcribe,
         patch("app.router.audio.summarize_chain") as chain,
-        patch("app.router.audio._magic_mime") as magic,
+        patch("app.audio.intake._magic_mime") as magic,
     ):
+        transcribe.return_value = []
         magic.from_buffer.return_value = _VALID_CONTENT_TYPE
         chain.ainvoke = AsyncMock(return_value=_EMPTY_SUMMARY)
         yield SimpleNamespace(transcribe=transcribe, chain=chain, magic=magic)
@@ -137,7 +127,7 @@ def test_summarize_audio_forwards_num_speakers(audio_pipeline_mocks: SimpleNames
     )
 
     assert response.status_code == HTTPStatus.OK
-    # transcribe_with_diarization(spooled, whisper, pipeline, num_speakers) の末尾引数
+    # transcribe_with_diarization(spooled, num_speakers) の末尾引数
     assert audio_pipeline_mocks.transcribe.call_args.args[-1] == expected_speakers
 
 
@@ -214,7 +204,7 @@ def test_summarize_audio_idempotent_skips_pipeline(audio_pipeline_mocks: SimpleN
         ("meeting.mp3", "meeting.mp3"),
         ("  meeting.mp3  ", "meeting.mp3"),
         ("a\x00b.mp3", "ab.mp3"),
-        ("\u304b\u3099.mp3", "\u304c.mp3"),
+        ("が.mp3", "が.mp3"),
         # パス成分の除去(パストラバーサル対策)
         ("../../etc/passwd", "passwd"),
         ("/abs/path/audio.wav", "audio.wav"),
@@ -227,20 +217,20 @@ def test_sanitize_filename(raw: str | None, expected: str) -> None:
         raw (str | None): サニタイズ前のファイル名
         expected (str): サニタイズ後の期待されるファイル名
     """
-    assert _sanitize_filename(raw) == expected
+    assert sanitize_filename(raw) == expected
 
 
 def test_sanitize_filename_keeps_name_at_max_length() -> None:
     """ファイル名が最大長ちょうどの場合、サニタイズ後も同じ名前であることのテスト."""
     name = "a" * _MAX_FILENAME_LENGTH
-    assert _sanitize_filename(name) == name
+    assert sanitize_filename(name) == name
 
 
 def test_sanitize_filename_trims_name_exceeding_max_length() -> None:
     """ファイル名が最大長を超える場合、サニタイズ後に適切に切り詰められることのテスト."""
     raw = "a" * (_MAX_FILENAME_LENGTH + 50) + ".mp3"
     expected = "a" * (_MAX_FILENAME_LENGTH - len(".mp3")) + ".mp3"
-    result = _sanitize_filename(raw)
+    result = sanitize_filename(raw)
     assert len(result) == _MAX_FILENAME_LENGTH
     assert result.endswith(".mp3")
     assert result == expected
@@ -250,7 +240,7 @@ def test_sanitize_filename_trims_name_without_extension() -> None:
     """ファイル名が拡張子なしで最大長を超える場合、サニタイズ後に適切に切り詰められることのテスト."""
     raw = "a" * (_MAX_FILENAME_LENGTH + 50)
     expected = "a" * _MAX_FILENAME_LENGTH
-    result = _sanitize_filename(raw)
+    result = sanitize_filename(raw)
     assert len(result) == _MAX_FILENAME_LENGTH
     assert result == expected
 
@@ -275,9 +265,9 @@ def test_spool_upload_hashes_and_stores_content() -> None:
     content = b"".join(chunks)
     file = _mock_upload(*chunks)
 
-    with patch("app.router.audio._magic_mime") as mock_magic:
+    with patch("app.audio.intake._magic_mime") as mock_magic:
         mock_magic.from_buffer.return_value = "audio/mpeg"
-        spooled, digest, mime = asyncio.run(_spool_upload(file))
+        spooled, digest, mime = asyncio.run(spool_upload(file))
 
     assert digest == hashlib.sha256(content).hexdigest()
     assert mime == "audio/mpeg"
@@ -289,9 +279,9 @@ def test_spool_upload_sniffs_only_the_head() -> None:
     """MIME 判定が先頭 _MAGIC_SNIFF_BYTES バイトだけで行われることを確認するテスト."""
     file = _mock_upload(b"A" * _MAGIC_SNIFF_BYTES + b"B" * 5000)
 
-    with patch("app.router.audio._magic_mime") as mock_magic:
+    with patch("app.audio.intake._magic_mime") as mock_magic:
         mock_magic.from_buffer.return_value = "audio/wav"
-        spooled, _, _ = asyncio.run(_spool_upload(file))
+        spooled, _, _ = asyncio.run(spool_upload(file))
 
     spooled.close()
     mock_magic.from_buffer.assert_called_once_with(b"A" * _MAGIC_SNIFF_BYTES)
@@ -302,11 +292,11 @@ def test_spool_upload_rejects_oversized() -> None:
     file = _mock_upload(b"x" * 100)
 
     with (
-        patch("app.router.audio._MAX_UPLOAD_BYTES", 50),
-        patch("app.router.audio._magic_mime"),
+        patch("app.audio.intake.MAX_UPLOAD_BYTES", 50),
+        patch("app.audio.intake._magic_mime"),
         pytest.raises(HTTPException) as exc,
     ):
-        asyncio.run(_spool_upload(file))
+        asyncio.run(spool_upload(file))
 
     assert exc.value.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
 
@@ -315,9 +305,9 @@ def test_spool_upload_handles_empty_file() -> None:
     """空ファイルでも落ちず、空のハッシュと空 head での MIME 判定を行うことを確認するテスト."""
     file = _mock_upload()
 
-    with patch("app.router.audio._magic_mime") as mock_magic:
+    with patch("app.audio.intake._magic_mime") as mock_magic:
         mock_magic.from_buffer.return_value = "application/x-empty"
-        spooled, digest, _ = asyncio.run(_spool_upload(file))
+        spooled, digest, _ = asyncio.run(spool_upload(file))
 
     spooled.close()
     assert digest == hashlib.sha256(b"").hexdigest()
@@ -331,7 +321,7 @@ def test_create_summary_returns_existing_on_content_hash_race() -> None:
     db_session.flush = AsyncMock(side_effect=IntegrityError("stmt", None, Exception("duplicate")))
     data = Summary(overall_summary="new run", topics=[], decisions=[], action_items=[])
 
-    result = asyncio.run(_create_summary(db_session, _USER.id, "new.mp3", "abc", data))
+    result = asyncio.run(create_summary(db_session, _USER.id, "new.mp3", "abc", data))
 
     assert result.filename == "prev.mp3"
     assert result.overall_summary == "previous run"
@@ -345,7 +335,7 @@ def test_create_summary_reraises_unrelated_integrity_error() -> None:
     data = Summary(overall_summary="new", topics=[], decisions=[], action_items=[])
 
     with pytest.raises(IntegrityError):
-        asyncio.run(_create_summary(db_session, _USER.id, "x.mp3", "hash", data))
+        asyncio.run(create_summary(db_session, _USER.id, "x.mp3", "hash", data))
 
     db_session.rollback.assert_awaited_once()
 

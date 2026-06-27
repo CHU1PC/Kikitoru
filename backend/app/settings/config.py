@@ -7,48 +7,44 @@ from pydantic_settings import BaseSettings, NoDecode
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+    """環境変数から読み込むアプリケーション設定."""
 
-    DATABASE_URL: SecretStr = Field(default=..., description="The URL for the database connection")
+    DATABASE_URL: SecretStr = Field(default=..., description="データベース接続用の URL")
     DATABASE_SSL_MODE: str = Field(
         default="disable",
         description=(
-            "PostgreSQL SSL mode for asyncpg. 'disable' (plaintext) is fine only "
-            "when the backend and DB share a host (e.g., docker-compose). For a "
-            "managed DB or any connection across the network use 'verify-full', "
-            "which authenticates the server certificate and hostname."
+            "asyncpg 用の PostgreSQL SSL モード. 'disable' (平文) は backend と DB が "
+            "同一ホストにある場合 (例: docker-compose) のみ妥当. マネージド DB や "
+            "ネットワーク越しの接続では 'verify-full' を使い、サーバ証明書とホスト名を検証する."
         ),
     )
 
-    # STT Settings
-    STT_POOL_SIZE: int = Field(default=5, description="Number of concurrent STT model instances")
-    STT_IDLE_TIMEOUT_SECONDS: int = Field(default=300, description="Seconds before an idle STT model is unloaded")
-
-    # Hugging Face Settings
-    HF_TOKEN: SecretStr = Field(..., description="The Hugging Face token")
+    # AWS Transcribe / S3 (STT)
+    AWS_REGION: str = Field(default="ap-northeast-1", description="S3 と Transcribe の AWS リージョン")
+    S3_BUCKET: str = Field(default=..., description="音声ファイルを保存する S3 バケット名")
 
     # LLM Settings
-    GOOGLE_API_KEY: SecretStr = Field(default=..., description="API key for Google services")
-    LLM_CONCURRENT_LIMIT: int = Field(default=80, description="Max concurrent requests to the LLM")
-    LLM_TIMEOUT_SECONDS: int = Field(default=120, description="The timeout in seconds for LLM responses")
+    GOOGLE_API_KEY: SecretStr = Field(default=..., description="Google サービス用の API キー")
+    LLM_CONCURRENT_LIMIT: int = Field(default=80, description="LLM への最大同時リクエスト数")
+    LLM_TIMEOUT_SECONDS: int = Field(default=120, description="LLM 応答のタイムアウト秒数")
 
     ALLOWED_ORIGINS: Annotated[list[str], NoDecode] = Field(
         default=["http://localhost:5173"],
-        description='Allowed CORS origins. Comma-separated (a,b) or a JSON array (["a","b"]).',
+        description='CORS で許可するオリジン. カンマ区切り (a,b) または JSON 配列 (["a","b"]).',
     )
 
     # Google OAuth (sign-in)
     GOOGLE_CLIENT_ID: str = Field(
-        ..., description="OAuth 2.0 Client ID for Google authentication"
+        ..., description="Google 認証用の OAuth 2.0 クライアント ID"
     )
     GOOGLE_CLIENT_SECRET: SecretStr = Field(
-        ..., description="OAuth 2.0 Client Secret for Google authentication"
+        ..., description="Google 認証用の OAuth 2.0 クライアントシークレット"
     )
     GOOGLE_REDIRECT_URI: str = Field(
         ...,
         description=(
-            "OAuth 2.0 redirect URI. Must exactly match an entry registered in "
-            "Google Cloud Console under 'Authorized redirect URIs'."
+            "OAuth 2.0 のリダイレクト URI. Google Cloud Console の "
+            "'Authorized redirect URIs' に登録した値と完全一致する必要がある."
         ),
     )
 
@@ -56,28 +52,28 @@ class Settings(BaseSettings):
     COOKIE_SECURE: bool = Field(
         default=True,
         description=(
-            "Set the Secure flag on session cookies. Required for production (HTTPS). "
-            "Set to false only for local HTTP development."
+            "セッション Cookie に Secure フラグを付ける. 本番 (HTTPS) では必須. "
+            "ローカル HTTP 開発時のみ false にする."
         ),
     )
     SESSION_EXPIRY_DAYS: int = Field(
         default=1,
-        description="How long a new session remains valid before requiring re-login.",
+        description="新しいセッションが再ログインを要するまで有効な日数.",
     )
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
     def _parse_allowed_origins(cls, value: object) -> object:
-        """Accept either a comma-separated string or a JSON array from the env.
+        """環境変数からカンマ区切り文字列または JSON 配列のどちらかを受け取る.
 
         Args:
-            value (object): Raw value from the environment (str) or the default (list).
+            value (object): 環境変数からの生の値 (str) またはデフォルト (list).
 
         Returns:
-            object: A list of origin strings, or the value unchanged if not a string.
+            object: オリジン文字列のリスト. str でない場合は値をそのまま返す.
 
         Raises:
-            ValueError: If the value looks like a JSON array but is not valid JSON.
+            ValueError: 値が JSON 配列に見えるが有効な JSON でない場合.
         """
         if isinstance(value, str):
             text = value.strip()
@@ -94,16 +90,15 @@ class Settings(BaseSettings):
     RATE_LIMIT_STORAGE_URI: str = Field(
         default="memory://",
         description=(
-            "Storage backend for rate-limit counters. 'memory://' is per-process "
-            "(correct for a single worker); switch to 'redis://...' when running "
-            "multiple workers or replicas so the counters are shared."
+            "レート制限カウンタの保存先. 'memory://' はプロセスごと (単一ワーカーでは正しい). "
+            "複数ワーカー/レプリカで動かす場合はカウンタを共有するため 'redis://...' に切り替える."
         ),
     )
 
     # Deployment
     ENABLE_DOCS: bool = Field(
         default=False,
-        description="Whether to expose /docs, /redoc, /openapi.json. Set to false in production.",
+        description="/docs, /redoc, /openapi.json を公開するか. 本番では false にする.",
     )
 
 
