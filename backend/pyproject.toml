@@ -9,6 +9,7 @@ dependencies = [
     "boto3>=1.43.36",
     "fastapi[standard]>=0.100.0",
     "google-auth>=2.49",
+    "greenlet>=3.5.0",
     "httpx>=0.28",
     "langchain-core>=0.3",
     "langchain-google-genai>=4.2.2",
