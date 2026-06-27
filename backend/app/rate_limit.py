@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
-from app.settings.config import settings
+from app.settings import settings
 
 if TYPE_CHECKING:
     from fastapi import Request, Response

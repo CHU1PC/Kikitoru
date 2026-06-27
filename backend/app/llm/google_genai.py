@@ -1,7 +1,7 @@
 from langchain_core.rate_limiters import InMemoryRateLimiter
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from app.settings.config import settings
+from app.settings import settings
 
 MAX_RETRY = 3
 

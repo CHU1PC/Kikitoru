@@ -6,7 +6,7 @@ from app.rate_limit import limiter, rate_limit_exceeded_handler
 from app.router.audio import router as audio_router
 from app.router.oauth import oauth_router
 from app.router.summaries import router as summaries_router
-from app.settings.config import settings
+from app.settings import settings
 
 app = FastAPI(
     docs_url="/docs" if settings.ENABLE_DOCS else None,
