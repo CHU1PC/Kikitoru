@@ -52,10 +52,11 @@ async def transcribe_with_diarization(audio: IO[bytes], num_speakers: int | None
         obj = await asyncio.to_thread(
             s3.get_object, Bucket=settings.S3_BUCKET, Key=transcript_key
         )
-        transcript = Transcript.model_validate_json(obj["Body"].read())
+        body = await asyncio.to_thread(obj["Body"].read)
+        transcript = Transcript.model_validate_json(body)
         return _to_segments(transcript)
     finally:
-        _cleanup(job_name, audio_key, transcript_key)
+        await asyncio.to_thread(_cleanup, job_name, audio_key, transcript_key)
 
 
 async def _wait_for_completion(job_name: str) -> None:
