@@ -4,17 +4,17 @@
 */
 
 /**
- * @description Decision in a summary response.
+ * @description 要約レスポンス内の決定事項.
  * @type object
 */
-export type DecisionRead = {
+export type DecisionResponse = {
     /**
-     * @description Description of the decision
+     * @description 決定事項の説明
      * @type string
     */
     description: string;
     /**
-     * @description Person or group that made the decision
+     * @description 決定した人物またはグループ
     */
     decided_by?: (string | null);
 };

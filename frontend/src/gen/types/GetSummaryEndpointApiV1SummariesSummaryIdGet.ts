@@ -4,7 +4,7 @@
 */
 
 import type { HTTPValidationError } from './HTTPValidationError.ts'
-import type { SummaryRead } from './SummaryRead.ts'
+import type { SummaryResponse } from './SummaryResponse.ts'
 
 /**
  * @description
@@ -14,10 +14,10 @@ import type { SummaryRead } from './SummaryRead.ts'
 export type GetSummaryEndpointApiV1SummariesSummaryIdGetPathSummaryId = string;
 
 /**
- * @description Full summary including all related items.
+ * @description 関連項目をすべて含む完全な要約.
  * @type object
 */
-export type GetSummaryEndpointApiV1SummariesSummaryIdGetStatus200 = SummaryRead;
+export type GetSummaryEndpointApiV1SummariesSummaryIdGetStatus200 = SummaryResponse;
 
 /**
  * @type object

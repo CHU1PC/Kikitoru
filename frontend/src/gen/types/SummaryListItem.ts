@@ -4,31 +4,31 @@
 */
 
 /**
- * @description Summary metadata for list responses.
+ * @description 一覧レスポンス用の要約メタデータ.
  * @type object
 */
 export type SummaryListItem = {
     /**
-     * @description Unique identifier of the summary
+     * @description 要約の一意識別子
      *
      * Format: `uuid`
      * @type string
     */
     id: string;
     /**
-     * @description Name of the uploaded audio file
+     * @description アップロードされた音声ファイル名
      * @type string
     */
     filename: string;
     /**
-     * @description Timestamp when the summary was created
+     * @description 要約が作成された日時
      *
      * Format: `date-time`
      * @type string
     */
     created_at: string;
     /**
-     * @description Overall summary of the meeting
+     * @description 会議全体の要約
      * @type string
     */
     overall_summary: string;

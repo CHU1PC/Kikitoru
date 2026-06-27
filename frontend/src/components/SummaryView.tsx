@@ -1,7 +1,7 @@
-import type { SummaryRead } from "../gen/types"
+import type { SummaryResponse } from "../gen/types"
 
 type Props = {
-    summary: SummaryRead
+    summary: SummaryResponse
 }
 
 export function SummaryView({ summary }: Props) {

@@ -2,12 +2,12 @@ import { useState } from "react"
 import "./App.css"
 import { UploadForm } from "./components/UploadForm"
 import { SummaryView } from "./components/SummaryView"
-import type { SummaryRead } from "./gen/types"
+import type { SummaryResponse } from "./gen/types"
 
 
 
 function App() {
-  const [summary, setSummary] = useState<SummaryRead | null>(null)
+  const [summary, setSummary] = useState<SummaryResponse | null>(null)
   return (
     <main className="app">
       <h1>Kikitoru</h1>
