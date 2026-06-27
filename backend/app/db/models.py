@@ -1,8 +1,24 @@
 from datetime import UTC, date, datetime, timedelta
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 from sqlalchemy import Column, DateTime, UniqueConstraint
 from sqlmodel import Field, SQLModel
+
+
+class UserRole(StrEnum):
+    """ユーザーの役割."""
+
+    user = "user"
+    admin = "admin"
+
+
+class UserStatus(StrEnum):
+    """ユーザーの状態."""
+
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
 
 
 class User(SQLModel, table=True):
@@ -23,6 +39,8 @@ class User(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=lambda: datetime.now(UTC)),
         description="ユーザーが最後に更新された日時 (UTC)",
     )
+    role: UserRole = Field(default=UserRole.user, description="ユーザーの役割")
+    status: UserStatus = Field(default=UserStatus.pending, description="ユーザーの状態")
 
 
 class OAuthIdentity(SQLModel, table=True):
