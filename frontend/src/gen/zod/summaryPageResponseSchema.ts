@@ -7,8 +7,8 @@ import * as z from 'zod'
 import { summaryListItemSchema } from './summaryListItemSchema.ts'
 
 export const summaryPageResponseSchema = z.object({
-  items: z.array(summaryListItemSchema).describe('Summaries in the current page'),
-  total: z.int().describe('Total number of summaries in the database'),
-  limit: z.int().describe('Maximum number of items returned per page'),
-  offset: z.int().describe('Number of items skipped before this page'),
-}).describe('Paginated list of summaries.')
+  items: z.array(summaryListItemSchema).describe('現在のページの要約'),
+  total: z.int().describe('データベース内の要約の総数'),
+  limit: z.int().describe('1ページあたりに返す最大件数'),
+  offset: z.int().describe('このページの前にスキップした件数'),
+}).describe('要約のページネーション付きリスト.')

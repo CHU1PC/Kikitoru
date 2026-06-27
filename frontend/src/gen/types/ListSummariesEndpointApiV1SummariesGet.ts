@@ -7,7 +7,7 @@ import type { HTTPValidationError } from './HTTPValidationError.ts'
 import type { SummaryPageResponse } from './SummaryPageResponse.ts'
 
 /**
- * @description Page size
+ * @description 1ページあたりの件数
  * @minLength 1
  * @maxLength 100
  * @default 50
@@ -16,7 +16,7 @@ import type { SummaryPageResponse } from './SummaryPageResponse.ts'
 export type ListSummariesEndpointApiV1SummariesGetQueryLimit = number | undefined;
 
 /**
- * @description Number of items to skip
+ * @description スキップする件数
  * @minLength 0
  * @default 0
  * @type integer | undefined
@@ -24,7 +24,7 @@ export type ListSummariesEndpointApiV1SummariesGetQueryLimit = number | undefine
 export type ListSummariesEndpointApiV1SummariesGetQueryOffset = number | undefined;
 
 /**
- * @description Paginated list of summaries.
+ * @description 要約のページネーション付きリスト.
  * @type object
 */
 export type ListSummariesEndpointApiV1SummariesGetStatus200 = SummaryPageResponse;

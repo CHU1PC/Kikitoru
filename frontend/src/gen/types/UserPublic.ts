@@ -3,26 +3,39 @@
 * Do not edit manually.
 */
 
+import type { UserRoleKey } from './UserRole.ts'
+import type { UserStatusKey } from './UserStatus.ts'
+
 /**
  * @description ユーザー本人に返してよい公開プロフィール (ORM の User 行から生成する).
  * @type object
 */
 export type UserPublic = {
     /**
-     * @description Unique identifier of the user
+     * @description ユーザーの一意識別子
      *
      * Format: `uuid`
      * @type string
     */
     id: string;
     /**
-     * @description Email address of the user
+     * @description ユーザーのメールアドレス
     */
     email?: (string | null);
     /**
-     * @description Full name of the user
+     * @description ユーザーのフルネーム
      * @default ''
      * @type string | undefined
     */
     name?: string;
+    /**
+     * @description ユーザーの役割
+     * @type string
+    */
+    role: UserRoleKey;
+    /**
+     * @description ユーザーの状態
+     * @type string
+    */
+    status: UserStatusKey;
 };

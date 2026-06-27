@@ -1,6 +1,6 @@
 import { ApiErrorBody } from "./schemas"
-import { summaryReadSchema, summaryPageResponseSchema } from "../gen/zod"
-import type { SummaryRead, SummaryPageResponse } from "../gen/types"
+import { summaryResponseSchema, summaryPageResponseSchema } from "../gen/zod"
+import type { SummaryResponse, SummaryPageResponse } from "../gen/types"
 
 const API_BASE = "http://localhost:8000"
 
@@ -31,7 +31,7 @@ async function throwIfNotOk(res: Response): Promise<void> {
 }
 
 
-export async function getSummary(id: string): Promise<SummaryRead> {
+export async function getSummary(id: string): Promise<SummaryResponse> {
     const res = await fetch(
         `${API_BASE}/api/v1/summaries/${id}`, 
         {credentials: "include",}
@@ -39,7 +39,7 @@ export async function getSummary(id: string): Promise<SummaryRead> {
 
     await throwIfNotOk(res)
     const json = await res.json()
-    return summaryReadSchema.parse(json)
+    return summaryResponseSchema.parse(json)
 }
 
 export async function getSummaries(limit: number = 50, offset: number = 0): Promise<SummaryPageResponse> {
@@ -54,7 +54,7 @@ export async function getSummaries(limit: number = 50, offset: number = 0): Prom
 }
 
 
-export async function uploadAudio(input: UploadAudioInput): Promise<SummaryRead> {
+export async function uploadAudio(input: UploadAudioInput): Promise<SummaryResponse> {
     const formData = new FormData()
     formData.append("file", input.file)
     if (input.recorded_at) {
@@ -75,5 +75,5 @@ export async function uploadAudio(input: UploadAudioInput): Promise<SummaryRead>
 
     await throwIfNotOk(res)
     const json = await res.json()
-    return summaryReadSchema.parse(json)
+    return summaryResponseSchema.parse(json)
 }
