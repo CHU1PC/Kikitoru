@@ -7,7 +7,7 @@ from sqlmodel import col, select
 
 from app.db.models import Summary
 from app.db.summaries import build_summary_read
-from app.dependencies import CurrentUser, DbSessionDep
+from app.dependencies import ApprovedUser, DbSessionDep
 from app.schema.summaries import (
     SummaryListItem,
     SummaryPageResponse,
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/summaries", tags=["summaries"])
 @router.get("")
 async def list_summaries_endpoint(
     db_session: DbSessionDep,
-    user: CurrentUser,
+    user: ApprovedUser,
     limit: Annotated[int, Query(ge=1, le=100, description="1ページあたりの件数")] = 50,
     offset: Annotated[int, Query(ge=0, description="スキップする件数")] = 0,
 ) -> SummaryPageResponse:
@@ -61,7 +61,7 @@ async def list_summaries_endpoint(
 
 
 @router.get("/{summary_id}")
-async def get_summary_endpoint(summary_id: UUID, db_session: DbSessionDep, user: CurrentUser) -> SummaryResponse:
+async def get_summary_endpoint(summary_id: UUID, db_session: DbSessionDep, user: ApprovedUser) -> SummaryResponse:
     """一つの要約の詳細を返す. 存在しない要約や他のユーザーの要約は 404 を返す.
 
     Args:
