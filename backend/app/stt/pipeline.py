@@ -59,17 +59,20 @@ async def transcribe_with_diarization(audio: IO[bytes], num_speakers: int | None
         await asyncio.to_thread(_cleanup, job_name, audio_key, transcript_key)
 
 
-async def _wait_for_completion(job_name: str) -> None:
+async def _wait_for_completion(job_name: str, *, max_attempts: int = 360, poll_interval: int = 5) -> None:
     """AWS Transcribe のジョブが完了するまで待機する.
 
     Args:
         job_name (str): AWS Transcribe のジョブ名
+        max_attempts (int, optional): 最大ポーリング回数. Defaults to 360.
+        poll_interval (int, optional): ポーリング間隔(秒). Defaults to 5.
 
     Raises:
         RuntimeError: ジョブが失敗した場合に送出される
+        TimeoutError: ジョブが完了する前に最大ポーリング回数に達した場合に送出される
     """
-    while True:
-        await asyncio.sleep(5)  # Wait for 5 seconds before checking again
+    for _ in range(max_attempts):
+        await asyncio.sleep(poll_interval)  # Wait for the specified interval before checking again
         response = await asyncio.to_thread(transcribe.get_transcription_job, TranscriptionJobName=job_name)
         status = response["TranscriptionJob"].get("TranscriptionJobStatus")
         if status == "COMPLETED":
@@ -78,6 +81,8 @@ async def _wait_for_completion(job_name: str) -> None:
             reason = response["TranscriptionJob"].get("FailureReason", "Unknown reason")
             msg = f"Transcription job {job_name} failed: {reason}"
             raise RuntimeError(msg)
+    msg = f"Transcription job {job_name} did not complete within {max_attempts * poll_interval} seconds."
+    raise TimeoutError(msg)
 
 
 def _cleanup(job_name: str, audio_key: str, transcript_key: str) -> None:

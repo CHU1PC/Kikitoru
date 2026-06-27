@@ -1,5 +1,11 @@
+import asyncio
+from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from app.stt.pipeline import (
     _to_segments,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
+    _wait_for_completion,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
 )
 from app.stt.schema import Transcript
 from app.stt.types import Segment
@@ -127,3 +133,54 @@ def test_to_segments_without_speaker_labels_falls_back_to_single_speaker() -> No
 def test_to_segments_empty_items_returns_empty() -> None:
     """もし items が空なら空リスト."""
     assert _to_segments(_make_transcript(items=[], speakers=None)) == []
+
+
+def _job_response(status: str, reason: str | None = None) -> dict[str, object]:
+    """get_transcription_job のレスポンス相当の dict を組み立てる.
+
+    Args:
+        status (str): TranscriptionJobStatus の値 (COMPLETED / FAILED / IN_PROGRESS 等)
+        reason (str | None): FAILED 時の FailureReason。None なら含めない。
+
+    Returns:
+        dict[str, object]: get_transcription_job のレスポンス相当の dict
+    """
+    job: dict[str, object] = {"TranscriptionJobStatus": status}
+    if reason is not None:
+        job["FailureReason"] = reason
+    return {"TranscriptionJob": job}
+
+
+def test_wait_for_completion_returns_when_completed() -> None:
+    """ジョブが COMPLETED になったら例外なく終了する."""
+    with (
+        patch("app.stt.pipeline.asyncio.sleep", new=AsyncMock()),
+        patch("app.stt.pipeline.transcribe") as mock_transcribe,
+    ):
+        mock_transcribe.get_transcription_job.return_value = _job_response("COMPLETED")
+        asyncio.run(_wait_for_completion("job-1"))
+        mock_transcribe.get_transcription_job.assert_called_once_with(TranscriptionJobName="job-1")
+
+
+def test_wait_for_completion_raises_on_failed() -> None:
+    """ジョブが FAILED になったら理由付きの RuntimeError を送出する."""
+    with (
+        patch("app.stt.pipeline.asyncio.sleep", new=AsyncMock()),
+        patch("app.stt.pipeline.transcribe") as mock_transcribe,
+    ):
+        mock_transcribe.get_transcription_job.return_value = _job_response("FAILED", reason="bad audio")
+        with pytest.raises(RuntimeError, match="bad audio"):
+            asyncio.run(_wait_for_completion("job-1"))
+
+
+def test_wait_for_completion_times_out_after_max_attempts() -> None:
+    """ずっと IN_PROGRESS なら max_attempts 回で TimeoutError を送出する."""
+    max_attempts = 3
+    with (
+        patch("app.stt.pipeline.asyncio.sleep", new=AsyncMock()),
+        patch("app.stt.pipeline.transcribe") as mock_transcribe,
+    ):
+        mock_transcribe.get_transcription_job.return_value = _job_response("IN_PROGRESS")
+        with pytest.raises(TimeoutError, match="did not complete"):
+            asyncio.run(_wait_for_completion("job-1", max_attempts=max_attempts))
+        assert mock_transcribe.get_transcription_job.call_count == max_attempts
