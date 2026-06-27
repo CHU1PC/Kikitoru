@@ -34,9 +34,7 @@ db = [
     "sqlmodel>=0.0.22",
     "asyncpg>=0.31.0",
 ]
-# CI のユニットテスト用: ML 依存 (torch/faster-whisper/pyannote) を除いた最小セット。
-# tests/unit/conftest.py が ML ライブラリを mock するため実体は不要。
-# numpy は本体では torch 経由の推移的依存なので、ここでは明示する。
+
 test = [
     "pytest>=8.3",
     "fastapi[standard]>=0.100.0",
@@ -48,14 +46,12 @@ test = [
     "langchain-google-genai>=4.2.2",
     "loguru>=0.7.3",
     "python-magic>=0.4",
-    "numpy>=1.26",
     "slowapi>=0.1.10",
+    "boto3>=1.43.36",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-# Default runs only the fast, fully-mocked unit tests. The integration suite
-# loads real models (GPU + HF_TOKEN) and is opt-in: `uv run pytest tests/integration`.
 testpaths = ["tests/unit"]
 
 [tool.pyrefly]
