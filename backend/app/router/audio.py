@@ -78,6 +78,7 @@ async def summarize_audio(
     Raises:
         HTTPException: 413 - アップロードされたファイルが 200 MB を超える場合
         HTTPException: 415 - アップロードされたファイルの MIME タイプが ALLOWED_MIME_TYPES に含まれない場合
+        HTTPException: 422 - 音声ファイルからセグメントが生成されなかった場合
     """
     if file.size is not None and file.size > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="File exceeds the 200 MB limit")
@@ -95,6 +96,8 @@ async def summarize_audio(
         return await build_summary_read(db_session, existing)
 
     segments = await _transcribe(spooled, num_speakers)
+    if not segments:
+        raise HTTPException(status_code=422, detail="No segments were generated from the audio file")
 
     reference_date = recorded_at or datetime.now(_MEETING_TZ).date()
     async with llm_semaphore:
