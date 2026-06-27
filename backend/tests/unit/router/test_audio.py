@@ -29,6 +29,7 @@ from app.db.summaries import (
 )
 from app.dependencies import get_current_user
 from app.llm.summarize.schema import ActionItem, Decision, Summary, Topic
+from app.stt.types import Segment
 from main import app
 
 if TYPE_CHECKING:
@@ -40,6 +41,7 @@ _USER = User(id=uuid4(), email="owner@example.com", name="Owner")
 _VALID_CONTENT_TYPE = "audio/mpeg"
 _DUMMY_AUDIO = b"dummy audio content"
 _EMPTY_SUMMARY = Summary(overall_summary="test", topics=[], decisions=[], action_items=[])
+_DUMMY_SEGMENTS = [Segment(start=0.0, end=1.0, speaker_label="Speaker 1", text="hello")]
 
 
 def _make_session_mock(existing: object = None) -> AsyncMock:
@@ -76,7 +78,7 @@ def audio_pipeline_mocks() -> Generator[SimpleNamespace]:
     """STT/LLM パイプラインを一括モックする pytest フィクスチャ.
 
     transcribe_with_diarization / summarize_chain / _magic_mime を patch し、既定で MIME は
-    有効な音声、transcribe は空セグメント、要約は空の Summary を返す. 各テストは返り値の
+    有効な音声、transcribe は1セグメント、要約は空の Summary を返す. 各テストは返り値の
     namespace 経由で必要なモック (transcribe / chain / magic) だけ上書きする.
 
     Yields:
@@ -87,7 +89,7 @@ def audio_pipeline_mocks() -> Generator[SimpleNamespace]:
         patch("app.router.audio.summarize_chain") as chain,
         patch("app.audio.intake._magic_mime") as magic,
     ):
-        transcribe.return_value = []
+        transcribe.return_value = _DUMMY_SEGMENTS
         magic.from_buffer.return_value = _VALID_CONTENT_TYPE
         chain.ainvoke = AsyncMock(return_value=_EMPTY_SUMMARY)
         yield SimpleNamespace(transcribe=transcribe, chain=chain, magic=magic)
@@ -189,6 +191,19 @@ def test_summarize_audio_idempotent_skips_pipeline(audio_pipeline_mocks: SimpleN
     assert body["overall_summary"] == "previous run"
     # 既存の要約がある場合、STT/LLMパイプラインは実行されないことを確認するため、モックの呼び出し回数を検証する.
     audio_pipeline_mocks.transcribe.assert_not_called()
+    audio_pipeline_mocks.chain.ainvoke.assert_not_called()
+
+
+def test_summarize_audio_rejects_empty_transcript(audio_pipeline_mocks: SimpleNamespace) -> None:
+    """文字起こしが空 (発話なし) なら 422 を返し、LLM 要約・保存に進まないことを確認するテスト."""
+    audio_pipeline_mocks.transcribe.return_value = []
+
+    response = client.post(
+        "/api/v1/audio/summarize",
+        files={"file": ("silent.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
+    )
+
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     audio_pipeline_mocks.chain.ainvoke.assert_not_called()
 
 
