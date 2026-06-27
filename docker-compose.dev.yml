@@ -49,7 +49,7 @@ services:
       ENABLE_DOCS: ${ENABLE_DOCS:-true}
     ports:
       - "8000:8000"
-    command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uv run fastapi dev main.py --host 0.0.0.0 --port 8000
     develop:
       watch:
         - action: sync
