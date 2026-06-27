@@ -5,70 +5,50 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class Topic(BaseModel):
-    """Represents a topic extracted from the transcript.
-
-    Fields:
-        title (str): The title of the topic.
-        summary (str): A brief summary of the topic.
-        segment_ids (list[int]): List of segment IDs that belong to this topic.
-    """
-    title: str = Field(..., description="The title of the topic", max_length=50)
+    """文字起こしから抽出された議題を表す."""
+    title: str = Field(..., description="議題のタイトル", max_length=50)
     summary: str = Field(
         ...,
-        description="Detailed explanation of the topic including specific statements, context, and nuance",
+        description="具体的な発言・文脈・ニュアンスを含む、議題の詳細な説明",
         max_length=2000,
     )
-    segment_ids: list[int] = Field(..., description="List of segment IDs that belong to this topic")
+    segment_ids: list[int] = Field(..., description="この議題に属するセグメント ID のリスト")
 
 
 class Decision(BaseModel):
-    """Things that were decided during the meeting.
-
-    Fields:
-        description (str): A description of the decision.
-        decided_by (str | None): The person or group that made the decision. Null if unknown.
-        segment_ids (list[int]): List of segment IDs that relate to this decision.
-    """
-    description: str = Field(..., description="A description of the decision", max_length=1000)
+    """会議中に決定された事項."""
+    description: str = Field(..., description="決定事項の説明", max_length=1000)
     decided_by: str | None = Field(
-        None, description="The person or group that made the decision", max_length=100,
+        None, description="決定した人物またはグループ", max_length=100,
     )
-    segment_ids: list[int] = Field(..., description="List of segment IDs that relate to this decision")
+    segment_ids: list[int] = Field(..., description="この決定に関連するセグメント ID のリスト")
 
 
 class ActionItem(BaseModel):
-    """Action items that were assigned during the meeting.
-
-    Fields:
-        description (str): A description of the action item.
-        assignee (str | None): The person or group that is responsible for the action item. Null if unknown.
-        due_date (date | None): The due date for the action item in ISO 8601 format (YYYY-MM-DD). Null if unknown.
-        segment_ids (list[int]): List of segment IDs that relate to this action item.
-    """
-    description: str = Field(..., description="A description of the action item", max_length=1000)
+    """会議中に割り当てられたアクションアイテム."""
+    description: str = Field(..., description="アクションアイテムの説明", max_length=1000)
     assignee: str | None = Field(
         None,
-        description="The person or group that is responsible for the action item",
+        description="アクションアイテムを担当する人物またはグループ",
         max_length=100,
     )
-    due_date: date | None = Field(None, description="The due date for the action item in ISO 8601 format (YYYY-MM-DD)")
-    segment_ids: list[int] = Field(..., description="List of segment IDs that relate to this action item")
+    due_date: date | None = Field(None, description="ISO 8601 形式 (YYYY-MM-DD) のアクションアイテムの期限")
+    segment_ids: list[int] = Field(..., description="このアクションアイテムに関連するセグメント ID のリスト")
 
     @field_validator("due_date", mode="before")
     @classmethod
     def _parse_due_date(cls, value: object) -> date | None:
-        """Fall back to None when the LLM returns a non-ISO date string.
+        """LLM が ISO でない日付文字列を返した場合に None にフォールバックする.
 
-        Without this, a single malformed date in one action item would raise
-        ValidationError and discard the entire summary (overall_summary,
-        topics, decisions, and all other action items). Parse failures are
-        logged so the silent drop is observable rather than invisible.
+        これが無いと、1つのアクションアイテムの不正な日付1個で ValidationError が発生し、
+        要約全体 (overall_summary, topics, decisions, 他の全アクションアイテム) が破棄される.
+        パース失敗はログに残し、サイレントな欠落を可視化する.
 
         Args:
-            value (object): Raw value provided by the LLM (date, datetime, str, or None).
+            value (object): LLM から渡された生の値 (date, datetime, str, None のいずれか).
 
         Returns:
-            date | None: Parsed date if valid ISO 8601, otherwise None.
+            date | None: 有効な ISO 8601 ならパースした日付、そうでなければ None.
         """
         if value is None:
             return value
@@ -89,21 +69,14 @@ class ActionItem(BaseModel):
 
 
 class Summary(BaseModel):
-    """A summary of the meeting.
-
-    Fields:
-        overall_summary (str): A brief summary of the meeting.
-        topics (list[Topic]): A list of topics discussed during the meeting.
-        decisions (list[Decision]): A list of decisions made during the meeting.
-        action_items (list[ActionItem]): A list of action items assigned during the meeting.
-    """
+    """会議の要約."""
     overall_summary: str = Field(
         ...,
-        description="A detailed description of the meeting covering the full flow and content",
+        description="会議全体の流れと内容を網羅した詳細な説明",
         max_length=3000,
     )
-    topics: list[Topic] = Field(..., description="A list of topics discussed during the meeting")
-    decisions: list[Decision] = Field(..., description="A list of decisions made during the meeting")
+    topics: list[Topic] = Field(..., description="会議で議論された議題のリスト")
+    decisions: list[Decision] = Field(..., description="会議で決定された事項のリスト")
     action_items: list[ActionItem] = Field(
-        ..., description="A list of action items assigned during the meeting",
+        ..., description="会議で割り当てられたアクションアイテムのリスト",
     )
