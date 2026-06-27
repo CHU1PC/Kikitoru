@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from app.db.models import UserSession
-from app.settings.config import settings
+from app.settings import settings
 
 if TYPE_CHECKING:
     from uuid import UUID

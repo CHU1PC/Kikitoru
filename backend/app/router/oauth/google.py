@@ -11,7 +11,7 @@ from app.auth.identities import upsert_user_from_identity
 from app.auth.user_sessions import SESSION_COOKIE, SESSION_MAX_AGE, create_user_session
 from app.dependencies import DbSessionDep
 from app.rate_limit import OAUTH_RATE_LIMIT, limiter
-from app.settings.config import settings
+from app.settings import settings
 
 router = APIRouter(prefix="/google")
 
