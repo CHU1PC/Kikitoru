@@ -80,6 +80,7 @@ async def _wait_for_completion(job_name: str, *, max_attempts: int = 360, poll_i
         if status == "FAILED":
             reason = response["TranscriptionJob"].get("FailureReason", "Unknown reason")
             msg = f"Transcription job {job_name} failed: {reason}"
+            logger.error(msg)
             raise RuntimeError(msg)
     msg = f"Transcription job {job_name} did not complete within {max_attempts * poll_interval} seconds."
     raise TimeoutError(msg)
