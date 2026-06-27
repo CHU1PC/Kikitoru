@@ -25,7 +25,7 @@ def _get_database_url() -> str:
     """Read DATABASE_URL directly from the environment.
 
     Reading from os.environ instead of app.settings.config keeps migrations
-    independent of LLM/STT env vars (HF_TOKEN, GOOGLE_API_KEY, etc.) so they
+    independent of LLM/STT env vars (GOOGLE_API_KEY, S3_BUCKET, etc.) so they
     can run in DB-only CI jobs. Also avoids passing the URL through
     configparser, which would interpolate '%' characters.
 

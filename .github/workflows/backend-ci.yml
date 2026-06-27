@@ -4,7 +4,6 @@ name: Backend CI
 #   lint                 — ruff (dev グループのみの軽量インストール)
 #   unit-tests           — tests/unit
 #   integration-db-tests — tests/integration/db (Postgres service container を使い実 DB で検証)
-# STT 結合テスト (tests/integration/stt) は GPU + HF_TOKEN が必要なため CI では実行しない (ローカルで opt-in)。
 
 on:
 
@@ -90,7 +89,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "backend/uv.lock"
 
-      - name: Install test + db dependencies (no ML deps)
+      - name: Install test + db dependencies
         working-directory: backend
         run: uv sync --frozen --only-group test --only-group db
 

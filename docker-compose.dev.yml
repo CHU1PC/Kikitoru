@@ -27,11 +27,14 @@ services:
         condition: service_healthy
     environment:
       # glibc malloc arena 数を制限して RSS 単調増加を抑える
-      # (Python + asyncio + ML 系で発生する典型問題への対策)
       MALLOC_ARENA_MAX: "2"
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-dev_password}@db:5432/kikitoru
       DATABASE_SSL_MODE: ${DATABASE_SSL_MODE:-disable}
-      HF_TOKEN: ${HF_TOKEN}
+      # AWS Transcribe / S3 (STT)。dev は IAM ロールが無いので開発者のローカルキーを使用する
+      AWS_REGION: ${AWS_REGION:-ap-northeast-1}
+      S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID in .env}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY in .env}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       # OAuth (KKT/9 認証実装で使用)
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
@@ -64,13 +67,6 @@ services:
           path: ./backend/uv.lock
         - action: rebuild
           path: ./backend/Dockerfile
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
 
 volumes:
   postgres_dev_data:
