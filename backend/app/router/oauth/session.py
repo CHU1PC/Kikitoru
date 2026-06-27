@@ -7,7 +7,7 @@ from app.auth.user_sessions import SESSION_COOKIE, hash_user_session_token
 from app.db.models import UserSession
 from app.dependencies import CurrentUser, DbSessionDep
 from app.schema.users import UserPublic
-from app.settings.config import settings
+from app.settings import settings
 
 router = APIRouter()
 
