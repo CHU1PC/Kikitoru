@@ -22,7 +22,7 @@ from app.audio.intake import (
 )
 from app.db.engine import get_db_session
 from app.db.models import Summary as DBSummary
-from app.db.models import User
+from app.db.models import User, UserStatus
 from app.db.summaries import (
     _add_children,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
     create_summary,
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
 client = TestClient(app)
 
-_USER = User(id=uuid4(), email="owner@example.com", name="Owner")
+_USER = User(id=uuid4(), email="owner@example.com", name="Owner", status=UserStatus.approved)
 _VALID_CONTENT_TYPE = "audio/mpeg"
 _DUMMY_AUDIO = b"dummy audio content"
 _EMPTY_SUMMARY = Summary(overall_summary="test", topics=[], decisions=[], action_items=[])
@@ -205,6 +205,19 @@ def test_summarize_audio_rejects_empty_transcript(audio_pipeline_mocks: SimpleNa
 
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
     audio_pipeline_mocks.chain.ainvoke.assert_not_called()
+
+
+def test_summarize_audio_rejects_unapproved_user() -> None:
+    """承認されていない (pending) ユーザーは ApprovedUser ゲートで 403 になる."""
+    pending = User(id=uuid4(), email="pending@example.com", name="Pending", status=UserStatus.pending)
+    app.dependency_overrides[get_current_user] = lambda: pending
+
+    response = client.post(
+        "/api/v1/audio/summarize",
+        files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
+    )
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
 
 
 @pytest.mark.parametrize(

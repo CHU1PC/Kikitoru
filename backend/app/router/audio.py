@@ -10,7 +10,7 @@ from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 from app.audio.intake import ALLOWED_MIME_TYPES, MAX_UPLOAD_BYTES, sanitize_filename, spool_upload
 from app.db.summaries import build_summary_read, create_summary, find_by_content_hash
 from app.dependencies import (
-    CurrentUser,  # noqa: TC001 — FastAPI resolves the dependency annotation at runtime
+    ApprovedUser,  # noqa: TC001 — FastAPI resolves the dependency annotation at runtime
     DbSessionDep,  # noqa: TC001 — FastAPI resolves the dependency annotation at runtime
 )
 from app.llm.summarize import summarize_chain
@@ -54,7 +54,7 @@ async def summarize_audio(
     request: Request,  # noqa: ARG001 — slowapi のレート制限がシグネチャから参照する
     file: UploadFile,
     db_session: DbSessionDep,
-    user: CurrentUser,
+    user: ApprovedUser,
     recorded_at: Annotated[date | None, Form()] = None,
     num_speakers: Annotated[int | None, Form(ge=1, le=10)] = None,
 ) -> SummaryResponse:
