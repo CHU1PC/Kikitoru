@@ -16,14 +16,13 @@ if TYPE_CHECKING:
 
 
 def _format_input(inputs: tuple[list[Segment], date]) -> dict[str, str]:
-    """Convert (segments, recorded_at) into the dict shape expected by the prompt.
+    """(segments, recorded_at) を prompt が期待する dict の形に変換する.
 
     Args:
-        inputs (tuple[list[Segment], date]): Segments and reference date for resolving
-            relative date expressions in the audio.
+        inputs (tuple[list[Segment], date]): セグメントと、音声内の相対日付表現を解決するための基準日.
 
     Returns:
-        dict[str, str]: Dictionary with "segments_json" and "recorded_at" keys.
+        dict[str, str]: "segments_json" と "recorded_at" のキーを持つ辞書.
     """
     segments, recorded_at = inputs
     payload: list[dict[str, int | str]] = [

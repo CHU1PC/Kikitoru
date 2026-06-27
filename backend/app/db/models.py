@@ -6,22 +6,22 @@ from sqlmodel import Field, SQLModel
 
 
 class User(SQLModel, table=True):
-    """A User of the system."""
+    """システムのユーザー."""
 
     __tablename__ = "users"  # pyright: ignore[reportAssignmentType]
 
-    id: UUID = Field(default_factory=uuid4, primary_key=True, description="Unique identifier of the user")
-    email: str | None = Field(default=None, max_length=320, description="Email address of the user")
-    name: str = Field(default="", max_length=255, description="Full name of the user")
+    id: UUID = Field(default_factory=uuid4, primary_key=True, description="ユーザーの一意識別子")
+    email: str | None = Field(default=None, max_length=320, description="ユーザーのメールアドレス")
+    name: str = Field(default="", max_length=255, description="ユーザーのフルネーム")
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False),
-        description="Timestamp when the user was created (UTC)",
+        description="ユーザーが作成された日時 (UTC)",
     )
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=lambda: datetime.now(UTC)),
-        description="Timestamp when the user was last updated (UTC)",
+        description="ユーザーが最後に更新された日時 (UTC)",
     )
 
 
@@ -33,28 +33,28 @@ class OAuthIdentity(SQLModel, table=True):
         UniqueConstraint("provider", "subject", name="uq_provider_subject"),
     )
 
-    id: UUID = Field(default_factory=uuid4, primary_key=True, description="Unique identifier of the OAuth identity")
+    id: UUID = Field(default_factory=uuid4, primary_key=True, description="OAuth identity の一意識別子")
     user_id: UUID = Field(
         foreign_key="users.id",
         ondelete="CASCADE",
         index=True,
         description="このOAuthIdentityが属するユーザーのID",
     )
-    provider: str = Field(..., max_length=50, description="OAuth provider name (e.g., 'google', 'github')")
+    provider: str = Field(..., max_length=50, description="OAuth プロバイダ名 (例: 'google', 'github')")
     subject: str = Field(
         ...,
         max_length=255,
-        description="The unique identifier for the user within the provider's system"
+        description="プロバイダのシステム内でのユーザーの一意識別子"
     )
     email: str | None = Field(
         default=None,
         max_length=320,
-        description="Email address from the OAuth provider, if available"
+        description="OAuth プロバイダから取得したメールアドレス (あれば)"
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False),
-        description="Timestamp when the OAuth identity was created (UTC)",
+        description="OAuth identity が作成された日時 (UTC)",
     )
 
 
@@ -74,27 +74,27 @@ class UserSession(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False),
-        description="このセッションが作成されたTimestamp (UTC)",
+        description="このセッションが作成された日時 (UTC)",
     )
     expires_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC) + timedelta(days=1),
         sa_column=Column(DateTime(timezone=True), nullable=False, index=True),
-        description="このセッションが期限切れになるTimestamp (UTC)",
+        description="このセッションが期限切れになる日時 (UTC)",
     )
     last_seen_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=lambda: datetime.now(UTC)),
-        description="このセッションが最後に使用されたTimestamp (UTC)",
+        description="このセッションが最後に使用された日時 (UTC)",
     )
     revoked_at: datetime | None = Field(
         default=None,
         sa_column=Column(DateTime(timezone=True), nullable=True),
-        description="このセッションが削除されたTimestamp (UTC); null if active",
+        description="このセッションが削除された日時 (UTC). アクティブなら null",
     )
     user_agent: str | None = Field(
         default=None,
         max_length=512,
-        description="クライアントのブラウザから取得したUser agent文字列"
+        description="クライアントのブラウザから取得したユーザーエージェント文字列"
     )
     ip_address: str | None = Field(
         default=None,
@@ -104,7 +104,7 @@ class UserSession(SQLModel, table=True):
 
 
 class Summary(SQLModel, table=True):
-    """Persisted meeting summary."""
+    """永続化された会議の要約."""
 
     __tablename__ = "summaries"  # pyright: ignore[reportAssignmentType]
     __table_args__ = (
@@ -114,76 +114,76 @@ class Summary(SQLModel, table=True):
     id: UUID = Field(
         default_factory=uuid4,
         primary_key=True,
-        description="Unique identifier of the summary",
+        description="要約の一意識別子",
     )
     user_id: UUID = Field(
         foreign_key="users.id",
         ondelete="CASCADE",
         index=True,
-        description="UserのID",
+        description="ユーザーのID",
     )
-    filename: str = Field(..., max_length=255, description="Name of the uploaded audio file")
+    filename: str = Field(..., max_length=255, description="アップロードされた音声ファイル名")
     content_hash: str | None = Field(
         default=None,
         max_length=64,
         index=True,
         description=(
-            "SHA-256 hex digest of the audio combined with num_speakers; "
-            "makes re-uploads idempotent per speaker-count setting"
+            "音声と num_speakers を組み合わせた SHA-256 hex ダイジェスト. "
+            "話者数の設定ごとに再アップロードを冪等にする"
         ),
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False),
-        description="Timestamp when the summary was created (UTC)",
+        description="要約が作成された日時 (UTC)",
     )
-    overall_summary: str = Field(..., description="Overall summary of the meeting")
+    overall_summary: str = Field(..., description="会議全体の要約")
 
 
 class Topic(SQLModel, table=True):
-    """A topic discussed in the meeting."""
+    """会議で議論された議題."""
 
     __tablename__ = "topics"  # pyright: ignore[reportAssignmentType]
 
-    id: int | None = Field(default=None, primary_key=True, description="Primary key")
+    id: int | None = Field(default=None, primary_key=True, description="主キー")
     summary_id: UUID = Field(
         foreign_key="summaries.id",
         ondelete="CASCADE",
         index=True,
-        description="FK to the parent summary",
+        description="親 summary への外部キー",
     )
-    title: str = Field(..., description="Title of the topic")
-    summary: str = Field(..., description="Detailed summary of the topic")
+    title: str = Field(..., description="議題のタイトル")
+    summary: str = Field(..., description="議題の詳細な要約")
 
 
 class Decision(SQLModel, table=True):
-    """A decision made during the meeting."""
+    """会議中に決定された事項."""
 
     __tablename__ = "decisions"  # pyright: ignore[reportAssignmentType]
 
-    id: int | None = Field(default=None, primary_key=True, description="Primary key")
+    id: int | None = Field(default=None, primary_key=True, description="主キー")
     summary_id: UUID = Field(
         foreign_key="summaries.id",
         ondelete="CASCADE",
         index=True,
-        description="FK to the parent summary",
+        description="親 summary への外部キー",
     )
-    description: str = Field(..., description="Description of the decision")
-    decided_by: str | None = Field(default=None, description="Person or group that made the decision")
+    description: str = Field(..., description="決定事項の説明")
+    decided_by: str | None = Field(default=None, description="決定した人物またはグループ")
 
 
 class ActionItem(SQLModel, table=True):
-    """An action item assigned during the meeting."""
+    """会議中に割り当てられたアクションアイテム."""
 
     __tablename__ = "action_items"  # pyright: ignore[reportAssignmentType]
 
-    id: int | None = Field(default=None, primary_key=True, description="Primary key")
+    id: int | None = Field(default=None, primary_key=True, description="主キー")
     summary_id: UUID = Field(
         foreign_key="summaries.id",
         ondelete="CASCADE",
         index=True,
-        description="FK to the parent summary",
+        description="親 summary への外部キー",
     )
-    description: str = Field(..., description="Description of the action item")
-    assignee: str | None = Field(default=None, description="Person responsible for the action item")
-    due_date: date | None = Field(default=None, description="Due date for the action item")
+    description: str = Field(..., description="アクションアイテムの説明")
+    assignee: str | None = Field(default=None, description="アクションアイテムの担当者")
+    due_date: date | None = Field(default=None, description="アクションアイテムの期限")
