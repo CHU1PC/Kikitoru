@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.db.engine import get_db_session
 from app.db.models import Summary as DBSummary
-from app.db.models import User
+from app.db.models import User, UserStatus
 from app.dependencies import get_current_user
 from main import app
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 client = TestClient(app)
 
-_USER = User(id=uuid4(), email="owner@example.com", name="Owner")
+_USER = User(id=uuid4(), email="owner@example.com", name="Owner", status=UserStatus.approved)
 _PAGE_AND_COUNT_QUERIES = 2
 
 
