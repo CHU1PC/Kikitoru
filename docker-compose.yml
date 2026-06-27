@@ -21,10 +21,11 @@ services:
         condition: service_healthy
     environment:
       # glibc malloc arena 数を制限して RSS 単調増加を抑える
-      # (Python + asyncio + ML 系で発生する典型問題への対策)
       MALLOC_ARENA_MAX: "2"
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/kikitoru
-      HF_TOKEN: ${HF_TOKEN}
+      # AWS Transcribe / S3 (STT)
+      AWS_REGION: ${AWS_REGION:-ap-northeast-1}
+      S3_BUCKET: ${S3_BUCKET}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
@@ -38,13 +39,6 @@ services:
       ENABLE_DOCS: ${ENABLE_DOCS:-false}
     ports:
       - "8000:8000"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
 
 volumes:
   postgres_data:
