@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
-from app.db.models import Summary, User
+from app.db.models import Summary, User, UserStatus
 from app.dependencies import get_current_user
 from main import app
 
@@ -18,7 +18,7 @@ client = TestClient(app)
 
 def test_duplicate_user_content_hash_is_rejected(seed: Callable[..., None]) -> None:
     """同一ユーザー・同一 content_hash の summary 重複が複合 unique で拒否されることを確認するテスト."""
-    user = User(email="owner@example.com", name="Owner")
+    user = User(email="owner@example.com", name="Owner", status=UserStatus.approved)
     seed(user, Summary(user_id=user.id, filename="a.mp3", content_hash="dup", overall_summary="o1"))
 
     with pytest.raises(IntegrityError):
@@ -27,8 +27,8 @@ def test_duplicate_user_content_hash_is_rejected(seed: Callable[..., None]) -> N
 
 def test_same_content_hash_across_users_is_allowed(seed: Callable[..., None]) -> None:
     """別ユーザーなら同じ content_hash でも各自の summary として保存できることを確認するテスト."""
-    user_a = User(email="a@example.com", name="A")
-    user_b = User(email="b@example.com", name="B")
+    user_a = User(email="a@example.com", name="A", status=UserStatus.approved)
+    user_b = User(email="b@example.com", name="B", status=UserStatus.approved)
     seed(
         user_a,
         user_b,
