@@ -2,39 +2,13 @@ from dataclasses import dataclass
 
 
 @dataclass
-class WhisperSegment:
-    """A segment of transcribed audio from the Whisper model.
-
-    start: (float) The start time of the segment in seconds.
-    end: (float) The end time of the segment in seconds.
-    text: (str) The transcribed text for the segment.
-    """
-    start: float
-    end: float
-    text: str
-
-
-@dataclass
-class DiarizationTurn:
-    """A turn of speech from the diarization model.
-
-    start: (float) The start time of the speaker turn in seconds.
-    end: (float) The end time of the speaker turn in seconds.
-    speaker: (str) The label for the speaker (e.g., "Speaker 1", "Speaker 2", etc.).
-    """
-    start: float
-    end: float
-    speaker: str
-
-
-@dataclass
 class Segment:
-    """A segment of aligned audio with speaker information.
+    """話者情報付きの、整列された音声セグメント.
 
-    start (float) : The start time of the segment in seconds.
-    end (float) : The end time of the segment in seconds.
-    speaker_label (str) : The label for the speaker (e.g., "Speaker 1", "Speaker 2", etc.).
-    text (str) : The transcribed text for the segment.
+    start (float): セグメントの開始時刻 (秒).
+    end (float): セグメントの終了時刻 (秒).
+    speaker_label (str): 話者ラベル (例: "Speaker 1", "Speaker 2" など).
+    text (str): セグメントの文字起こしテキスト.
     """
     start: float
     end: float

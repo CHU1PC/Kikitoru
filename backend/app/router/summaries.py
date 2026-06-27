@@ -4,85 +4,47 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import func
 from sqlmodel import col, select
-from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.db.models import ActionItem, Decision, Summary, Topic
+from app.db.models import Summary
+from app.db.summaries import build_summary_read
 from app.dependencies import CurrentUser, DbSessionDep
 from app.schema.summaries import (
-    ActionItemRead,
-    DecisionRead,
     SummaryListItem,
     SummaryPageResponse,
-    SummaryRead,
-    TopicRead,
+    SummaryResponse,
 )
 
 router = APIRouter(prefix="/summaries", tags=["summaries"])
-
-
-async def build_summary_read(db_session: AsyncSession, summary: Summary) -> SummaryRead:
-    """Load a summary's children in stable id order and assemble the read model.
-
-    Shared by the detail endpoint and the audio router's idempotency hit so both
-    return identical, deterministically-ordered payloads from the database.
-
-    Args:
-        db_session (AsyncSession): Database session.
-        summary (Summary): The already-loaded parent summary row.
-
-    Returns:
-        SummaryRead: The summary with its topics, decisions, and action items.
-    """
-    topics = (
-        await db_session.exec(
-            select(Topic).where(col(Topic.summary_id) == summary.id).order_by(col(Topic.id))
-        )
-    ).all()
-    decisions = (
-        await db_session.exec(
-            select(Decision).where(col(Decision.summary_id) == summary.id).order_by(col(Decision.id))
-        )
-    ).all()
-    action_items = (
-        await db_session.exec(
-            select(ActionItem).where(col(ActionItem.summary_id) == summary.id).order_by(col(ActionItem.id))
-        )
-    ).all()
-
-    return SummaryRead(
-        id=summary.id,
-        filename=summary.filename,
-        created_at=summary.created_at,
-        overall_summary=summary.overall_summary,
-        topics=[TopicRead.model_validate(t) for t in topics],
-        decisions=[DecisionRead.model_validate(d) for d in decisions],
-        action_items=[ActionItemRead.model_validate(a) for a in action_items],
-    )
 
 
 @router.get("")
 async def list_summaries_endpoint(
     db_session: DbSessionDep,
     user: CurrentUser,
-    limit: Annotated[int, Query(ge=1, le=100, description="Page size")] = 50,
-    offset: Annotated[int, Query(ge=0, description="Number of items to skip")] = 0,
+    limit: Annotated[int, Query(ge=1, le=100, description="1ページあたりの件数")] = 50,
+    offset: Annotated[int, Query(ge=0, description="スキップする件数")] = 0,
 ) -> SummaryPageResponse:
-    """Return a page of the current user's summaries ordered by creation date descending.
+    """日付順に並べた要約のページを返す.
 
-    Uses a single query with `COUNT(*) OVER ()` so that `total` and `items`
-    come from the same snapshot — avoiding the inconsistency that would
-    arise if `count` and `select` were issued as separate transactions
-    while concurrent inserts happen.
+    Args:
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        user (User): 現在のユーザー。FastAPI の依存性注入で解決される.
+        limit (int): 1ページあたりの要約の最大数. 1〜100 の範囲で指定する必要がある. default: 50
+        offset (int): ページの先頭からスキップする要約の数. 0以上の整数で指定する必要がある. default: 0
+
+    Returns:
+        SummaryPageResponse: ページ内の要約のリストと、総数、ページサイズ、オフセットを含むページ情報を返す.
     """
     total_col = func.count().over().label("total")
-    stmt = (
-        select(Summary, total_col)
-        .where(col(Summary.user_id) == user.id)
-        .order_by(col(Summary.created_at).desc(), col(Summary.id).desc())
-        .limit(limit)
-        .offset(offset)
-    )
-    rows = (await db_session.exec(stmt)).all()
+    rows = (
+        await db_session.exec(  # limit と offset を使ってページングされた Summary のリストを取得する
+            select(Summary, total_col)
+            .where(col(Summary.user_id) == user.id)
+            .order_by(col(Summary.created_at).desc(), col(Summary.id).desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
 
     if rows:
         total = int(rows[0][1])
@@ -99,12 +61,19 @@ async def list_summaries_endpoint(
 
 
 @router.get("/{summary_id}")
-async def get_summary_endpoint(summary_id: UUID, db_session: DbSessionDep, user: CurrentUser) -> SummaryRead:
-    """Return a single summary owned by the current user with full detail.
+async def get_summary_endpoint(summary_id: UUID, db_session: DbSessionDep, user: CurrentUser) -> SummaryResponse:
+    """一つの要約の詳細を返す. 存在しない要約や他のユーザーの要約は 404 を返す.
+
+    Args:
+        summary_id (UUID): 要約の ID.
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        user (User): 現在のユーザー。FastAPI の依存性注入で解決される.
+
+    Returns:
+        SummaryResponse: 要約の詳細情報.
 
     Raises:
-        HTTPException: 404 if the summary does not exist or belongs to another
-            user (existence is hidden from non-owners).
+        HTTPException: 404 - 要約が存在しない場合、または他のユーザーの要約にアクセスしようとした場合
     """
     row = await db_session.get(Summary, summary_id)
     if row is None or row.user_id != user.id:

@@ -1,6 +1,6 @@
 import pytest
 
-from app.settings.config import Settings
+from app.settings import Settings
 
 
 @pytest.mark.parametrize(
