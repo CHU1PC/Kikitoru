@@ -1,5 +1,7 @@
 # Kikitoru — 開発計画 v1
 
+> **移行注記 (2026)**: 本書は当初の設計・計画を記録した歴史的文書です。当初は STT/話者分離をローカルの ML スタック (Kotoba-Whisper / Whisper / pyannote、RTX 5090 + CUDA) で実装する計画でしたが、その後 **AWS Transcribe** へ移行しました (GPU 依存と環境再現コストを排除するため)。**以降の Whisper / pyannote / CTranslate2 / CUDA / Hugging Face Token に関する記述は、すべて当時の設計の記録であり、現在の構成・セットアップ手順ではありません。** 現行の STT 実装は `backend/app/stt/` および AWS Transcribe 連携を参照してください。
+
 ## 概要
 
 Kikitoru（聞き取る）は、会議音声から議事録を自動生成する LLM ベースのアプリケーション。
