@@ -1,14 +1,9 @@
 import { ApiErrorBody } from "./schemas"
 import { summaryResponseSchema, summaryPageResponseSchema } from "../gen/zod"
-import type { SummaryResponse, SummaryPageResponse, UserPublic } from "../gen/types"
+import type { SummaryResponse, SummaryPageResponse, UserPublic, UserAdminUpdate, UserStatusKey } from "../gen/types"
 
 const API_BASE = "http://localhost:8000"
 
-type UploadAudioInput = {
-    file: File
-    recorded_at?: string
-    num_speakers?: number
-}
 
 export class ApiError extends Error {
     status: number
@@ -54,6 +49,13 @@ export async function getSummaries(limit: number = 50, offset: number = 0): Prom
 }
 
 
+type UploadAudioInput = {
+    file: File
+    recorded_at?: string
+    num_speakers?: number
+}
+
+
 export async function uploadAudio(input: UploadAudioInput): Promise<SummaryResponse> {
     const formData = new FormData()
     formData.append("file", input.file)
@@ -95,4 +97,26 @@ export async function logout(): Promise<void> {
 
 export function startGoogleLogin(): void {
     window.location.href = `${API_BASE}/auth/google/start`
+}
+
+
+export async function listUsers(status?: UserStatusKey): Promise<UserPublic[]> {
+    // status が null の場合は全ステータスのユーザーを取得する
+    const url = new URL(`${API_BASE}/api/v1/admin/users`)
+    if (status) url.searchParams.set("status", status)
+    const res = await fetch(url, {credentials: "include"})
+    await throwIfNotOk(res)
+    return res.json()
+}
+
+
+export async function updateUser(userId: string, payload: UserAdminUpdate): Promise<UserPublic> {
+    const res = await fetch(`${API_BASE}/api/v1/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: {"Content-Type": "application/json"},
+        credentials: "include",
+        body: JSON.stringify(payload),
+    })
+    await throwIfNotOk(res)
+    return res.json()
 }
