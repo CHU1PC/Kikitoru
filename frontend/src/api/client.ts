@@ -1,6 +1,6 @@
 import { ApiErrorBody } from "./schemas"
 import { summaryResponseSchema, summaryPageResponseSchema } from "../gen/zod"
-import type { SummaryResponse, SummaryPageResponse } from "../gen/types"
+import type { SummaryResponse, SummaryPageResponse, UserPublic } from "../gen/types"
 
 const API_BASE = "http://localhost:8000"
 
@@ -76,4 +76,23 @@ export async function uploadAudio(input: UploadAudioInput): Promise<SummaryRespo
     await throwIfNotOk(res)
     const json = await res.json()
     return summaryResponseSchema.parse(json)
+}
+
+
+export async function getMe(): Promise<UserPublic | null> {
+    const res = await fetch(`${API_BASE}/auth/me`, {credentials: "include"})
+    if (res.status === 401) return null
+    await throwIfNotOk(res)
+    return res.json()
+}
+
+
+export async function logout(): Promise<void> {
+    const res = await fetch(`${API_BASE}/auth/logout`, {method: "POST", credentials: "include"})
+    await throwIfNotOk(res)
+}
+
+
+export function startGoogleLogin(): void {
+    window.location.href = `${API_BASE}/auth/google/start`
 }
