@@ -18,7 +18,6 @@ router = APIRouter(prefix="/google")
 _PROVIDER = "google"
 _STATE_COOKIE = "oauth_state"
 _STATE_MAX_AGE = 600  # seconds
-_LOGIN_REDIRECT_URL = "/"  # 暫定: フロントエンド (issue #6) 実装後に差し替える
 _GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
 _GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"  # noqa: S105
 
@@ -134,7 +133,7 @@ async def oauth_callback(
         ip_address=request.client.host if request.client else None,
     )
 
-    response = RedirectResponse(_LOGIN_REDIRECT_URL)
+    response = RedirectResponse(url=settings.FRONTEND_URL)
     response.set_cookie(
         key=SESSION_COOKIE,
         value=token,

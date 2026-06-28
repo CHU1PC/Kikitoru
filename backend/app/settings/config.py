@@ -9,6 +9,8 @@ from pydantic_settings import BaseSettings, NoDecode
 class Settings(BaseSettings):
     """環境変数から読み込むアプリケーション設定."""
 
+    FRONTEND_URL: str = Field(default="http://localhost:5173", description="フロントエンドの URL")
+
     DATABASE_URL: SecretStr = Field(default=..., description="データベース接続用の URL")
     DATABASE_SSL_MODE: str = Field(
         default="disable",
