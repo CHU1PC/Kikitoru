@@ -263,3 +263,182 @@
 .ghost-btn:hover {
   border-color: var(--accent-border);
 }
+
+/* --- App header nav (admin) --- */
+.app-header-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-link {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.nav-link:hover {
+  color: var(--text-h);
+}
+
+.nav-link.active {
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+/* --- Admin panel --- */
+.admin {
+  margin-top: 8px;
+}
+
+.admin-title {
+  margin: 0 0 16px;
+}
+
+.admin-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.admin-filter {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.admin-filter:hover {
+  border-color: var(--accent-border);
+}
+
+.admin-filter.active {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--text-h);
+}
+
+.admin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.admin-user {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-name {
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.admin-email {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.admin-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-badge {
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.status-pending {
+  background: rgba(217, 119, 6, 0.12);
+  color: #d97706;
+}
+
+.status-approved {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16a34a;
+}
+
+.status-rejected {
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+}
+
+.admin-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.approve-btn,
+.reject-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.approve-btn {
+  background: #16a34a;
+  color: #fff;
+}
+
+.approve-btn:hover {
+  background: #15803d;
+}
+
+.reject-btn {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.reject-btn:hover {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.approve-btn:disabled,
+.reject-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--text);
+}
+
+.admin-self {
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.7;
+}
