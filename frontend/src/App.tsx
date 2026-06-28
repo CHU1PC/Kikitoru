@@ -5,6 +5,7 @@ import { SummaryView } from "./components/SummaryView"
 import { AppHeader } from "./components/AppHeader"
 import { LoginScreen } from "./components/LoginScreen"
 import { AccessNotice } from "./components/AccessNotice"
+import { AdminUsers } from "./components/AdminUsers"
 import type { SummaryResponse, UserPublic } from "./gen/types"
 import { getMe, logout , startGoogleLogin} from "./api/client"
 
@@ -15,6 +16,7 @@ function App() {
   const [user, setUser] = useState<UserPublic | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
+  const [view, setView] = useState<"main" | "admin">("main")
 
   useEffect(() => {
     getMe().then(setUser).catch(() => setUser(null)).finally(() => setAuthLoading(false))
@@ -31,10 +33,16 @@ function App() {
 
   return (
     <main className="app">
-      <AppHeader user={user} onLogout={handleLogout} />
-      <p className="lead">会議の音声をアップロードすると議事録を作成します</p>
-      <UploadForm onSuccess={setSummary} />
-      {summary && <SummaryView summary={summary} />}
+      <AppHeader user={user} onLogout={handleLogout} view={view} onChangeView={setView} />
+      {view === "admin" && user.role === "admin" ? (
+        <AdminUsers currentUserId={user.id} />
+      ) : (
+        <>
+          <p className="lead">会議の音声をアップロードすると議事録を作成します</p>
+          <UploadForm onSuccess={setSummary} />
+          {summary && <SummaryView summary={summary} />}
+        </>
+      )}
     </main>
   )
 }
