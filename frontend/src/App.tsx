@@ -6,6 +6,7 @@ import { AppHeader } from "./components/AppHeader"
 import { LoginScreen } from "./components/LoginScreen"
 import { AccessNotice } from "./components/AccessNotice"
 import { AdminUsers } from "./components/AdminUsers"
+import { Spinner } from "./components/Spinner"
 import type { SummaryResponse, UserPublic } from "./gen/types"
 import { getMe, logout , startGoogleLogin} from "./api/client"
 
@@ -27,7 +28,12 @@ function App() {
     setUser(null)
   }
 
-  if (authLoading) return null
+  if (authLoading)
+    return (
+      <main className="auth-screen">
+        <Spinner />
+      </main>
+    )
   if(!user) return <LoginScreen onLogin={startGoogleLogin} />
   if(user.status != "approved") return <AccessNotice status={user.status} onLogout={handleLogout} />
 

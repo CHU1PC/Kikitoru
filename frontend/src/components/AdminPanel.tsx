@@ -1,4 +1,5 @@
 import type { UserPublic, UserStatusKey } from "../gen/types"
+import { Spinner } from "./Spinner"
 
 type StatusFilter = UserStatusKey | "all"
 
@@ -54,7 +55,7 @@ export function AdminPanel({
       </div>
 
       {loading ? (
-        <p className="admin-empty">読み込み中...</p>
+        <Spinner label="読み込み中..." />
       ) : users.length === 0 ? (
         <p className="admin-empty">該当するユーザーはいません。</p>
       ) : (

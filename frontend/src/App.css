@@ -13,10 +13,11 @@
 .upload-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px;
+  gap: 18px;
+  padding: 28px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
 }
 
 .field {
@@ -28,17 +29,56 @@
 .field span {
   font-size: 14px;
   color: var(--text);
+  font-weight: 500;
 }
 
-.upload-form button {
-  align-self: flex-start;
-  padding: 10px 20px;
+.field input {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 15px;
+  transition: border-color 0.15s ease;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.field input[type="file"] {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.field input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  padding: 6px 14px;
   border: 1px solid var(--accent-border);
   border-radius: 6px;
   background: var(--accent-bg);
   color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.upload-form button {
+  padding: 12px 20px;
+  border: 1px solid var(--accent-border);
+  border-radius: 8px;
+  background: var(--accent-bg);
+  color: var(--text-h);
   cursor: pointer;
   font: inherit;
+  font-weight: 600;
+  transition: background 0.15s ease;
+}
+
+.upload-form button:hover:not(:disabled) {
+  background: var(--accent-border);
 }
 
 .upload-form button:disabled {
@@ -53,18 +93,28 @@
 
 .summary {
   margin-top: 32px;
-  padding: 24px;
+  padding: 28px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  animation: login-rise 0.3s ease both;
 }
 
 .summary h2 {
   margin-top: 0;
 }
 
+.summary > p {
+  color: var(--text);
+  line-height: 1.7;
+}
+
 .summary h3 {
-  margin: 20px 0 8px;
+  margin: 24px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
   color: var(--text-h);
+  font-size: 16px;
 }
 
 .summary ul {
@@ -73,7 +123,8 @@
 }
 
 .summary li {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  line-height: 1.6;
 }
 
 /* --- Auth screens (LoginScreen / AccessNotice) --- */
@@ -84,29 +135,40 @@
   padding: 24px;
 }
 
-.auth-card {
+.notice-badge {
+  font-size: 14px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* --- Spinner --- */
+.spinner-wrap {
   display: flex;
   flex-direction: column;
-  gap: 16px;
   align-items: center;
-  max-width: 380px;
+  gap: 12px;
   padding: 40px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  text-align: center;
 }
 
-.auth-card h1 {
-  margin: 0;
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--accent-bg);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }
 
-.auth-lead {
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-label {
+  font-size: 14px;
   color: var(--text);
-  margin: 0;
-}
-
-.notice-title {
-  margin: 0;
 }
 
 /* --- Login card --- */
@@ -258,6 +320,9 @@
   cursor: pointer;
   font: inherit;
   font-size: 14px;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .ghost-btn:hover {
