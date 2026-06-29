@@ -6,7 +6,7 @@ from app.rate_limit import limiter, rate_limit_exceeded_handler
 from app.router.admin import router as admin_router
 from app.router.audio import router as audio_router
 from app.router.oauth import oauth_router
-from app.router.summaries import router as summaries_router
+from app.router.summaries import summaries_router
 from app.settings import settings
 
 app = FastAPI(
@@ -22,7 +22,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Content-Type"],
 )
 

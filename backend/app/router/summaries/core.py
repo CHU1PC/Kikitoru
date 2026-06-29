@@ -1,0 +1,183 @@
+from datetime import UTC, datetime
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, HTTPException, Query
+
+from app.db.summaries import build_summary_read, get_owned_summary, list_summaries_page
+from app.dependencies import ApprovedUser, DbSessionDep
+from app.schema.summaries import (
+    SummaryEdit,
+    SummaryListItem,
+    SummaryPageResponse,
+    SummaryResponse,
+)
+
+router = APIRouter(tags=["summaries"])
+
+
+@router.get("")
+async def list_summaries_endpoint(
+    db_session: DbSessionDep,
+    user: ApprovedUser,
+    limit: Annotated[int, Query(ge=1, le=100, description="1ページあたりの件数")] = 50,
+    offset: Annotated[int, Query(ge=0, description="スキップする件数")] = 0,
+) -> SummaryPageResponse:
+    """アクティブな要約を作成日時の降順でページ取得する.
+
+    Args:
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        user (User): 現在のユーザー.
+        limit (int): 1ページあたりの件数 (1〜100). default: 50
+        offset (int): スキップする件数 (0以上). default: 0
+
+    Returns:
+        SummaryPageResponse: ページ内の要約リストと総数・limit・offset.
+    """
+    items, total = await list_summaries_page(db_session, user.id, deleted=False, limit=limit, offset=offset)
+    return SummaryPageResponse(
+        items=[SummaryListItem.model_validate(s) for s in items], total=total, limit=limit, offset=offset
+    )
+
+
+@router.get("/trash")
+async def list_deleted_summaries_endpoint(
+    db_session: DbSessionDep,
+    user: ApprovedUser,
+    limit: Annotated[int, Query(ge=1, le=100, description="1ページあたりの件数")] = 50,
+    offset: Annotated[int, Query(ge=0, description="スキップする件数")] = 0,
+) -> SummaryPageResponse:
+    """削除済み (ゴミ箱) の要約を作成日時の降順でページ取得する.
+
+    Args:
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        user (User): 現在のユーザー.
+        limit (int): 1ページあたりの件数 (1〜100). default: 50
+        offset (int): スキップする件数 (0以上). default: 0
+
+    Returns:
+        SummaryPageResponse: ページ内の削除済み要約リストと総数・limit・offset.
+    """
+    items, total = await list_summaries_page(db_session, user.id, deleted=True, limit=limit, offset=offset)
+    return SummaryPageResponse(
+        items=[SummaryListItem.model_validate(s) for s in items], total=total, limit=limit, offset=offset
+    )
+
+
+@router.get("/{summary_id}")
+async def get_summary_endpoint(summary_id: UUID, db_session: DbSessionDep, user: ApprovedUser) -> SummaryResponse:
+    """一つの要約の詳細を返す. 存在しない/他ユーザー/削除済みは 404.
+
+    Args:
+        summary_id (UUID): 要約の ID.
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        user (User): 現在のユーザー.
+
+    Returns:
+        SummaryResponse: 要約の詳細.
+
+    Raises:
+        HTTPException: 404 - 要約が見つからない場合.
+    """
+    summary = await get_owned_summary(db_session, user.id, summary_id)
+    if summary is None:
+        raise HTTPException(status_code=404, detail="Summary not found")
+    return await build_summary_read(db_session, summary)
+
+
+@router.patch("/{summary_id}")
+async def update_summary_endpoint(
+    summary_id: UUID,
+    edit: SummaryEdit,
+    db_session: DbSessionDep,
+    user: ApprovedUser,
+) -> SummaryResponse:
+    """要約本体 (filename / overall_summary) を部分更新する. 見つからなければ 404.
+
+    Args:
+        summary_id (UUID): 要約の ID.
+        edit (SummaryEdit): 更新内容.
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        user (User): 現在のユーザー.
+
+    Returns:
+        SummaryResponse: 更新後の要約.
+
+    Raises:
+        HTTPException: 404 - 要約が見つからない場合.
+    """
+    summary = await get_owned_summary(db_session, user.id, summary_id)
+    if summary is None:
+        raise HTTPException(status_code=404, detail="Summary not found")
+    if edit.filename is not None:
+        summary.filename = edit.filename
+    if edit.overall_summary is not None:
+        summary.overall_summary = edit.overall_summary
+    db_session.add(summary)
+    await db_session.commit()
+    return await build_summary_read(db_session, summary)
+
+
+@router.delete("/{summary_id}", status_code=204)
+async def delete_summary_endpoint(summary_id: UUID, db_session: DbSessionDep, user: ApprovedUser) -> None:
+    """要約をソフト削除する (ゴミ箱へ). 見つからなければ 404.
+
+    Args:
+        summary_id (UUID): 要約の ID.
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        user (User): 現在のユーザー.
+
+    Raises:
+        HTTPException: 404 - 要約が見つからない場合.
+    """
+    summary = await get_owned_summary(db_session, user.id, summary_id)
+    if summary is None:
+        raise HTTPException(status_code=404, detail="Summary not found")
+    summary.deleted_at = datetime.now(UTC)
+    db_session.add(summary)
+    await db_session.commit()
+
+
+@router.post("/{summary_id}/restore")
+async def restore_summary_endpoint(summary_id: UUID, db_session: DbSessionDep, user: ApprovedUser) -> SummaryResponse:
+    """ゴミ箱の要約を復元する. ゴミ箱に無い/見つからない場合は 404.
+
+    Args:
+        summary_id (UUID): 要約の ID.
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        user (User): 現在のユーザー.
+
+    Returns:
+        SummaryResponse: 復元後の要約.
+
+    Raises:
+        HTTPException: 404 - ゴミ箱に該当の要約が無い場合.
+    """
+    summary = await get_owned_summary(db_session, user.id, summary_id, include_deleted=True)
+    if summary is None or summary.deleted_at is None:
+        raise HTTPException(status_code=404, detail="Summary not found")
+    summary.deleted_at = None
+    db_session.add(summary)
+    await db_session.commit()
+    return await build_summary_read(db_session, summary)
+
+
+@router.delete("/{summary_id}/permanent", status_code=204)
+async def permanently_delete_summary_endpoint(
+    summary_id: UUID, db_session: DbSessionDep, user: ApprovedUser
+) -> None:
+    """ゴミ箱の要約を完全削除する. ゴミ箱に無い/見つからない場合は 404.
+
+    Args:
+        summary_id (UUID): 要約の ID.
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        user (User): 現在のユーザー.
+
+    Raises:
+        HTTPException: 404 - ゴミ箱に該当の要約が無い場合.
+    """
+    summary = await get_owned_summary(db_session, user.id, summary_id, include_deleted=True)
+    if summary is None or summary.deleted_at is None:
+        raise HTTPException(status_code=404, detail="Summary not found")
+    await db_session.delete(summary)
+    await db_session.commit()
