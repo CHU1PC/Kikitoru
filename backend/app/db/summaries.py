@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, select
 
@@ -56,6 +57,33 @@ async def build_summary_read(db_session: AsyncSession, summary: Summary) -> Summ
     )
 
 
+async def get_owned_summary(
+    db_session: AsyncSession,
+    user_id: UUID,
+    summary_id: UUID,
+    *,
+    include_deleted: bool = False,
+) -> Summary | None:
+    """Owner & (任意で) soft-delete を考慮して取得.
+
+    Args:
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        user_id (UUID): 検索対象の所有者.
+        summary_id (UUID): 検索対象の要約の id.
+        include_deleted (bool, optional): True の場合、削除済みの要約も返す. Defaults to False.
+
+    Returns:
+        Summary | None: 一致する要約行. 未保存なら None.
+    """
+    stmt = select(Summary).where(
+        col(Summary.id) == summary_id,
+        col(Summary.user_id) == user_id,
+    )
+    if not include_deleted:
+        stmt = stmt.where(col(Summary.deleted_at).is_(None))
+    return (await db_session.exec(stmt)).first()
+
+
 async def find_by_content_hash(db_session: AsyncSession, user_id: UUID, content_hash: str) -> Summary | None:
     """このユーザーの音声内容に対して既に保存されている要約を返す. 無ければ None.
 
@@ -77,7 +105,55 @@ async def find_by_content_hash(db_session: AsyncSession, user_id: UUID, content_
     ).first()
 
 
-def _add_children(db_session: AsyncSession, summary_id: UUID, data: LLMSummary) -> None:
+async def list_summaries_page(
+    db_session: AsyncSession,
+    user_id: UUID,
+    *,
+    deleted: bool,
+    limit: int,
+    offset: int,
+) -> tuple[list[Summary], int]:
+    """User の要約を作成日時の降順でページ取得する.
+
+    アクティブ一覧 (deleted=False) とゴミ箱一覧 (deleted=True) で共有し、
+    deleted_at フィルタの向きだけ切り替える (重複クエリと count フィルタの取り違えを防ぐ).
+
+    Args:
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        user_id (UUID): 検索対象の所有者.
+        deleted (bool): True なら削除済み (ゴミ箱), False ならアクティブな要約を返す.
+        limit (int): 1ページあたりの最大件数.
+        offset (int): スキップする件数.
+
+    Returns:
+        tuple[list[Summary], int]: ページ内の要約行と、フィルタ条件に一致する総件数.
+    """
+    deleted_filter = col(Summary.deleted_at).is_not(None) if deleted else col(Summary.deleted_at).is_(None)
+    total_col = func.count().over().label("total")
+    rows = (
+        await db_session.exec(
+            select(Summary, total_col)
+            .where(col(Summary.user_id) == user_id, deleted_filter)
+            .order_by(col(Summary.created_at).desc(), col(Summary.id).desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
+    if rows:
+        return [summary for summary, _ in rows], int(rows[0][1])
+    total = (
+        await db_session.exec(
+            select(func.count())
+            .select_from(Summary)
+            .where(
+                col(Summary.user_id) == user_id, deleted_filter
+            )
+        )
+    ).one()
+    return [], total
+
+
+def _add_all_children(db_session: AsyncSession, summary_id: UUID, data: LLMSummary) -> None:
     """要約のトピック・決定事項・アクションアイテムを insert 用に登録する.
 
     Args:
@@ -125,7 +201,7 @@ async def create_summary(
     try:
         db_session.add(summary)
         await db_session.flush()
-        _add_children(db_session, summary.id, data)
+        _add_all_children(db_session, summary.id, data)
         await db_session.commit()
     except IntegrityError:
         await db_session.rollback()

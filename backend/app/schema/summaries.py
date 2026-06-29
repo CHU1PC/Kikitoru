@@ -13,6 +13,7 @@ class _ResponseModel(BaseModel):
 class TopicResponse(_ResponseModel):
     """要約レスポンス内の議題."""
 
+    id: int = Field(..., description="議題の一意識別子")
     title: str = Field(..., description="議題のタイトル")
     summary: str = Field(..., description="議題の詳細な要約")
 
@@ -20,6 +21,7 @@ class TopicResponse(_ResponseModel):
 class DecisionResponse(_ResponseModel):
     """要約レスポンス内の決定事項."""
 
+    id: int = Field(..., description="決定事項の一意識別子")
     description: str = Field(..., description="決定事項の説明")
     decided_by: str | None = Field(None, description="決定した人物またはグループ")
 
@@ -27,6 +29,7 @@ class DecisionResponse(_ResponseModel):
 class ActionItemResponse(_ResponseModel):
     """要約レスポンス内のアクションアイテム."""
 
+    id: int = Field(..., description="アクションアイテムの一意識別子")
     description: str = Field(..., description="アクションアイテムの説明")
     assignee: str | None = Field(None, description="アクションアイテムの担当者")
     due_date: date | None = Field(None, description="アクションアイテムの期限")
@@ -56,3 +59,54 @@ class SummaryPageResponse(BaseModel):
     total: int = Field(..., description="データベース内の要約の総数")
     limit: int = Field(..., description="1ページあたりに返す最大件数")
     offset: int = Field(..., description="このページの前にスキップした件数")
+
+
+class TopicCreate(BaseModel):
+    """Topicを作成するためのリクエストボディ."""
+
+    title: str = Field(..., description="議題のタイトル")
+    summary: str = Field(..., description="議題の詳細な要約")
+
+
+class DecisionCreate(BaseModel):
+    """Decisionを作成するためのリクエストボディ."""
+
+    description: str = Field(..., description="決定事項の説明")
+    decided_by: str | None = Field(None, description="決定した人物またはグループ")
+
+
+class ActionItemCreate(BaseModel):
+    """ActionItemを作成するためのリクエストボディ."""
+
+    description: str = Field(..., description="アクションアイテムの説明")
+    assignee: str | None = Field(None, description="アクションアイテムの担当者")
+    due_date: date | None = Field(None, description="アクションアイテムの期限")
+
+
+class TopicEdit(BaseModel):
+    """Topicを編集するためのリクエストボディ."""
+
+    title: str | None = Field(None, description="議題のタイトル")
+    summary: str | None = Field(None, description="議題の詳細な要約")
+
+
+class DecisionEdit(BaseModel):
+    """Decisionを編集するためのリクエストボディ."""
+
+    description: str | None = Field(None, description="決定事項の説明")
+    decided_by: str | None = Field(None, description="決定した人物またはグループ")
+
+
+class ActionItemEdit(BaseModel):
+    """ActionItemを編集するためのリクエストボディ."""
+
+    description: str | None = Field(None, description="アクションアイテムの説明")
+    assignee: str | None = Field(None, description="アクションアイテムの担当者")
+    due_date: date | None = Field(None, description="アクションアイテムの期限")
+
+
+class SummaryEdit(BaseModel):
+    """Summaryを部分的に編集するためのリクエストボディ."""
+
+    filename: str | None = Field(None, description="アップロードされた音声ファイル名")
+    overall_summary: str | None = Field(None, description="会議全体の要約")
