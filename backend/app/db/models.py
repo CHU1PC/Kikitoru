@@ -156,6 +156,11 @@ class Summary(SQLModel, table=True):
         description="要約が作成された日時 (UTC)",
     )
     overall_summary: str = Field(..., description="会議全体の要約")
+    deleted_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+        description="要約が削除された日時 (UTC). アクティブなら None",
+    )
 
 
 class Topic(SQLModel, table=True):
