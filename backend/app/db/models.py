@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, UniqueConstraint
+from sqlalchemy import BigInteger, Column, DateTime, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -210,3 +210,25 @@ class ActionItem(SQLModel, table=True):
     description: str = Field(..., description="アクションアイテムの説明")
     assignee: str | None = Field(default=None, description="アクションアイテムの担当者")
     due_date: date | None = Field(default=None, description="アクションアイテムの期限")
+
+
+class TranscriptSegment(SQLModel, table=True):
+    """会議の文字起こし(話者分離済み)の1セグメント."""
+
+    __tablename__ = "transcript_segments"  # pyright: ignore[reportAssignmentType]
+
+    id: int | None = Field(
+        default=None,
+        sa_column=Column(BigInteger, primary_key=True, autoincrement=True),
+        description="主キー"
+    )
+    summary_id: UUID = Field(
+        foreign_key="summaries.id",
+        ondelete="CASCADE",
+        index=True,
+        description="親 summary への外部キー",
+    )
+    speaker_label: str = Field(..., max_length=64, description="話者のラベル (例: 'Speaker 1', 'Speaker 2')")
+    start_ms: int = Field(..., description="このセグメントの開始時刻 (ミリ秒単位)")
+    end_ms: int = Field(..., description="このセグメントの終了時刻 (ミリ秒単位)")
+    text: str = Field(..., description="このセグメントの文字起こしテキスト")
