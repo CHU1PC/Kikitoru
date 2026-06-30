@@ -6,4 +6,5 @@ oauth_identities
 decisions
 action_items
 summaries
+summary_groups
 users

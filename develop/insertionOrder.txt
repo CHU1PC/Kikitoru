@@ -1,4 +1,5 @@
 users
+summary_groups
 summaries
 action_items
 decisions
