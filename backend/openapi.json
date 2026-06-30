@@ -53,7 +53,7 @@
           "summaries"
         ],
         "summary": "List Summaries Endpoint",
-        "description": "\u30a2\u30af\u30c6\u30a3\u30d6\u306a\u8981\u7d04\u3092\u4f5c\u6210\u65e5\u6642\u306e\u964d\u9806\u3067\u30da\u30fc\u30b8\u53d6\u5f97\u3059\u308b.\n\nArgs:\n    db_session (AsyncSession): SQLAlchemy \u306e\u975e\u540c\u671f\u30bb\u30c3\u30b7\u30e7\u30f3.\n    user (User): \u73fe\u5728\u306e\u30e6\u30fc\u30b6\u30fc.\n    limit (int): 1\u30da\u30fc\u30b8\u3042\u305f\u308a\u306e\u4ef6\u6570 (1\u301c100). default: 50\n    offset (int): \u30b9\u30ad\u30c3\u30d7\u3059\u308b\u4ef6\u6570 (0\u4ee5\u4e0a). default: 0\n\nReturns:\n    SummaryPageResponse: \u30da\u30fc\u30b8\u5185\u306e\u8981\u7d04\u30ea\u30b9\u30c8\u3068\u7dcf\u6570\u30fblimit\u30fboffset.",
+        "description": "\u30a2\u30af\u30c6\u30a3\u30d6\u306a\u8981\u7d04\u3092\u4f5c\u6210\u65e5\u6642\u306e\u964d\u9806\u3067\u30da\u30fc\u30b8\u53d6\u5f97\u3059\u308b.\n\nArgs:\n    db_session (AsyncSession): SQLAlchemy \u306e\u975e\u540c\u671f\u30bb\u30c3\u30b7\u30e7\u30f3.\n    user (User): \u73fe\u5728\u306e\u30e6\u30fc\u30b6\u30fc.\n    limit (int): 1\u30da\u30fc\u30b8\u3042\u305f\u308a\u306e\u4ef6\u6570 (1\u301c100). default: 50\n    offset (int): \u30b9\u30ad\u30c3\u30d7\u3059\u308b\u4ef6\u6570 (0\u4ee5\u4e0a). default: 0\n    group_id (UUID | None): \u691c\u7d22\u5bfe\u8c61\u306e\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306e ID.\n    ungrouped_only (bool): True \u306a\u3089\u672a\u5206\u985e\u306e\u8981\u7d04\u306e\u307f\u3092\u8fd4\u3059.\n\nReturns:\n    SummaryPageResponse: \u30da\u30fc\u30b8\u5185\u306e\u8981\u7d04\u30ea\u30b9\u30c8\u3068\u7dcf\u6570\u30fblimit\u30fboffset.",
         "operationId": "list_summaries_endpoint_api_v1_summaries_get",
         "parameters": [
           {
@@ -82,6 +82,37 @@
               "title": "Offset"
             },
             "description": "\u30b9\u30ad\u30c3\u30d7\u3059\u308b\u4ef6\u6570"
+          },
+          {
+            "name": "group_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "\u691c\u7d22\u5bfe\u8c61\u306e\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306eID",
+              "title": "Group Id"
+            },
+            "description": "\u691c\u7d22\u5bfe\u8c61\u306e\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306eID"
+          },
+          {
+            "name": "ungrouped_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "True \u306a\u3089\u672a\u5206\u985e\u306e\u8981\u7d04\u306e\u307f\u3092\u8fd4\u3059",
+              "default": false,
+              "title": "Ungrouped Only"
+            },
+            "description": "True \u306a\u3089\u672a\u5206\u985e\u306e\u8981\u7d04\u306e\u307f\u3092\u8fd4\u3059"
           }
         ],
         "responses": {
@@ -1020,6 +1051,161 @@
         }
       }
     },
+    "/api/v1/groups": {
+      "get": {
+        "tags": [
+          "groups"
+        ],
+        "summary": "List Groups Endpoint",
+        "description": "\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306e\u4e00\u89a7\u3092\u53d6\u5f97\u3059\u308b.\n\nArgs:\n    db_session (AsyncSession): SQLAlchemy \u306e\u975e\u540c\u671f\u30bb\u30c3\u30b7\u30e7\u30f3.\n    user (User): \u73fe\u5728\u306e\u30e6\u30fc\u30b6\u30fc.\n\nReturns:\n    list[SummaryGroupResponse]: \u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306e\u4e00\u89a7.",
+        "operationId": "list_groups_endpoint_api_v1_groups_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SummaryGroupResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Groups Endpoint Api V1 Groups Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "groups"
+        ],
+        "summary": "Create Group Endpoint",
+        "description": "\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u3092\u4f5c\u6210\u3059\u308b.\n\nArgs:\n    body (SummaryGroupCreate): \u4f5c\u6210\u3059\u308b\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306e\u60c5\u5831.\n    db_session (AsyncSession): SQLAlchemy \u306e\u975e\u540c\u671f\u30bb\u30c3\u30b7\u30e7\u30f3.\n    user (User): \u73fe\u5728\u306e\u30e6\u30fc\u30b6\u30fc.\n\nReturns:\n    SummaryGroupResponse: \u4f5c\u6210\u3055\u308c\u305f\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306e\u60c5\u5831.\n\nRaises:\n    HTTPException: \u540c\u3058\u540d\u524d\u306e\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u304c\u65e2\u306b\u5b58\u5728\u3059\u308b\u5834\u5408",
+        "operationId": "create_group_endpoint_api_v1_groups_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummaryGroupCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryGroupResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/groups/{group_id}": {
+      "patch": {
+        "tags": [
+          "groups"
+        ],
+        "summary": "Update Group Endpoint",
+        "description": "\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306e\u540d\u524d\u3092\u5909\u66f4\u3059\u308b.\n\nArgs:\n    group_id (UUID): \u5909\u66f4\u5bfe\u8c61\u306e\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306e ID.\n    body (SummaryGroupEdit): \u5909\u66f4\u5185\u5bb9.\n    db_session (AsyncSession): SQLAlchemy \u306e\u975e\u540c\u671f\u30bb\u30c3\u30b7\u30e7\u30f3.\n    user (User): \u73fe\u5728\u306e\u30e6\u30fc\u30b6\u30fc.\n\nReturns:\n    SummaryGroupResponse: \u5909\u66f4\u5f8c\u306e\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306e\u60c5\u5831.\n\nRaises:\n    HTTPException: \u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u304c\u898b\u3064\u304b\u3089\u306a\u3044\u5834\u5408\n    HTTPException: \u540c\u3058\u540d\u524d\u306e\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u304c\u65e2\u306b\u5b58\u5728\u3059\u308b\u5834\u5408",
+        "operationId": "update_group_endpoint_api_v1_groups__group_id__patch",
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SummaryGroupEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SummaryGroupResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "groups"
+        ],
+        "summary": "Delete Group Endpoint",
+        "description": "\u30d5\u30a9\u30eb\u30c0\u3092\u524a\u9664\u3059\u308b. \u4e2d\u306e\u8981\u7d04\u306f\u672a\u5206\u985e\u306b\u623b\u308b. \u898b\u3064\u304b\u3089\u306a\u3051\u308c\u3070 404.\n\nArgs:\n    group_id (UUID): \u30d5\u30a9\u30eb\u30c0\u306e ID.\n    db_session (AsyncSession): SQLAlchemy \u306e\u975e\u540c\u671f\u30bb\u30c3\u30b7\u30e7\u30f3.\n    user (User): \u73fe\u5728\u306e\u30e6\u30fc\u30b6\u30fc.\n\nRaises:\n    HTTPException: 404 - \u30d5\u30a9\u30eb\u30c0\u304c\u898b\u3064\u304b\u3089\u306a\u3044\u5834\u5408.",
+        "operationId": "delete_group_endpoint_api_v1_groups__group_id__delete",
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Group Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/google/start": {
       "get": {
         "tags": [
@@ -1428,11 +1614,83 @@
             ],
             "title": "Overall Summary",
             "description": "\u4f1a\u8b70\u5168\u4f53\u306e\u8981\u7d04"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id",
+            "description": "\u3053\u306e\u8981\u7d04\u304c\u5c5e\u3059\u308b\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306eID"
           }
         },
         "type": "object",
         "title": "SummaryEdit",
         "description": "Summary\u3092\u90e8\u5206\u7684\u306b\u7de8\u96c6\u3059\u308b\u305f\u3081\u306e\u30ea\u30af\u30a8\u30b9\u30c8\u30dc\u30c7\u30a3."
+      },
+      "SummaryGroupCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306e\u540d\u524d"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "SummaryGroupCreate",
+        "description": "SummaryGroup\u3092\u4f5c\u6210\u3059\u308b\u305f\u3081\u306e\u30ea\u30af\u30a8\u30b9\u30c8\u30dc\u30c7\u30a3."
+      },
+      "SummaryGroupEdit": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306e\u540d\u524d"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "SummaryGroupEdit",
+        "description": "SummaryGroup\u3092\u7de8\u96c6\u3059\u308b\u305f\u3081\u306e\u30ea\u30af\u30a8\u30b9\u30c8\u30dc\u30c7\u30a3."
+      },
+      "SummaryGroupResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id",
+            "description": "\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306e\u4e00\u610f\u8b58\u5225\u5b50"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306e\u540d\u524d"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u304c\u4f5c\u6210\u3055\u308c\u305f\u65e5\u6642"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "created_at"
+        ],
+        "title": "SummaryGroupResponse",
+        "description": "\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306e\u30ec\u30b9\u30dd\u30f3\u30b9\u30e2\u30c7\u30eb."
       },
       "SummaryListItem": {
         "properties": {
@@ -1457,6 +1715,19 @@
             "type": "string",
             "title": "Overall Summary",
             "description": "\u4f1a\u8b70\u5168\u4f53\u306e\u8981\u7d04"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id",
+            "description": "\u3053\u306e\u8981\u7d04\u304c\u5c5e\u3059\u308b\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306eID"
           }
         },
         "type": "object",
@@ -1528,6 +1799,19 @@
             "type": "string",
             "title": "Overall Summary",
             "description": "\u4f1a\u8b70\u5168\u4f53\u306e\u8981\u7d04"
+          },
+          "group_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Id",
+            "description": "\u3053\u306e\u8981\u7d04\u304c\u5c5e\u3059\u308b\u8981\u7d04\u30b0\u30eb\u30fc\u30d7\u306eID"
           },
           "topics": {
             "items": {

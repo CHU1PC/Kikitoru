@@ -13,6 +13,7 @@ export const summaryResponseSchema = z.object({
   filename: z.string().describe('アップロードされた音声ファイル名'),
   created_at: z.iso.datetime().describe('要約が作成された日時'),
   overall_summary: z.string().describe('会議全体の要約'),
+  group_id: z.union([z.uuid(), z.null()]).optional().describe('この要約が属する要約グループのID'),
   topics: z.array(topicResponseSchema).describe('会議で議論された議題'),
   decisions: z.array(decisionResponseSchema).describe('会議で決定された事項'),
   action_items: z.array(actionItemResponseSchema).describe('会議で割り当てられたアクションアイテム'),

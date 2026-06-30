@@ -11,6 +11,10 @@ export const listSummariesEndpointApiV1SummariesGetQueryLimitSchema = z.int().mi
 
 export const listSummariesEndpointApiV1SummariesGetQueryOffsetSchema = z.int().min(0).optional().default(0).describe('スキップする件数')
 
+export const listSummariesEndpointApiV1SummariesGetQueryGroupIdSchema = z.union([z.uuid(), z.null()]).optional().describe('検索対象の要約グループのID')
+
+export const listSummariesEndpointApiV1SummariesGetQueryUngroupedOnlySchema = z.boolean().optional().default(false).describe('True なら未分類の要約のみを返す')
+
 export const listSummariesEndpointApiV1SummariesGetStatus200Schema = summaryPageResponseSchema.describe('要約のページネーション付きリスト.')
 
 export const listSummariesEndpointApiV1SummariesGetStatus422Schema = HTTPValidationErrorSchema

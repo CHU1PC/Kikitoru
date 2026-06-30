@@ -10,4 +10,5 @@ export const summaryListItemSchema = z.object({
   filename: z.string().describe('アップロードされた音声ファイル名'),
   created_at: z.iso.datetime().describe('要約が作成された日時'),
   overall_summary: z.string().describe('会議全体の要約'),
+  group_id: z.union([z.uuid(), z.null()]).optional().describe('この要約が属する要約グループのID'),
 }).describe('一覧レスポンス用の要約メタデータ.')
