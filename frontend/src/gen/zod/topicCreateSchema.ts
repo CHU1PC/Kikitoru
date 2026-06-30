@@ -5,8 +5,7 @@
 
 import * as z from 'zod'
 
-export const topicResponseSchema = z.object({
-  id: z.int().describe('議題の一意識別子'),
+export const topicCreateSchema = z.object({
   title: z.string().describe('議題のタイトル'),
   summary: z.string().describe('議題の詳細な要約'),
-}).describe('要約レスポンス内の議題.')
+}).describe('Topicを作成するためのリクエストボディ.')

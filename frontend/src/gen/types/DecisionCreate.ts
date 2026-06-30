@@ -4,15 +4,10 @@
 */
 
 /**
- * @description 要約レスポンス内の決定事項.
+ * @description Decisionを作成するためのリクエストボディ.
  * @type object
 */
-export type DecisionResponse = {
-    /**
-     * @description 決定事項の一意識別子
-     * @type integer
-    */
-    id: number;
+export type DecisionCreate = {
     /**
      * @description 決定事項の説明
      * @type string

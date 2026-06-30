@@ -5,9 +5,8 @@
 
 import * as z from 'zod'
 
-export const actionItemResponseSchema = z.object({
-  id: z.int().describe('アクションアイテムの一意識別子'),
+export const actionItemCreateSchema = z.object({
   description: z.string().describe('アクションアイテムの説明'),
   assignee: z.union([z.string(), z.null()]).optional().describe('アクションアイテムの担当者'),
   due_date: z.union([z.iso.date(), z.null()]).optional().describe('アクションアイテムの期限'),
-}).describe('要約レスポンス内のアクションアイテム.')
+}).describe('ActionItemを作成するためのリクエストボディ.')

@@ -4,15 +4,10 @@
 */
 
 /**
- * @description 要約レスポンス内のアクションアイテム.
+ * @description ActionItemを作成するためのリクエストボディ.
  * @type object
 */
-export type ActionItemResponse = {
-    /**
-     * @description アクションアイテムの一意識別子
-     * @type integer
-    */
-    id: number;
+export type ActionItemCreate = {
     /**
      * @description アクションアイテムの説明
      * @type string
