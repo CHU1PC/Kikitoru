@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.db.engine import get_db_session
 from app.db.models import Summary as DBSummary
-from app.db.models import Topic, User, UserStatus
+from app.db.models import Topic, TranscriptSegment, User, UserStatus
 from app.dependencies import get_current_user
 from main import app
 
@@ -320,3 +320,52 @@ def test_delete_topic_returns_204() -> None:
 
     assert response.status_code == HTTPStatus.NO_CONTENT
     db_session.delete.assert_awaited_once_with(topic)
+
+
+def test_get_transcript_returns_segments() -> None:
+    """自分の要約の transcript が時系列順のセグメントとして返ることを確認するテスト."""
+    summary = DBSummary(user_id=_USER.id, filename="m.mp3", overall_summary="o")
+    seg = TranscriptSegment(summary_id=summary.id, speaker_label="spk_0", start_ms=0, end_ms=500, text="hello")
+    summary_result = MagicMock()
+    summary_result.first.return_value = summary
+    seg_result = MagicMock()
+    seg_result.all.return_value = [seg]
+    db_session = AsyncMock()
+    db_session.exec.side_effect = [summary_result, seg_result]
+    _install_session(db_session)
+
+    response = client.get(f"/api/v1/summaries/{summary.id}/transcript")
+
+    assert response.status_code == HTTPStatus.OK
+    body = response.json()
+    assert [(s["speaker_label"], s["start_ms"], s["text"]) for s in body] == [("spk_0", 0, "hello")]
+
+
+def test_get_transcript_returns_404_when_summary_missing() -> None:
+    """存在しない/他人の要約の transcript が 404 を返すことを確認するテスト."""
+    result = MagicMock()
+    result.first.return_value = None
+    db_session = AsyncMock()
+    db_session.exec.return_value = result
+    _install_session(db_session)
+
+    response = client.get(f"/api/v1/summaries/{uuid4()}/transcript")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_get_transcript_returns_empty_list_when_no_segments() -> None:
+    """セグメントが無い要約の transcript が空リストを返すことを確認するテスト."""
+    summary = DBSummary(user_id=_USER.id, filename="m.mp3", overall_summary="o")
+    summary_result = MagicMock()
+    summary_result.first.return_value = summary
+    seg_result = MagicMock()
+    seg_result.all.return_value = []
+    db_session = AsyncMock()
+    db_session.exec.side_effect = [summary_result, seg_result]
+    _install_session(db_session)
+
+    response = client.get(f"/api/v1/summaries/{summary.id}/transcript")
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json() == []
