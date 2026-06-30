@@ -78,6 +78,7 @@
          <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="user_id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111">
             <parent column="id" foreignKey="fk_summaries_user_id" implied="false" onDeleteCascade="true" schema="public" table="users"/>
          </column>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="6" name="deleted_at" nullable="true" remarks="" size="35" type="timestamptz" typeCode="93"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="summaries_pkey" unique="true">
             <column ascending="true" name="id"/>

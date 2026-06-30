@@ -45,7 +45,7 @@
 <g id="node2" class="node">
 <title>summaries</title>
 <g id="a_node2"><a xlink:href="../../tables/summaries.html" xlink:title="summaries" target="_top">
-<polygon fill="#ffffff" stroke="transparent" points="160,-70.7 160,-248.7 418,-248.7 418,-70.7 160,-70.7"/>
+<polygon fill="#ffffff" stroke="transparent" points="160,-48.7 160,-248.7 418,-248.7 418,-48.7 160,-48.7"/>
 <polygon fill="#f5f5f5" stroke="transparent" points="162,-223.7 162,-246.7 416,-246.7 416,-223.7 162,-223.7"/>
 <polygon fill="none" stroke="#000000" points="162,-223.7 162,-246.7 416,-246.7 416,-223.7 162,-223.7"/>
 <text text-anchor="start" x="167" y="-232.3" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#000000">summaries</text>
@@ -78,17 +78,21 @@
 <text text-anchor="start" x="182" y="-98.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">user_id</text>
 <polygon fill="none" stroke="#000000" points="307,-91.7 307,-113.7 416,-113.7 416,-91.7 307,-91.7"/>
 <text text-anchor="start" x="310" y="-99.4" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">uuid[2147483647]</text>
-<polygon fill="#ffffff" stroke="transparent" points="162,-72.7 162,-91.7 416,-91.7 416,-72.7 162,-72.7"/>
-<polygon fill="none" stroke="#000000" points="162,-72.7 162,-91.7 416,-91.7 416,-72.7 162,-72.7"/>
-<polygon fill="#ffffff" stroke="transparent" points="163,-73.7 163,-90.7 250,-90.7 250,-73.7 163,-73.7"/>
-<text text-anchor="start" x="165" y="-78.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">&lt; 1</text>
-<polygon fill="#ffffff" stroke="transparent" points="250,-73.7 250,-90.7 328,-90.7 328,-73.7 250,-73.7"/>
-<text text-anchor="start" x="285.9431" y="-78.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000"> &#160;</text>
-<polygon fill="#ffffff" stroke="transparent" points="328,-73.7 328,-90.7 415,-90.7 415,-73.7 328,-73.7"/>
-<text text-anchor="start" x="397.4053" y="-78.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">3 &gt;</text>
-<polygon fill="#000000" stroke="#000000" points="250,-73.7 250,-90.7 250,-90.7 250,-73.7 250,-73.7"/>
-<polygon fill="#000000" stroke="#000000" points="328,-73.7 328,-90.7 328,-90.7 328,-73.7 328,-73.7"/>
-<polygon fill="none" stroke="#000000" stroke-width="2" points="161,-71.7 161,-247.7 417,-247.7 417,-71.7 161,-71.7"/>
+<polygon fill="none" stroke="#000000" points="162,-69.7 162,-91.7 307,-91.7 307,-69.7 162,-69.7"/>
+<text text-anchor="start" x="182" y="-76.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">deleted_at</text>
+<polygon fill="none" stroke="#000000" points="307,-69.7 307,-91.7 416,-91.7 416,-69.7 307,-69.7"/>
+<text text-anchor="start" x="310" y="-77.4" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">timestamptz[35,6]</text>
+<polygon fill="#ffffff" stroke="transparent" points="162,-50.7 162,-69.7 416,-69.7 416,-50.7 162,-50.7"/>
+<polygon fill="none" stroke="#000000" points="162,-50.7 162,-69.7 416,-69.7 416,-50.7 162,-50.7"/>
+<polygon fill="#ffffff" stroke="transparent" points="163,-51.7 163,-68.7 250,-68.7 250,-51.7 163,-51.7"/>
+<text text-anchor="start" x="165" y="-56.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">&lt; 1</text>
+<polygon fill="#ffffff" stroke="transparent" points="250,-51.7 250,-68.7 328,-68.7 328,-51.7 250,-51.7"/>
+<text text-anchor="start" x="285.9431" y="-56.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000"> &#160;</text>
+<polygon fill="#ffffff" stroke="transparent" points="328,-51.7 328,-68.7 415,-68.7 415,-51.7 328,-51.7"/>
+<text text-anchor="start" x="397.4053" y="-56.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">3 &gt;</text>
+<polygon fill="#000000" stroke="#000000" points="250,-51.7 250,-68.7 250,-68.7 250,-51.7 250,-51.7"/>
+<polygon fill="#000000" stroke="#000000" points="328,-51.7 328,-68.7 328,-68.7 328,-51.7 328,-51.7"/>
+<polygon fill="none" stroke="#000000" stroke-width="2" points="161,-49.7 161,-247.7 417,-247.7 417,-49.7 161,-49.7"/>
 </a>
 </g>
 </g>
