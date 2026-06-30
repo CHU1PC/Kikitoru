@@ -16,4 +16,8 @@ export type SummaryEdit = {
      * @description 会議全体の要約
     */
     overall_summary?: (string | null);
+    /**
+     * @description この要約が属する要約グループのID
+    */
+    group_id?: (string | null);
 };

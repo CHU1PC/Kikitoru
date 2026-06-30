@@ -37,6 +37,10 @@ export type SummaryResponse = {
     */
     overall_summary: string;
     /**
+     * @description この要約が属する要約グループのID
+    */
+    group_id?: (string | null);
+    /**
      * @description 会議で議論された議題
      * @type array
     */
