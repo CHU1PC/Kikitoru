@@ -161,6 +161,13 @@ class Summary(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=True),
         description="要約が削除された日時 (UTC). アクティブなら None",
     )
+    group_id: UUID | None = Field(
+        default=None,
+        foreign_key="summary_groups.id",
+        ondelete="SET NULL",
+        index=True,
+        description="この要約が属する要約グループのID (あれば)",
+    )
 
 
 class Topic(SQLModel, table=True):
@@ -232,3 +239,26 @@ class TranscriptSegment(SQLModel, table=True):
     start_ms: int = Field(..., description="このセグメントの開始時刻 (ミリ秒単位)")
     end_ms: int = Field(..., description="このセグメントの終了時刻 (ミリ秒単位)")
     text: str = Field(..., description="このセグメントの文字起こしテキスト")
+
+
+class SummaryGroup(SQLModel, table=True):
+    """要約をまとめるユーザー所有のフォルダ."""
+
+    __tablename__ = "summary_groups"  # pyright: ignore[reportAssignmentType]
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_summary_groups_user_name"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True, description="要約グループの一意識別子")
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        ondelete="CASCADE",
+        index=True,
+        description="この要約グループが属するユーザーのID",
+    )
+    name: str = Field(..., max_length=255, description="要約グループの名前")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="要約グループが作成された日時 (UTC)",
+    )
