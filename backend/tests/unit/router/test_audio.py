@@ -24,7 +24,7 @@ from app.db.engine import get_db_session
 from app.db.models import Summary as DBSummary
 from app.db.models import User, UserStatus
 from app.db.summaries import (
-    _add_children,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
+    _add_all_children,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
     create_summary,
 )
 from app.dependencies import get_current_user
@@ -379,7 +379,7 @@ def test_add_children_stages_topics_decisions_and_action_items() -> None:
     )
     db_session = MagicMock()
 
-    _add_children(db_session, summary_id, data)
+    _add_all_children(db_session, summary_id, data)
 
     added = [call.args[0] for call in db_session.add.call_args_list]
     assert len(added) == len(data.topics) + len(data.decisions) + len(data.action_items)
