@@ -4,20 +4,14 @@
 */
 
 /**
- * @description 要約レスポンス内のアクションアイテム.
+ * @description ActionItemを編集するためのリクエストボディ.
  * @type object
 */
-export type ActionItemResponse = {
-    /**
-     * @description アクションアイテムの一意識別子
-     * @type integer
-    */
-    id: number;
+export type ActionItemEdit = {
     /**
      * @description アクションアイテムの説明
-     * @type string
     */
-    description: string;
+    description?: (string | null);
     /**
      * @description アクションアイテムの担当者
     */

@@ -4,20 +4,14 @@
 */
 
 /**
- * @description 要約レスポンス内の決定事項.
+ * @description Decisionを編集するためのリクエストボディ.
  * @type object
 */
-export type DecisionResponse = {
-    /**
-     * @description 決定事項の一意識別子
-     * @type integer
-    */
-    id: number;
+export type DecisionEdit = {
     /**
      * @description 決定事項の説明
-     * @type string
     */
-    description: string;
+    description?: (string | null);
     /**
      * @description 決定した人物またはグループ
     */

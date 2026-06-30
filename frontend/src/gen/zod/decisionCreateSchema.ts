@@ -5,8 +5,7 @@
 
 import * as z from 'zod'
 
-export const decisionResponseSchema = z.object({
-  id: z.int().describe('決定事項の一意識別子'),
+export const decisionCreateSchema = z.object({
   description: z.string().describe('決定事項の説明'),
   decided_by: z.union([z.string(), z.null()]).optional().describe('決定した人物またはグループ'),
-}).describe('要約レスポンス内の決定事項.')
+}).describe('Decisionを作成するためのリクエストボディ.')
