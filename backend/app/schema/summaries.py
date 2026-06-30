@@ -42,6 +42,10 @@ class SummaryListItem(_ResponseModel):
     filename: str = Field(..., description="アップロードされた音声ファイル名")
     created_at: datetime = Field(..., description="要約が作成された日時")
     overall_summary: str = Field(..., description="会議全体の要約")
+    group_id: UUID | None = Field(
+        default=None,
+        description="この要約が属する要約グループのID",
+    )
 
 
 class SummaryResponse(SummaryListItem):
@@ -70,6 +74,14 @@ class TranscriptSegmentResponse(_ResponseModel):
     text: str = Field(..., description="文字起こしされたテキスト")
 
 
+class SummaryGroupResponse(_ResponseModel):
+    """要約グループのレスポンスモデル."""
+
+    id: UUID = Field(..., description="要約グループの一意識別子")
+    name: str = Field(..., description="要約グループの名前")
+    created_at: datetime = Field(..., description="要約グループが作成された日時")
+
+
 class TopicCreate(BaseModel):
     """Topicを作成するためのリクエストボディ."""
 
@@ -90,6 +102,11 @@ class ActionItemCreate(BaseModel):
     description: str = Field(..., description="アクションアイテムの説明")
     assignee: str | None = Field(None, description="アクションアイテムの担当者")
     due_date: date | None = Field(None, description="アクションアイテムの期限")
+
+
+class SummaryGroupCreate(BaseModel):
+    """SummaryGroupを作成するためのリクエストボディ."""
+    name: str = Field(..., description="要約グループの名前")
 
 
 class TopicEdit(BaseModel):
@@ -119,3 +136,9 @@ class SummaryEdit(BaseModel):
 
     filename: str | None = Field(None, description="アップロードされた音声ファイル名")
     overall_summary: str | None = Field(None, description="会議全体の要約")
+    group_id: UUID | None = Field(None, description="この要約が属する要約グループのID")
+
+
+class SummaryGroupEdit(BaseModel):
+    """SummaryGroupを編集するためのリクエストボディ."""
+    name: str = Field(..., description="要約グループの名前")

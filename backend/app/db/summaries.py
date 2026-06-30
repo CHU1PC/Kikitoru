@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func
+from sqlalchemy import ColumnElement, func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, select
 
@@ -52,6 +52,7 @@ async def build_summary_read(db_session: AsyncSession, summary: Summary) -> Summ
         filename=summary.filename,
         created_at=summary.created_at,
         overall_summary=summary.overall_summary,
+        group_id=summary.group_id,
         topics=[TopicResponse.model_validate(t) for t in topics],
         decisions=[DecisionResponse.model_validate(d) for d in decisions],
         action_items=[ActionItemResponse.model_validate(a) for a in action_items],
@@ -113,6 +114,8 @@ async def list_summaries_page(
     deleted: bool,
     limit: int,
     offset: int,
+    group_id: UUID | None = None,
+    ungrouped_only: bool = False,
 ) -> tuple[list[Summary], int]:
     """User の要約を作成日時の降順でページ取得する.
 
@@ -125,16 +128,25 @@ async def list_summaries_page(
         deleted (bool): True なら削除済み (ゴミ箱), False ならアクティブな要約を返す.
         limit (int): 1ページあたりの最大件数.
         offset (int): スキップする件数.
+        group_id (UUID | None): 検索対象の要約グループの ID.
+        ungrouped_only (bool): True なら未分類の要約のみを返す.
 
     Returns:
         tuple[list[Summary], int]: ページ内の要約行と、フィルタ条件に一致する総件数.
     """
-    deleted_filter = col(Summary.deleted_at).is_not(None) if deleted else col(Summary.deleted_at).is_(None)
-    total_col = func.count().over().label("total")
+    filters: list[ColumnElement[bool]] = [
+        col(Summary.user_id) == user_id,
+        col(Summary.deleted_at).is_not(None) if deleted else col(Summary.deleted_at).is_(None),
+    ]
+    if ungrouped_only:
+        filters.append(col(Summary.group_id).is_(None))
+    elif group_id is not None:
+        filters.append(col(Summary.group_id) == group_id)
+    total_col = func.count().over()
     rows = (
         await db_session.exec(
             select(Summary, total_col)
-            .where(col(Summary.user_id) == user_id, deleted_filter)
+            .where(*filters)
             .order_by(col(Summary.created_at).desc(), col(Summary.id).desc())
             .limit(limit)
             .offset(offset)
@@ -146,9 +158,7 @@ async def list_summaries_page(
         await db_session.exec(
             select(func.count())
             .select_from(Summary)
-            .where(
-                col(Summary.user_id) == user_id, deleted_filter
-            )
+            .where(*filters)
         )
     ).one()
     return [], total
