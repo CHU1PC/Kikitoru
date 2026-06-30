@@ -4,6 +4,7 @@
       <sequence increment="1" name="action_items_id_seq" startValue="1"/>
       <sequence increment="1" name="decisions_id_seq" startValue="1"/>
       <sequence increment="1" name="topics_id_seq" startValue="1"/>
+      <sequence increment="1" name="transcript_segments_id_seq" startValue="1"/>
    </sequences>
    <tables>
       <table name="action_items" remarks="" schema="public" type="TABLE">
@@ -70,6 +71,7 @@
             <child column="summary_id" foreignKey="action_items_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="action_items"/>
             <child column="summary_id" foreignKey="decisions_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="decisions"/>
             <child column="summary_id" foreignKey="topics_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="topics"/>
+            <child column="summary_id" foreignKey="transcript_segments_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="transcript_segments"/>
          </column>
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="filename" nullable="false" remarks="" size="255" type="varchar" typeCode="12"/>
          <column autoUpdated="false" defaultValue="null" digits="6" id="2" name="created_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
@@ -106,6 +108,23 @@
             <column ascending="true" name="id"/>
          </index>
          <index name="ix_topics_summary_id" unique="false">
+            <column ascending="true" name="summary_id"/>
+         </index>
+      </table>
+      <table name="transcript_segments" remarks="" schema="public" type="TABLE">
+         <column autoUpdated="true" defaultValue="nextval('transcript_segments_id_seq'::regclass)" digits="0" id="0" name="id" nullable="false" remarks="" size="19" type="bigserial" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="summary_id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="transcript_segments_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="summaries"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="speaker_label" nullable="false" remarks="" size="64" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="start_ms" nullable="false" remarks="" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="end_ms" nullable="false" remarks="" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="text" nullable="false" remarks="" size="2147483647" type="varchar" typeCode="12"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="transcript_segments_pkey" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="ix_transcript_segments_summary_id" unique="false">
             <column ascending="true" name="summary_id"/>
          </index>
       </table>

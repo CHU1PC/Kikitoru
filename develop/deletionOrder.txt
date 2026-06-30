@@ -1,5 +1,6 @@
 alembic_version
 user_sessions
+transcript_segments
 topics
 oauth_identities
 decisions
