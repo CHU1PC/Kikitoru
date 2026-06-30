@@ -4,13 +4,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.db.summaries import build_summary_read, get_owned_summary, list_summaries_page
+from app.db.summaries import build_summary_read, get_owned_summary, get_transcript_segments, list_summaries_page
 from app.dependencies import ApprovedUser, DbSessionDep
 from app.schema.summaries import (
     SummaryEdit,
     SummaryListItem,
     SummaryPageResponse,
     SummaryResponse,
+    TranscriptSegmentResponse,
 )
 
 router = APIRouter(tags=["summaries"])
@@ -83,6 +84,30 @@ async def get_summary_endpoint(summary_id: UUID, db_session: DbSessionDep, user:
     if summary is None:
         raise HTTPException(status_code=404, detail="Summary not found")
     return await build_summary_read(db_session, summary)
+
+
+@router.get("/{summary_id}/transcript")
+async def get_transcript_endpoint(
+    summary_id: UUID, db_session: DbSessionDep, user: ApprovedUser
+) -> list[TranscriptSegmentResponse]:
+    """要約の文字起こし(transcript)を時系列順で返す. 見つからない/他ユーザー/削除済みは 404.
+
+    Args:
+        summary_id (UUID): 要約の ID.
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        user (User): 現在のユーザー.
+
+    Returns:
+        list[TranscriptSegmentResponse]: 文字起こしセグメントのリスト.
+
+    Raises:
+        HTTPException: 404 - 要約が見つからない場合.
+    """
+    summary = await get_owned_summary(db_session, user.id, summary_id)
+    if summary is None:
+        raise HTTPException(status_code=404, detail="Summary not found")
+    transcript_segments = await get_transcript_segments(db_session, summary_id)
+    return [TranscriptSegmentResponse.model_validate(seg) for seg in transcript_segments]
 
 
 @router.patch("/{summary_id}")

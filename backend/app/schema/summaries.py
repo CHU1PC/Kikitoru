@@ -61,6 +61,15 @@ class SummaryPageResponse(BaseModel):
     offset: int = Field(..., description="このページの前にスキップした件数")
 
 
+class TranscriptSegmentResponse(_ResponseModel):
+    """要約レスポンス内の文字起こしセグメント."""
+
+    speaker_label: str = Field(..., description="話者ラベル")
+    start_ms: int = Field(..., description="セグメント開始位置(ミリ秒)")
+    end_ms: int = Field(..., description="セグメント終了位置(ミリ秒)")
+    text: str = Field(..., description="文字起こしされたテキスト")
+
+
 class TopicCreate(BaseModel):
     """Topicを作成するためのリクエストボディ."""
 
