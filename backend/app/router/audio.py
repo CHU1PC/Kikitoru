@@ -104,4 +104,4 @@ async def summarize_audio(
         llm_result = await summarize_chain.ainvoke((segments, reference_date))
 
     filename = sanitize_filename(file.filename)
-    return await create_summary(db_session, user.id, filename, content_hash, llm_result)
+    return await create_summary(db_session, user.id, filename, content_hash, llm_result, segments)
