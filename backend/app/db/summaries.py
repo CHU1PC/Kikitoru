@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, select
 
-from app.db.models import ActionItem, Decision, Summary, Topic
+from app.db.models import ActionItem, Decision, Summary, Topic, TranscriptSegment
 from app.schema.summaries import ActionItemResponse, DecisionResponse, SummaryResponse, TopicResponse
 
 if TYPE_CHECKING:
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from sqlmodel.ext.asyncio.session import AsyncSession
 
     from app.llm.summarize.schema import Summary as LLMSummary
+    from app.stt.types import Segment
 
 
 async def build_summary_read(db_session: AsyncSession, summary: Summary) -> SummaryResponse:
@@ -176,8 +177,37 @@ def _add_all_children(db_session: AsyncSession, summary_id: UUID, data: LLMSumma
         )
 
 
+def _add_segments(
+    db_session: AsyncSession,
+    summary_id: UUID,
+    segments: list[Segment],
+) -> None:
+    """STT の Segment(秒 float) を TranscriptSegment(ms 整数) に変換して insert 用に登録する.
+
+    Args:
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        summary_id (UUID): 親要約の id (flush 後に確定).
+        segments (list[Segment]): STT の話者分離済み文字起こしセグメント.
+    """
+    for seg in segments:
+        db_session.add(
+            TranscriptSegment(
+                summary_id=summary_id,
+                speaker_label=seg.speaker_label,
+                start_ms=round(seg.start * 1000),
+                end_ms=round(seg.end * 1000),
+                text=seg.text,
+            )
+        )
+
+
 async def create_summary(
-    db_session: AsyncSession, user_id: UUID, filename: str, content_hash: str, data: LLMSummary
+    db_session: AsyncSession,
+    user_id: UUID,
+    filename: str,
+    content_hash: str,
+    data: LLMSummary,
+    segments: list[Segment],
 ) -> SummaryResponse:
     """要約と、それに紐づくトピック・決定事項・アクションアイテムを永続化する.
 
@@ -187,6 +217,7 @@ async def create_summary(
         filename (str): アップロードされた音声ファイル名.
         content_hash (str): アップロード音声の SHA-256 hex ダイジェスト.
         data (LLMSummary): LLM が生成した構造化要約.
+        segments (list[Segment]): STT の話者分離済み文字起こしセグメント.
 
     Returns:
         SummaryResponse: 作成された (または content_hash 競合時は既存の) 要約.
@@ -202,6 +233,7 @@ async def create_summary(
         db_session.add(summary)
         await db_session.flush()
         _add_all_children(db_session, summary.id, data)
+        _add_segments(db_session, summary.id, segments)
         await db_session.commit()
     except IntegrityError:
         await db_session.rollback()
