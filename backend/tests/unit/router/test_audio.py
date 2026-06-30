@@ -22,9 +22,10 @@ from app.audio.intake import (
 )
 from app.db.engine import get_db_session
 from app.db.models import Summary as DBSummary
-from app.db.models import User, UserStatus
+from app.db.models import TranscriptSegment, User, UserStatus
 from app.db.summaries import (
     _add_all_children,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
+    _add_segments,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
     create_summary,
 )
 from app.dependencies import get_current_user
@@ -349,7 +350,7 @@ def test_create_summary_returns_existing_on_content_hash_race() -> None:
     db_session.flush = AsyncMock(side_effect=IntegrityError("stmt", None, Exception("duplicate")))
     data = Summary(overall_summary="new run", topics=[], decisions=[], action_items=[])
 
-    result = asyncio.run(create_summary(db_session, _USER.id, "new.mp3", "abc", data))
+    result = asyncio.run(create_summary(db_session, _USER.id, "new.mp3", "abc", data, []))
 
     assert result.filename == "prev.mp3"
     assert result.overall_summary == "previous run"
@@ -363,7 +364,7 @@ def test_create_summary_reraises_unrelated_integrity_error() -> None:
     data = Summary(overall_summary="new", topics=[], decisions=[], action_items=[])
 
     with pytest.raises(IntegrityError):
-        asyncio.run(create_summary(db_session, _USER.id, "x.mp3", "hash", data))
+        asyncio.run(create_summary(db_session, _USER.id, "x.mp3", "hash", data, []))
 
     db_session.rollback.assert_awaited_once()
 
@@ -388,3 +389,23 @@ def test_add_children_stages_topics_decisions_and_action_items() -> None:
     assert topic.title == "T1"
     assert decision.decided_by == "alice"
     assert action.due_date == date(2025, 6, 1)
+
+
+def test_add_segments_converts_seconds_to_milliseconds() -> None:
+    """Segment(秒float) が TranscriptSegment(ms整数) に変換され summary_id 付きで add されることを確認するテスト."""
+    summary_id = uuid4()
+    segments = [
+        Segment(start=0.0, end=1.5, speaker_label="spk_0", text="hello"),
+        Segment(start=1.5, end=2.25, speaker_label="spk_1", text="world"),
+    ]
+    db_session = MagicMock()
+
+    _add_segments(db_session, summary_id, segments)
+
+    added = [call.args[0] for call in db_session.add.call_args_list]
+    assert all(isinstance(s, TranscriptSegment) for s in added)
+    assert [(s.start_ms, s.end_ms, s.speaker_label, s.text) for s in added] == [
+        (0, 1500, "spk_0", "hello"),
+        (1500, 2250, "spk_1", "world"),
+    ]
+    assert all(s.summary_id == summary_id for s in added)
