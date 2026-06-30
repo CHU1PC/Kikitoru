@@ -243,3 +243,25 @@ async def create_summary(
         raise
 
     return await build_summary_read(db_session, summary)
+
+
+async def get_transcript_segments(db_session: AsyncSession, summary_id: UUID) -> list[TranscriptSegment]:
+    """Summary の transcript セグメントを時系列順(start_ms, id)で返す.
+
+    Args:
+        db_session (AsyncSession): SQLAlchemy の非同期セッション.
+        summary_id (UUID): 要約の id.
+
+    Returns:
+        list[TranscriptSegment]: 該当する文字起こしセグメントのリスト.
+    """
+    return list((
+        await db_session.exec(
+            select(TranscriptSegment)
+            .where(col(TranscriptSegment.summary_id) == summary_id)
+            .order_by(
+                col(TranscriptSegment.start_ms),
+                col(TranscriptSegment.id)
+            )
+        )).all()
+    )
