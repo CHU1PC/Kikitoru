@@ -32,4 +32,8 @@ export type SummaryListItem = {
      * @type string
     */
     overall_summary: string;
+    /**
+     * @description この要約が属する要約グループのID
+    */
+    group_id?: (string | null);
 };

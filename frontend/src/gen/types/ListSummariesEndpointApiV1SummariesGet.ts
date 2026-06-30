@@ -24,6 +24,18 @@ export type ListSummariesEndpointApiV1SummariesGetQueryLimit = number | undefine
 export type ListSummariesEndpointApiV1SummariesGetQueryOffset = number | undefined;
 
 /**
+ * @description 検索対象の要約グループのID
+*/
+export type ListSummariesEndpointApiV1SummariesGetQueryGroupId = (string | null) | undefined;
+
+/**
+ * @description True なら未分類の要約のみを返す
+ * @default false
+ * @type boolean | undefined
+*/
+export type ListSummariesEndpointApiV1SummariesGetQueryUngroupedOnly = boolean | undefined;
+
+/**
  * @description 要約のページネーション付きリスト.
  * @type object
 */
@@ -46,6 +58,8 @@ export type ListSummariesEndpointApiV1SummariesGetRequestConfig = {
     query?: {
         limit?: ListSummariesEndpointApiV1SummariesGetQueryLimit;
         offset?: ListSummariesEndpointApiV1SummariesGetQueryOffset;
+        groupId?: ListSummariesEndpointApiV1SummariesGetQueryGroupId;
+        ungroupedOnly?: ListSummariesEndpointApiV1SummariesGetQueryUngroupedOnly;
     };
     headers?: never;
 };
