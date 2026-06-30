@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 
 from app.db.summaries import build_summary_read, get_owned_summary, get_transcript_segments, list_summaries_page
+from app.db.summary_group import get_owned_group
 from app.dependencies import ApprovedUser, DbSessionDep
 from app.schema.summaries import (
     SummaryEdit,
@@ -23,6 +24,9 @@ async def list_summaries_endpoint(
     user: ApprovedUser,
     limit: Annotated[int, Query(ge=1, le=100, description="1ページあたりの件数")] = 50,
     offset: Annotated[int, Query(ge=0, description="スキップする件数")] = 0,
+    group_id: Annotated[UUID | None, Query(description="検索対象の要約グループのID")] = None,
+    *,
+    ungrouped_only: Annotated[bool, Query(description="True なら未分類の要約のみを返す")] = False,
 ) -> SummaryPageResponse:
     """アクティブな要約を作成日時の降順でページ取得する.
 
@@ -31,11 +35,21 @@ async def list_summaries_endpoint(
         user (User): 現在のユーザー.
         limit (int): 1ページあたりの件数 (1〜100). default: 50
         offset (int): スキップする件数 (0以上). default: 0
+        group_id (UUID | None): 検索対象の要約グループの ID.
+        ungrouped_only (bool): True なら未分類の要約のみを返す.
 
     Returns:
         SummaryPageResponse: ページ内の要約リストと総数・limit・offset.
     """
-    items, total = await list_summaries_page(db_session, user.id, deleted=False, limit=limit, offset=offset)
+    items, total = await list_summaries_page(
+        db_session,
+        user.id,
+        deleted=False,
+        limit=limit,
+        offset=offset,
+        group_id=group_id,
+        ungrouped_only=ungrouped_only
+    )
     return SummaryPageResponse(
         items=[SummaryListItem.model_validate(s) for s in items], total=total, limit=limit, offset=offset
     )
@@ -112,10 +126,7 @@ async def get_transcript_endpoint(
 
 @router.patch("/{summary_id}")
 async def update_summary_endpoint(
-    summary_id: UUID,
-    edit: SummaryEdit,
-    db_session: DbSessionDep,
-    user: ApprovedUser,
+    summary_id: UUID, edit: SummaryEdit, db_session: DbSessionDep, user: ApprovedUser
 ) -> SummaryResponse:
     """要約本体 (filename / overall_summary) を部分更新する. 見つからなければ 404.
 
@@ -134,10 +145,18 @@ async def update_summary_endpoint(
     summary = await get_owned_summary(db_session, user.id, summary_id)
     if summary is None:
         raise HTTPException(status_code=404, detail="Summary not found")
+    if edit.group_id is not None:
+        group = await get_owned_group(db_session, user.id, edit.group_id)
+        if group is None:
+            raise HTTPException(status_code=404, detail="Group not found")
     if edit.filename is not None:
         summary.filename = edit.filename
     if edit.overall_summary is not None:
         summary.overall_summary = edit.overall_summary
+    # group_id が指定された場合のみ更新するために exclude_unset=True で dict に変換
+    fields = edit.model_dump(exclude_unset=True)
+    if "group_id" in fields:
+        summary.group_id = fields["group_id"]
     db_session.add(summary)
     await db_session.commit()
     return await build_summary_read(db_session, summary)
