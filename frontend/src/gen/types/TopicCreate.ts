@@ -4,15 +4,10 @@
 */
 
 /**
- * @description 要約レスポンス内の議題.
+ * @description Topicを作成するためのリクエストボディ.
  * @type object
 */
-export type TopicResponse = {
-    /**
-     * @description 議題の一意識別子
-     * @type integer
-    */
-    id: number;
+export type TopicCreate = {
     /**
      * @description 議題のタイトル
      * @type string
