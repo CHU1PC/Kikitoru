@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.db.engine import get_db_session
 from app.db.models import Summary as DBSummary
-from app.db.models import Topic, TranscriptSegment, User, UserStatus
+from app.db.models import SummaryGroup, Topic, TranscriptSegment, User, UserStatus
 from app.dependencies import get_current_user
 from main import app
 
@@ -369,3 +369,92 @@ def test_get_transcript_returns_empty_list_when_no_segments() -> None:
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == []
+
+
+def test_patch_summary_assigns_group() -> None:
+    """自分の group_id を指定した PATCH が要約を所有グループに割り当てることを確認するテスト."""
+    summary = DBSummary(user_id=_USER.id, filename="m.mp3", overall_summary="o")
+    group = SummaryGroup(user_id=_USER.id, name="営業系")
+    get_result = MagicMock()
+    get_result.first.return_value = summary
+    group_result = MagicMock()
+    group_result.first.return_value = group
+    empty = MagicMock()
+    empty.all.return_value = []
+    db_session = AsyncMock()
+    db_session.add = MagicMock()
+    db_session.exec.side_effect = [get_result, group_result, empty, empty, empty]
+    _install_session(db_session)
+
+    response = client.patch(f"/api/v1/summaries/{summary.id}", json={"group_id": str(group.id)})
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["group_id"] == str(group.id)
+
+
+def test_patch_summary_group_not_owned_returns_404() -> None:
+    """他人の (または存在しない) group_id 指定の PATCH が owner スコープで除外され 404 を返すことを確認するテスト."""
+    summary = DBSummary(user_id=_USER.id, filename="m.mp3", overall_summary="o")
+    get_result = MagicMock()
+    get_result.first.return_value = summary
+    none_result = MagicMock()
+    none_result.first.return_value = None  # 他人の group は get_owned_group の WHERE user_id で除外され None になる
+    db_session = AsyncMock()
+    db_session.add = MagicMock()
+    db_session.exec.side_effect = [get_result, none_result]
+    _install_session(db_session)
+
+    response = client.patch(f"/api/v1/summaries/{summary.id}", json={"group_id": str(uuid4())})
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
+def test_patch_summary_ungroups_with_null() -> None:
+    """group_id に null を送る PATCH が要約を未分類に戻す (group_id を None にする) ことを確認するテスト."""
+    summary = DBSummary(user_id=_USER.id, filename="m.mp3", overall_summary="o")
+    summary.group_id = uuid4()  # 既にグループに属している状態
+    get_result = MagicMock()
+    get_result.first.return_value = summary
+    empty = MagicMock()
+    empty.all.return_value = []
+    db_session = AsyncMock()
+    db_session.add = MagicMock()
+    db_session.exec.side_effect = [get_result, empty, empty, empty]
+    _install_session(db_session)
+
+    response = client.patch(f"/api/v1/summaries/{summary.id}", json={"group_id": None})
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["group_id"] is None
+
+
+def test_list_summaries_accepts_group_filter() -> None:
+    """group_id クエリ付きの一覧取得が受理され 200 を返すことを確認するテスト."""
+    total = 1
+    rows = [(DBSummary(user_id=_USER.id, filename="a.mp3", overall_summary="o"), total)]
+    result = MagicMock()
+    result.all.return_value = rows
+    db_session = AsyncMock()
+    db_session.exec.return_value = result
+    _install_session(db_session)
+
+    response = client.get("/api/v1/summaries", params={"group_id": str(uuid4())})
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["total"] == total
+
+
+def test_list_summaries_accepts_ungrouped_filter() -> None:
+    """ungrouped_only=true 付きの一覧取得が受理され 200 を返すことを確認するテスト."""
+    total = 2
+    rows = [(DBSummary(user_id=_USER.id, filename="a.mp3", overall_summary="o"), total)]
+    result = MagicMock()
+    result.all.return_value = rows
+    db_session = AsyncMock()
+    db_session.exec.return_value = result
+    _install_session(db_session)
+
+    response = client.get("/api/v1/summaries", params={"ungrouped_only": "true"})
+
+    assert response.status_code == HTTPStatus.OK
+    assert response.json()["total"] == total
