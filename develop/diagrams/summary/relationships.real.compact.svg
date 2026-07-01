@@ -210,7 +210,7 @@
 <g id="node5" class="node">
 <title>transcript_segments</title>
 <g id="a_node5"><a xlink:href="../../tables/transcript_segments.html" xlink:title="transcript_segments" target="_top">
-<polygon fill="#ffffff" stroke="transparent" points="689,-443.2 689,-548.2 878,-548.2 878,-443.2 689,-443.2"/>
+<polygon fill="#ffffff" stroke="transparent" points="689,-421.2 689,-548.2 878,-548.2 878,-421.2 689,-421.2"/>
 <polygon fill="#f5f5f5" stroke="transparent" points="689.5,-524.7 689.5,-547.7 878.5,-547.7 878.5,-524.7 689.5,-524.7"/>
 <polygon fill="none" stroke="#000000" points="689.5,-524.7 689.5,-547.7 878.5,-547.7 878.5,-524.7 689.5,-524.7"/>
 <text text-anchor="start" x="694.5" y="-533.3" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#000000">transcript_segments</text>
@@ -222,18 +222,21 @@
 <polygon fill="none" stroke="#000000" points="689.5,-480.7 689.5,-502.7 878.5,-502.7 878.5,-480.7 689.5,-480.7"/>
 <image xlink:href="../../images/foreignKeys.png" width="11px" height="12px" preserveAspectRatio="xMinYMin meet" x="694.5" y="-497.7"/>
 <text text-anchor="start" x="718.5" y="-487.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">summary_id</text>
-<polygon fill="none" stroke="#000000" points="689.5,-461.7 689.5,-480.7 878.5,-480.7 878.5,-461.7 689.5,-461.7"/>
-<text text-anchor="start" x="692.5" y="-467.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">...</text>
-<polygon fill="#ffffff" stroke="transparent" points="689.5,-442.7 689.5,-461.7 878.5,-461.7 878.5,-442.7 689.5,-442.7"/>
-<polygon fill="none" stroke="#000000" points="689.5,-442.7 689.5,-461.7 878.5,-461.7 878.5,-442.7 689.5,-442.7"/>
-<polygon fill="#ffffff" stroke="transparent" points="690.5,-443.7 690.5,-460.7 759.5,-460.7 759.5,-443.7 690.5,-443.7"/>
-<text text-anchor="start" x="692.5" y="-448.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">&lt; 1</text>
-<polygon fill="#ffffff" stroke="transparent" points="759.5,-443.7 759.5,-460.7 818.5,-460.7 818.5,-443.7 759.5,-443.7"/>
-<text text-anchor="start" x="785.9431" y="-448.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000"> &#160;</text>
-<polygon fill="#ffffff" stroke="transparent" points="818.5,-443.7 818.5,-460.7 877.5,-460.7 877.5,-443.7 818.5,-443.7"/>
-<text text-anchor="start" x="869.3862" y="-448.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000"> &#160;</text>
-<polygon fill="#000000" stroke="#000000" points="759.5,-443.7 759.5,-460.7 759.5,-460.7 759.5,-443.7 759.5,-443.7"/>
-<polygon fill="#000000" stroke="#000000" points="818.5,-443.7 818.5,-460.7 818.5,-460.7 818.5,-443.7 818.5,-443.7"/>
+<polygon fill="#ffffff" stroke="transparent" points="689.5,-458.7 689.5,-480.7 878.5,-480.7 878.5,-458.7 689.5,-458.7"/>
+<polygon fill="none" stroke="#000000" points="689.5,-458.7 689.5,-480.7 878.5,-480.7 878.5,-458.7 689.5,-458.7"/>
+<text text-anchor="start" x="718.5" y="-465.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">rank</text>
+<polygon fill="none" stroke="#000000" points="689.5,-439.7 689.5,-458.7 878.5,-458.7 878.5,-439.7 689.5,-439.7"/>
+<text text-anchor="start" x="692.5" y="-445.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">...</text>
+<polygon fill="#ffffff" stroke="transparent" points="689.5,-420.7 689.5,-439.7 878.5,-439.7 878.5,-420.7 689.5,-420.7"/>
+<polygon fill="none" stroke="#000000" points="689.5,-420.7 689.5,-439.7 878.5,-439.7 878.5,-420.7 689.5,-420.7"/>
+<polygon fill="#ffffff" stroke="transparent" points="690.5,-421.7 690.5,-438.7 759.5,-438.7 759.5,-421.7 690.5,-421.7"/>
+<text text-anchor="start" x="692.5" y="-426.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">&lt; 1</text>
+<polygon fill="#ffffff" stroke="transparent" points="759.5,-421.7 759.5,-438.7 818.5,-438.7 818.5,-421.7 759.5,-421.7"/>
+<text text-anchor="start" x="785.9431" y="-426.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000"> &#160;</text>
+<polygon fill="#ffffff" stroke="transparent" points="818.5,-421.7 818.5,-438.7 877.5,-438.7 877.5,-421.7 818.5,-421.7"/>
+<text text-anchor="start" x="869.3862" y="-426.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000"> &#160;</text>
+<polygon fill="#000000" stroke="#000000" points="759.5,-421.7 759.5,-438.7 759.5,-438.7 759.5,-421.7 759.5,-421.7"/>
+<polygon fill="#000000" stroke="#000000" points="818.5,-421.7 818.5,-438.7 818.5,-438.7 818.5,-421.7 818.5,-421.7"/>
 </a>
 </g>
 </g>
@@ -248,39 +251,39 @@
 <g id="node6" class="node">
 <title>action_items</title>
 <g id="a_node6"><a xlink:href="../../tables/action_items.html" xlink:title="action_items" target="_top">
-<polygon fill="#ffffff" stroke="transparent" points="718,-317.2 718,-422.2 849,-422.2 849,-317.2 718,-317.2"/>
-<polygon fill="#f5f5f5" stroke="transparent" points="718.5,-398.7 718.5,-421.7 849.5,-421.7 849.5,-398.7 718.5,-398.7"/>
-<polygon fill="none" stroke="#000000" points="718.5,-398.7 718.5,-421.7 849.5,-421.7 849.5,-398.7 718.5,-398.7"/>
-<text text-anchor="start" x="723.5" y="-407.3" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#000000">action_items</text>
-<text text-anchor="start" x="815.0219" y="-406.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">[table]</text>
-<polygon fill="none" stroke="#000000" points="718.5,-376.7 718.5,-398.7 849.5,-398.7 849.5,-376.7 718.5,-376.7"/>
-<image xlink:href="../../images/primaryKeys.png" width="11px" height="12px" preserveAspectRatio="xMinYMin meet" x="723.5" y="-393.7"/>
-<text text-anchor="start" x="747.5" y="-383.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">id</text>
-<polygon fill="#ffffff" stroke="transparent" points="718.5,-354.7 718.5,-376.7 849.5,-376.7 849.5,-354.7 718.5,-354.7"/>
+<polygon fill="#ffffff" stroke="transparent" points="718,-295.2 718,-400.2 849,-400.2 849,-295.2 718,-295.2"/>
+<polygon fill="#f5f5f5" stroke="transparent" points="718.5,-376.7 718.5,-399.7 849.5,-399.7 849.5,-376.7 718.5,-376.7"/>
+<polygon fill="none" stroke="#000000" points="718.5,-376.7 718.5,-399.7 849.5,-399.7 849.5,-376.7 718.5,-376.7"/>
+<text text-anchor="start" x="723.5" y="-385.3" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00" fill="#000000">action_items</text>
+<text text-anchor="start" x="815.0219" y="-384.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">[table]</text>
 <polygon fill="none" stroke="#000000" points="718.5,-354.7 718.5,-376.7 849.5,-376.7 849.5,-354.7 718.5,-354.7"/>
-<image xlink:href="../../images/foreignKeys.png" width="11px" height="12px" preserveAspectRatio="xMinYMin meet" x="723.5" y="-371.7"/>
-<text text-anchor="start" x="747.5" y="-361.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">summary_id</text>
-<polygon fill="none" stroke="#000000" points="718.5,-335.7 718.5,-354.7 849.5,-354.7 849.5,-335.7 718.5,-335.7"/>
-<text text-anchor="start" x="721.5" y="-341.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">...</text>
-<polygon fill="#ffffff" stroke="transparent" points="718.5,-316.7 718.5,-335.7 849.5,-335.7 849.5,-316.7 718.5,-316.7"/>
-<polygon fill="none" stroke="#000000" points="718.5,-316.7 718.5,-335.7 849.5,-335.7 849.5,-316.7 718.5,-316.7"/>
-<polygon fill="#ffffff" stroke="transparent" points="719.5,-317.7 719.5,-334.7 768.5,-334.7 768.5,-317.7 719.5,-317.7"/>
-<text text-anchor="start" x="721.5" y="-322.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">&lt; 1</text>
-<polygon fill="#ffffff" stroke="transparent" points="768.5,-317.7 768.5,-334.7 808.5,-334.7 808.5,-317.7 768.5,-317.7"/>
-<text text-anchor="start" x="785.4431" y="-322.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000"> &#160;</text>
-<polygon fill="#ffffff" stroke="transparent" points="808.5,-317.7 808.5,-334.7 848.5,-334.7 848.5,-317.7 808.5,-317.7"/>
-<text text-anchor="start" x="840.3862" y="-322.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000"> &#160;</text>
-<polygon fill="#000000" stroke="#000000" points="768.5,-317.7 768.5,-334.7 768.5,-334.7 768.5,-317.7 768.5,-317.7"/>
-<polygon fill="#000000" stroke="#000000" points="808.5,-317.7 808.5,-334.7 808.5,-334.7 808.5,-317.7 808.5,-317.7"/>
+<image xlink:href="../../images/primaryKeys.png" width="11px" height="12px" preserveAspectRatio="xMinYMin meet" x="723.5" y="-371.7"/>
+<text text-anchor="start" x="747.5" y="-361.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">id</text>
+<polygon fill="#ffffff" stroke="transparent" points="718.5,-332.7 718.5,-354.7 849.5,-354.7 849.5,-332.7 718.5,-332.7"/>
+<polygon fill="none" stroke="#000000" points="718.5,-332.7 718.5,-354.7 849.5,-354.7 849.5,-332.7 718.5,-332.7"/>
+<image xlink:href="../../images/foreignKeys.png" width="11px" height="12px" preserveAspectRatio="xMinYMin meet" x="723.5" y="-349.7"/>
+<text text-anchor="start" x="747.5" y="-339.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">summary_id</text>
+<polygon fill="none" stroke="#000000" points="718.5,-313.7 718.5,-332.7 849.5,-332.7 849.5,-313.7 718.5,-313.7"/>
+<text text-anchor="start" x="721.5" y="-319.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">...</text>
+<polygon fill="#ffffff" stroke="transparent" points="718.5,-294.7 718.5,-313.7 849.5,-313.7 849.5,-294.7 718.5,-294.7"/>
+<polygon fill="none" stroke="#000000" points="718.5,-294.7 718.5,-313.7 849.5,-313.7 849.5,-294.7 718.5,-294.7"/>
+<polygon fill="#ffffff" stroke="transparent" points="719.5,-295.7 719.5,-312.7 768.5,-312.7 768.5,-295.7 719.5,-295.7"/>
+<text text-anchor="start" x="721.5" y="-300.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000">&lt; 1</text>
+<polygon fill="#ffffff" stroke="transparent" points="768.5,-295.7 768.5,-312.7 808.5,-312.7 808.5,-295.7 768.5,-295.7"/>
+<text text-anchor="start" x="785.4431" y="-300.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000"> &#160;</text>
+<polygon fill="#ffffff" stroke="transparent" points="808.5,-295.7 808.5,-312.7 848.5,-312.7 848.5,-295.7 808.5,-295.7"/>
+<text text-anchor="start" x="840.3862" y="-300.8" font-family="Helvetica,sans-Serif" font-size="11.00" fill="#000000"> &#160;</text>
+<polygon fill="#000000" stroke="#000000" points="768.5,-295.7 768.5,-312.7 768.5,-312.7 768.5,-295.7 768.5,-295.7"/>
+<polygon fill="#000000" stroke="#000000" points="808.5,-295.7 808.5,-312.7 808.5,-312.7 808.5,-295.7 808.5,-295.7"/>
 </a>
 </g>
 </g>
 <!-- action_items&#45;&gt;summaries -->
 <g id="edge1" class="edge">
 <title>action_items:w&#45;&gt;summaries:e</title>
-<path fill="none" stroke="#000000" d="M704.0185,-368.9315C687.331,-378.4104 692.2965,-407.0877 681,-432.7 657.9446,-484.9733 697.6319,-554.7 640.5,-554.7"/>
-<polygon fill="#000000" stroke="#000000" points="710.692,-367.4424 719.2841,-369.2136 714.596,-366.5712 718.5,-365.7 718.5,-365.7 718.5,-365.7 714.596,-366.5712 717.7159,-362.1864 710.692,-367.4424 710.692,-367.4424"/>
-<ellipse fill="none" stroke="#000000" cx="707.5688" cy="-368.1393" rx="3.2" ry="3.2"/>
+<path fill="none" stroke="#000000" d="M703.9607,-346.9068C687.1166,-356.3188 691.6999,-384.8327 681,-410.7 655.5878,-472.1347 706.9831,-554.7 640.5,-554.7"/>
+<polygon fill="#000000" stroke="#000000" points="710.6878,-345.4231 719.2754,-347.2155 714.5939,-344.5616 718.5,-343.7 718.5,-343.7 718.5,-343.7 714.5939,-344.5616 717.7246,-340.1845 710.6878,-345.4231 710.6878,-345.4231"/>
+<ellipse fill="none" stroke="#000000" cx="707.5629" cy="-346.1124" rx="3.2" ry="3.2"/>
 </g>
 <!-- alembic_version -->
 <g id="node7" class="node">

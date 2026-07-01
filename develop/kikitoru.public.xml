@@ -147,9 +147,13 @@
          <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="start_ms" nullable="false" remarks="" size="10" type="int4" typeCode="4"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="end_ms" nullable="false" remarks="" size="10" type="int4" typeCode="4"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="text" nullable="false" remarks="" size="2147483647" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="6" name="rank" nullable="false" remarks="" size="64" type="varchar" typeCode="12"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="transcript_segments_pkey" unique="true">
             <column ascending="true" name="id"/>
+         </index>
+         <index name="ix_transcript_segments_rank" unique="false">
+            <column ascending="true" name="rank"/>
          </index>
          <index name="ix_transcript_segments_summary_id" unique="false">
             <column ascending="true" name="summary_id"/>
