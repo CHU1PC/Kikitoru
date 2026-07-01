@@ -35,6 +35,7 @@ db = [
     "alembic>=1.13",
     "sqlmodel>=0.0.22",
     "asyncpg>=0.31.0",
+    "fractional-indexing>=0.1.3",
 ]
 
 test = [
@@ -50,6 +51,7 @@ test = [
     "python-magic>=0.4",
     "slowapi>=0.1.10",
     "boto3>=1.43.36",
+    "fractional-indexing>=0.1.3",
 ]
 
 [tool.pytest.ini_options]
