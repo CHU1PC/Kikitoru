@@ -16,6 +16,10 @@ if TYPE_CHECKING:
     from app.schema.summaries import TranscriptSegmentCreate, TranscriptSegmentEdit, TranscriptSegmentSplit
 
 
+# merge に必要な最小 distinct セグメント数 (重複 id で 1 件に潰れる入力を弾く)
+_MIN_MERGE_SEGMENTS = 2
+
+
 async def load_owned_segment(
     db_session: AsyncSession,
     user_id: UUID,
@@ -204,7 +208,7 @@ async def merge_segments(
         .order_by(col(TranscriptSegment.rank))
     )
     segments = list((await db_session.exec(stmt)).all())
-    if len(segments) != len(set(segment_ids)):
+    if len(segments) != len(set(segment_ids)) or len(segments) < _MIN_MERGE_SEGMENTS:
         return None  # どれかが summary に属さない場合は None を返す
 
     survivor = segments[0]  # 最初のセグメントを残す. rank はそのままにする
