@@ -323,6 +323,22 @@ def test_merge_segments_foreign_id_returns_404() -> None:
     assert response.status_code == HTTPStatus.NOT_FOUND
 
 
+def test_merge_segments_duplicate_ids_returns_404() -> None:
+    """重複 id (例 [5,5]) の merge が distinct 2件未満で 404 を返すことを確認するテスト."""
+    summary = _summary()
+    seg = _seg(summary.id, seg_id=5, rank="a0")
+    db_session = AsyncMock()
+    db_session.exec.side_effect = [_first(summary), _all([seg])]  # 重複 id は SQL の IN で 1 件に潰れる
+    _install_session(db_session)
+
+    response = client.post(
+        f"/api/v1/summaries/{summary.id}/transcript/merge",
+        json={"segment_ids": [5, 5]},
+    )
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+
+
 # ---- rename speaker --------------------------------------------------------
 
 
