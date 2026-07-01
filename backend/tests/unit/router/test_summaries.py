@@ -325,7 +325,7 @@ def test_delete_topic_returns_204() -> None:
 def test_get_transcript_returns_segments() -> None:
     """自分の要約の transcript が時系列順のセグメントとして返ることを確認するテスト."""
     summary = DBSummary(user_id=_USER.id, filename="m.mp3", overall_summary="o")
-    seg = TranscriptSegment(summary_id=summary.id, speaker_label="spk_0", start_ms=0, end_ms=500, text="hello")
+    seg = TranscriptSegment(id=1, summary_id=summary.id, speaker_label="spk_0", start_ms=0, end_ms=500, text="hello")
     summary_result = MagicMock()
     summary_result.first.return_value = summary
     seg_result = MagicMock()
@@ -338,7 +338,7 @@ def test_get_transcript_returns_segments() -> None:
 
     assert response.status_code == HTTPStatus.OK
     body = response.json()
-    assert [(s["speaker_label"], s["start_ms"], s["text"]) for s in body] == [("spk_0", 0, "hello")]
+    assert [(s["id"], s["speaker_label"], s["start_ms"], s["text"]) for s in body] == [(1, "spk_0", 0, "hello")]
 
 
 def test_get_transcript_returns_404_when_summary_missing() -> None:
