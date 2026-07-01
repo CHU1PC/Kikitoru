@@ -105,6 +105,19 @@ class ActionItemCreate(BaseModel):
     due_date: date | None = Field(None, description="アクションアイテムの期限")
 
 
+class TranscriptSegmentCreate(BaseModel):
+    """抜けた文字起こしセグメントを作成するためのリクエストボディ."""
+
+    speaker_label: str = Field(..., max_length=64, description="話者ラベル")
+    start_ms: int = Field(..., description="このセグメントの開始時刻 (ミリ秒単位)")
+    end_ms: int = Field(..., description="このセグメントの終了時刻 (ミリ秒単位)")
+    text: str = Field(..., description="このセグメントの文字起こしテキスト")
+    after_id: int | None = Field(
+        default=None,
+        description="このセグメントを挿入する位置の直前のセグメントのID. None の場合は先頭に挿入される",
+    )
+
+
 class SummaryGroupCreate(BaseModel):
     """SummaryGroupを作成するためのリクエストボディ."""
     name: str = Field(..., description="要約グループの名前")
@@ -140,6 +153,68 @@ class SummaryEdit(BaseModel):
     group_id: UUID | None = Field(None, description="この要約が属する要約グループのID")
 
 
+class TranscriptSegmentEdit(BaseModel):
+    """TranscriptSegmentを編集するためのリクエストボディ."""
+
+    speaker_label: str | None = Field(None, max_length=64, description="話者ラベル")
+    start_ms: int | None = Field(None, description="セグメント開始位置(ミリ秒)")
+    end_ms: int | None = Field(None, description="セグメント終了位置(ミリ秒)")
+    text: str | None = Field(None, description="ユーザーが編集した文字起こしテキスト")
+
+
 class SummaryGroupEdit(BaseModel):
     """SummaryGroupを編集するためのリクエストボディ."""
     name: str = Field(..., description="要約グループの名前")
+
+
+class TranscriptSegmentSplit(BaseModel):
+    """セグメントを2つに分割するためのリクエストボディ."""
+
+    at_ms: int = Field(
+        ...,
+        description="分割する位置 (ミリ秒単位). セグメントの開始時刻より大きく、終了時刻より小さい必要がある"
+    )
+    text_before: str = Field(
+        ...,
+        description="分割後の前半のセグメントの文字起こしテキスト."
+    )
+    text_after: str = Field(
+        ...,
+        description="分割後の後半のセグメントの文字起こしテキスト."
+    )
+    speaker_before: str | None = Field(
+        None,
+        description="分割後の前半のセグメントの話者ラベル. None の場合は元のセグメントの話者ラベルを使用する."
+    )
+    speaker_after: str | None = Field(
+        None,
+        description="分割後の後半のセグメントの話者ラベル. None の場合は元のセグメントの話者ラベルを使用する."
+    )
+
+
+class TranscriptSegmentMerge(BaseModel):
+    """複数セグメントを1つに結合するためのリクエストボディ."""
+
+    speaker_label: str | None = Field(
+        None,
+        max_length=64,
+        description="結合後のセグメントの話者ラベル. None の場合は最初のセグメントの話者ラベルを使用する."
+    )
+    segment_ids: list[int] = Field(
+        ...,
+        min_length=2,
+        description="結合するセグメントのIDのリスト."
+    )
+
+
+class SpeakerRename(BaseModel):
+    """話者ラベルを変更するためのリクエストボディ."""
+
+    old_label: str = Field(..., max_length=64, description="変更前の話者ラベル")
+    new_label: str = Field(..., max_length=64, description="変更後の話者ラベル")
+
+
+class SpeakerRenameResult(BaseModel):
+    """話者ラベルの変更結果を返すレスポンスモデル."""
+
+    updated: int = Field(..., description="変更されたセグメントの数")
