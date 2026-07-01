@@ -237,7 +237,7 @@ class TranscriptSegment(SQLModel, table=True):
     )
     rank: str = Field(
         sa_column=Column(String(64, collation="C"), nullable=False, index=True),
-        description="表示順の fractional index キー. (start_ms, id) をシードに採番し、編集時は隣接 rank の間に生成する",
+        description="表示順の fractional index キー. 時系列順にシード採番し、編集時は隣接 rank の間に生成する",
     )
     speaker_label: str = Field(..., max_length=64, description="話者のラベル (例: 'Speaker 1', 'Speaker 2')")
     start_ms: int = Field(..., description="このセグメントの開始時刻 (ミリ秒単位)")

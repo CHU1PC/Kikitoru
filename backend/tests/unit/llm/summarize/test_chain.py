@@ -17,7 +17,7 @@ def test_format_input_empty() -> None:
 def test_format_input_single_segment() -> None:
     """セグメントが {id, speaker, text} のキー構造でJSON化されることを確認するテスト."""
     segments = [
-        Segment(start=0.0, end=2.0, speaker_label="Speaker 0", text="hello"),
+        Segment(start_ms=0, end_ms=2000, speaker_label="Speaker 0", text="hello"),
     ]
 
     result = _format_input((segments, _RECORDED_AT))
@@ -29,9 +29,9 @@ def test_format_input_single_segment() -> None:
 def test_format_input_assigns_sequential_ids() -> None:
     """各セグメントに 0 始まりの連番 id が振られることを確認するテスト."""
     segments = [
-        Segment(start=0.0, end=2.0, speaker_label="Speaker 0", text="a"),
-        Segment(start=2.0, end=4.0, speaker_label="Speaker 1", text="b"),
-        Segment(start=4.0, end=6.0, speaker_label="Speaker 0", text="c"),
+        Segment(start_ms=0, end_ms=2000, speaker_label="Speaker 0", text="a"),
+        Segment(start_ms=2000, end_ms=4000, speaker_label="Speaker 1", text="b"),
+        Segment(start_ms=4000, end_ms=6000, speaker_label="Speaker 0", text="c"),
     ]
 
     result = _format_input((segments, _RECORDED_AT))
@@ -44,7 +44,7 @@ def test_format_input_assigns_sequential_ids() -> None:
 def test_format_input_preserves_japanese_characters() -> None:
     """日本語をエスケープせず生の文字のまま出力することを確認するテスト."""
     segments = [
-        Segment(start=0.0, end=2.0, speaker_label="Speaker 0", text="こんにちは"),
+        Segment(start_ms=0, end_ms=2000, speaker_label="Speaker 0", text="こんにちは"),
     ]
 
     result = _format_input((segments, _RECORDED_AT))
@@ -56,7 +56,7 @@ def test_format_input_preserves_japanese_characters() -> None:
 def test_format_input_uses_speaker_label_as_is() -> None:
     """話者ラベルを加工せずそのまま speaker に渡すことを確認するテスト."""
     segments = [
-        Segment(start=0.0, end=2.0, speaker_label="田中", text="..."),
+        Segment(start_ms=0, end_ms=2000, speaker_label="田中", text="..."),
     ]
 
     result = _format_input((segments, _RECORDED_AT))
@@ -68,7 +68,7 @@ def test_format_input_uses_speaker_label_as_is() -> None:
 def test_format_input_returns_expected_keys() -> None:
     """プロンプトテンプレートが要求するキーを返すことを確認するテスト."""
     segments = [
-        Segment(start=0.0, end=2.0, speaker_label="Speaker 0", text="test"),
+        Segment(start_ms=0, end_ms=2000, speaker_label="Speaker 0", text="test"),
     ]
 
     result = _format_input((segments, _RECORDED_AT))

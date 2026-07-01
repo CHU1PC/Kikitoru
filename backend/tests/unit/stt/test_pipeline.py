@@ -83,7 +83,7 @@ def test_to_segments_concatenates_words_of_same_speaker() -> None:
     )
 
     assert _to_segments(transcript) == [
-        Segment(start=0.0, end=1.0, speaker_label="Speaker 1", text="Hello world.")
+        Segment(start_ms=0, end_ms=1000, speaker_label="Speaker 1", text="Hello world.")
     ]
 
 
@@ -94,8 +94,8 @@ def test_to_segments_splits_on_speaker_change() -> None:
         speakers={"0.0": "spk_0", "1.0": "spk_1"},
     )
     assert _to_segments(transcript) == [
-        Segment(start=0.0, end=0.5, speaker_label="Speaker 1", text="はい"),
-        Segment(start=1.0, end=1.5, speaker_label="Speaker 2", text="そうですね"),
+        Segment(start_ms=0, end_ms=500, speaker_label="Speaker 1", text="はい"),
+        Segment(start_ms=1000, end_ms=1500, speaker_label="Speaker 2", text="そうですね"),
     ]
 
 
@@ -110,9 +110,9 @@ def test_to_segments_same_speaker_returning_creates_separate_segments() -> None:
         speakers={"0.0": "spk_0", "1.0": "spk_1", "2.0": "spk_0"},
     )
     assert _to_segments(transcript) == [
-        Segment(start=0.0, end=0.5, speaker_label="Speaker 1", text="A1"),
-        Segment(start=1.0, end=1.5, speaker_label="Speaker 2", text="B1"),
-        Segment(start=2.0, end=2.5, speaker_label="Speaker 1", text="A2"),
+        Segment(start_ms=0, end_ms=500, speaker_label="Speaker 1", text="A1"),
+        Segment(start_ms=1000, end_ms=1500, speaker_label="Speaker 2", text="B1"),
+        Segment(start_ms=2000, end_ms=2500, speaker_label="Speaker 1", text="A2"),
     ]
 
 
@@ -126,7 +126,7 @@ def test_to_segments_without_speaker_labels_falls_back_to_single_speaker() -> No
         speakers=None,
     )
     assert _to_segments(transcript) == [
-        Segment(start=0.0, end=1.0, speaker_label="Speaker 1", text="ひとりごと"),
+        Segment(start_ms=0, end_ms=1000, speaker_label="Speaker 1", text="ひとりごと"),
     ]
 
 
