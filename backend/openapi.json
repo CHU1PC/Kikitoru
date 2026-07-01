@@ -377,6 +377,58 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "summaries"
+        ],
+        "summary": "Insert Segment Endpoint",
+        "description": "\u629c\u3051\u305f transcript segment \u3092\u633f\u5165\u3059\u308b.\n\nArgs:\n    summary_id (UUID): \u89aa summary \u306e ID\n    body (TranscriptSegmentCreate): \u633f\u5165\u3059\u308b transcript segment \u306e\u60c5\u5831\n    db_session (DbSessionDep): \u30c7\u30fc\u30bf\u30d9\u30fc\u30b9\u30bb\u30c3\u30b7\u30e7\u30f3\n    user (ApprovedUser): \u627f\u8a8d\u6e08\u307f\u30e6\u30fc\u30b6\u30fc\n\nReturns:\n    TranscriptSegmentResponse: \u633f\u5165\u3055\u308c\u305f transcript segment \u306e\u60c5\u5831\n\nRaises:\n    HTTPException: 404 - \u89aa summary \u304c\u898b\u3064\u304b\u3089\u306a\u3044\u5834\u5408\u3001\u307e\u305f\u306f\u30e6\u30fc\u30b6\u30fc\u304c\u6240\u6709\u3057\u3066\u3044\u306a\u3044\u5834\u5408\n    HTTPException: 422 - \u633f\u5165\u3059\u308b\u4f4d\u7f6e\u304c\u4e0d\u6b63\u306a\u5834\u5408",
+        "operationId": "insert_segment_endpoint_api_v1_summaries__summary_id__transcript_post",
+        "parameters": [
+          {
+            "name": "summary_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Summary Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptSegmentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptSegmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/summaries/{summary_id}/restore": {
@@ -923,6 +975,288 @@
             "schema": {
               "type": "integer",
               "title": "Action Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/summaries/{summary_id}/transcript/merge": {
+      "post": {
+        "tags": [
+          "summaries"
+        ],
+        "summary": "Merge Segments Endpoint",
+        "description": "\u8907\u6570\u306e transcript segment \u30921\u3064\u306b\u7d50\u5408\u3059\u308b.\n\nArgs:\n    summary_id (UUID): \u89aa summary \u306e ID\n    body (TranscriptSegmentMerge): \u7d50\u5408\u3059\u308b transcript segment \u306e\u60c5\u5831\n    db_session (DbSessionDep): \u30c7\u30fc\u30bf\u30d9\u30fc\u30b9\u30bb\u30c3\u30b7\u30e7\u30f3\n    user (ApprovedUser): \u627f\u8a8d\u6e08\u307f\u30e6\u30fc\u30b6\u30fc\n\nReturns:\n    TranscriptSegmentResponse: \u7d50\u5408\u3055\u308c\u305f transcript segment \u306e\u60c5\u5831\n\nRaises:\n    HTTPException: 404 - \u89aa summary \u304c\u898b\u3064\u304b\u3089\u306a\u3044\u5834\u5408\u3001\u307e\u305f\u306f\u30e6\u30fc\u30b6\u30fc\u304c\u6240\u6709\u3057\u3066\u3044\u306a\u3044\u5834\u5408\n    HTTPException: 422 - \u7d50\u5408\u3059\u308b\u30bb\u30b0\u30e1\u30f3\u30c8\u304c\u4e0d\u6b63\u306a\u5834\u5408",
+        "operationId": "merge_segments_endpoint_api_v1_summaries__summary_id__transcript_merge_post",
+        "parameters": [
+          {
+            "name": "summary_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Summary Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptSegmentMerge"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptSegmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/summaries/{summary_id}/transcript/speakers/rename": {
+      "post": {
+        "tags": [
+          "summaries"
+        ],
+        "summary": "Rename Speaker Endpoint",
+        "description": "\u8a71\u8005\u30e9\u30d9\u30eb\u3092\u5909\u66f4\u3059\u308b.\n\nArgs:\n    summary_id (UUID): \u89aa summary \u306e ID\n    body (SpeakerRename): \u5909\u66f4\u3059\u308b\u8a71\u8005\u30e9\u30d9\u30eb\u306e\u60c5\u5831\n    db_session (DbSessionDep): \u30c7\u30fc\u30bf\u30d9\u30fc\u30b9\u30bb\u30c3\u30b7\u30e7\u30f3\n    user (ApprovedUser): \u627f\u8a8d\u6e08\u307f\u30e6\u30fc\u30b6\u30fc\n\nReturns:\n    SpeakerRenameResult: \u5909\u66f4\u3055\u308c\u305f\u8a71\u8005\u30e9\u30d9\u30eb\u306e\u60c5\u5831\n\nRaises:\n    HTTPException: 404 - \u89aa summary \u304c\u898b\u3064\u304b\u3089\u306a\u3044\u5834\u5408\u3001\u307e\u305f\u306f\u30e6\u30fc\u30b6\u30fc\u304c\u6240\u6709\u3057\u3066\u3044\u306a\u3044\u5834\u5408",
+        "operationId": "rename_speaker_endpoint_api_v1_summaries__summary_id__transcript_speakers_rename_post",
+        "parameters": [
+          {
+            "name": "summary_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Summary Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpeakerRename"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpeakerRenameResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/summaries/{summary_id}/transcript/{segment_id}/split": {
+      "post": {
+        "tags": [
+          "summaries"
+        ],
+        "summary": "Split Segment Endpoint",
+        "description": "\u30bb\u30b0\u30e1\u30f3\u30c8\u30922\u3064\u306b\u5206\u5272\u3059\u308b.\n\nArgs:\n    summary_id (UUID): \u89aa summary \u306e ID\n    segment_id (int): \u5206\u5272\u3059\u308b transcript segment \u306e ID\n    body (TranscriptSegmentSplit): \u5206\u5272\u3059\u308b\u4f4d\u7f6e\u3068\u5206\u5272\u5f8c\u306e\u30c6\u30ad\u30b9\u30c8\n    db_session (DbSessionDep): \u30c7\u30fc\u30bf\u30d9\u30fc\u30b9\u30bb\u30c3\u30b7\u30e7\u30f3\n    user (ApprovedUser): \u627f\u8a8d\u6e08\u307f\u30e6\u30fc\u30b6\u30fc\n\nReturns:\n    list[TranscriptSegmentResponse]: \u5206\u5272\u5f8c\u306e2\u3064\u306e transcript segment \u306e\u60c5\u5831\n\nRaises:\n    HTTPException: 404 - \u89aa summary \u304c\u898b\u3064\u304b\u3089\u306a\u3044, \u30e6\u30fc\u30b6\u30fc\u304c\u6240\u6709\u3057\u3066\u3044\u306a\u3044, \u5206\u5272\u5bfe\u8c61\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u304c\u898b\u3064\u304b\u3089\u306a\u3044\u5834\u5408\n    HTTPException: 422 - \u5206\u5272\u4f4d\u7f6e\u304c\u7bc4\u56f2\u5916\u306e\u5834\u5408",
+        "operationId": "split_segment_endpoint_api_v1_summaries__summary_id__transcript__segment_id__split_post",
+        "parameters": [
+          {
+            "name": "summary_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Summary Id"
+            }
+          },
+          {
+            "name": "segment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Segment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptSegmentSplit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TranscriptSegmentResponse"
+                  },
+                  "title": "Response Split Segment Endpoint Api V1 Summaries  Summary Id  Transcript  Segment Id  Split Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/summaries/{summary_id}/transcript/{segment_id}": {
+      "patch": {
+        "tags": [
+          "summaries"
+        ],
+        "summary": "Update Segment Endpoint",
+        "description": "Segment \u3092\u90e8\u5206\u66f4\u65b0\u3059\u308b. \u7121\u3051\u308c\u3070 404, \u5fc5\u9808 null/end_ms<=start_ms \u306f 422.\n\nArgs:\n    summary_id (UUID): \u89aa summary \u306e ID\n    segment_id (int): \u66f4\u65b0\u3059\u308b transcript segment \u306e ID\n    body (TranscriptSegmentEdit): \u66f4\u65b0\u3059\u308b transcript segment \u306e\u60c5\u5831\n    db_session (DbSessionDep): \u30c7\u30fc\u30bf\u30d9\u30fc\u30b9\u30bb\u30c3\u30b7\u30e7\u30f3\n    user (ApprovedUser): \u627f\u8a8d\u6e08\u307f\u30e6\u30fc\u30b6\u30fc\n\nReturns:\n    TranscriptSegmentResponse: \u66f4\u65b0\u5f8c\u306e transcript segment \u306e\u60c5\u5831\n\nRaises:\n    HTTPException: 404 - \u89aa summary \u304c\u898b\u3064\u304b\u3089\u306a\u3044, \u30e6\u30fc\u30b6\u30fc\u304c\u6240\u6709\u3057\u3066\u3044\u306a\u3044, \u66f4\u65b0\u5bfe\u8c61\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u304c\u898b\u3064\u304b\u3089\u306a\u3044\u5834\u5408\n    HTTPException: 422 - \u66f4\u65b0\u5185\u5bb9\u304c\u4e0d\u6b63\u306a\u5834\u5408",
+        "operationId": "update_segment_endpoint_api_v1_summaries__summary_id__transcript__segment_id__patch",
+        "parameters": [
+          {
+            "name": "summary_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Summary Id"
+            }
+          },
+          {
+            "name": "segment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Segment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptSegmentEdit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptSegmentResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "summaries"
+        ],
+        "summary": "Delete Segment Endpoint",
+        "description": "Segment \u3092\u524a\u9664\u3059\u308b. \u7121\u3051\u308c\u3070 404.\n\nArgs:\n    summary_id (UUID): \u89aa summary \u306e ID\n    segment_id (int): \u524a\u9664\u3059\u308b transcript segment \u306e ID\n    db_session (DbSessionDep): \u30c7\u30fc\u30bf\u30d9\u30fc\u30b9\u30bb\u30c3\u30b7\u30e7\u30f3\n    user (ApprovedUser): \u627f\u8a8d\u6e08\u307f\u30e6\u30fc\u30b6\u30fc\n\nRaises:\n    HTTPException: 404 - \u89aa summary \u304c\u898b\u3064\u304b\u3089\u306a\u3044, \u30e6\u30fc\u30b6\u30fc\u304c\u6240\u6709\u3057\u3066\u3044\u306a\u3044, \u524a\u9664\u5bfe\u8c61\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u304c\u898b\u3064\u304b\u3089\u306a\u3044\u5834\u5408",
+        "operationId": "delete_segment_endpoint_api_v1_summaries__summary_id__transcript__segment_id__delete",
+        "parameters": [
+          {
+            "name": "summary_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Summary Id"
+            }
+          },
+          {
+            "name": "segment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Segment Id"
             }
           }
         ],
@@ -1589,6 +1923,44 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "SpeakerRename": {
+        "properties": {
+          "old_label": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Old Label",
+            "description": "\u5909\u66f4\u524d\u306e\u8a71\u8005\u30e9\u30d9\u30eb"
+          },
+          "new_label": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "New Label",
+            "description": "\u5909\u66f4\u5f8c\u306e\u8a71\u8005\u30e9\u30d9\u30eb"
+          }
+        },
+        "type": "object",
+        "required": [
+          "old_label",
+          "new_label"
+        ],
+        "title": "SpeakerRename",
+        "description": "\u8a71\u8005\u30e9\u30d9\u30eb\u3092\u5909\u66f4\u3059\u308b\u305f\u3081\u306e\u30ea\u30af\u30a8\u30b9\u30c8\u30dc\u30c7\u30a3."
+      },
+      "SpeakerRenameResult": {
+        "properties": {
+          "updated": {
+            "type": "integer",
+            "title": "Updated",
+            "description": "\u5909\u66f4\u3055\u308c\u305f\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u6570"
+          }
+        },
+        "type": "object",
+        "required": [
+          "updated"
+        ],
+        "title": "SpeakerRenameResult",
+        "description": "\u8a71\u8005\u30e9\u30d9\u30eb\u306e\u5909\u66f4\u7d50\u679c\u3092\u8fd4\u3059\u30ec\u30b9\u30dd\u30f3\u30b9\u30e2\u30c7\u30eb."
+      },
       "SummaryEdit": {
         "properties": {
           "filename": {
@@ -1930,6 +2302,140 @@
         "title": "TopicResponse",
         "description": "\u8981\u7d04\u30ec\u30b9\u30dd\u30f3\u30b9\u5185\u306e\u8b70\u984c."
       },
+      "TranscriptSegmentCreate": {
+        "properties": {
+          "speaker_label": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Speaker Label",
+            "description": "\u8a71\u8005\u30e9\u30d9\u30eb"
+          },
+          "start_ms": {
+            "type": "integer",
+            "title": "Start Ms",
+            "description": "\u3053\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u958b\u59cb\u6642\u523b (\u30df\u30ea\u79d2\u5358\u4f4d)"
+          },
+          "end_ms": {
+            "type": "integer",
+            "title": "End Ms",
+            "description": "\u3053\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u7d42\u4e86\u6642\u523b (\u30df\u30ea\u79d2\u5358\u4f4d)"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "\u3053\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u6587\u5b57\u8d77\u3053\u3057\u30c6\u30ad\u30b9\u30c8"
+          },
+          "after_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Id",
+            "description": "\u3053\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u3092\u633f\u5165\u3059\u308b\u4f4d\u7f6e\u306e\u76f4\u524d\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u306eID. None \u306e\u5834\u5408\u306f\u5148\u982d\u306b\u633f\u5165\u3055\u308c\u308b"
+          }
+        },
+        "type": "object",
+        "required": [
+          "speaker_label",
+          "start_ms",
+          "end_ms",
+          "text"
+        ],
+        "title": "TranscriptSegmentCreate",
+        "description": "\u629c\u3051\u305f\u6587\u5b57\u8d77\u3053\u3057\u30bb\u30b0\u30e1\u30f3\u30c8\u3092\u4f5c\u6210\u3059\u308b\u305f\u3081\u306e\u30ea\u30af\u30a8\u30b9\u30c8\u30dc\u30c7\u30a3."
+      },
+      "TranscriptSegmentEdit": {
+        "properties": {
+          "speaker_label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speaker Label",
+            "description": "\u8a71\u8005\u30e9\u30d9\u30eb"
+          },
+          "start_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Ms",
+            "description": "\u30bb\u30b0\u30e1\u30f3\u30c8\u958b\u59cb\u4f4d\u7f6e(\u30df\u30ea\u79d2)"
+          },
+          "end_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Ms",
+            "description": "\u30bb\u30b0\u30e1\u30f3\u30c8\u7d42\u4e86\u4f4d\u7f6e(\u30df\u30ea\u79d2)"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text",
+            "description": "\u30e6\u30fc\u30b6\u30fc\u304c\u7de8\u96c6\u3057\u305f\u6587\u5b57\u8d77\u3053\u3057\u30c6\u30ad\u30b9\u30c8"
+          }
+        },
+        "type": "object",
+        "title": "TranscriptSegmentEdit",
+        "description": "TranscriptSegment\u3092\u7de8\u96c6\u3059\u308b\u305f\u3081\u306e\u30ea\u30af\u30a8\u30b9\u30c8\u30dc\u30c7\u30a3."
+      },
+      "TranscriptSegmentMerge": {
+        "properties": {
+          "speaker_label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speaker Label",
+            "description": "\u7d50\u5408\u5f8c\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u8a71\u8005\u30e9\u30d9\u30eb. None \u306e\u5834\u5408\u306f\u6700\u521d\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u8a71\u8005\u30e9\u30d9\u30eb\u3092\u4f7f\u7528\u3059\u308b."
+          },
+          "segment_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "minItems": 2,
+            "title": "Segment Ids",
+            "description": "\u7d50\u5408\u3059\u308b\u30bb\u30b0\u30e1\u30f3\u30c8\u306eID\u306e\u30ea\u30b9\u30c8."
+          }
+        },
+        "type": "object",
+        "required": [
+          "segment_ids"
+        ],
+        "title": "TranscriptSegmentMerge",
+        "description": "\u8907\u6570\u30bb\u30b0\u30e1\u30f3\u30c8\u30921\u3064\u306b\u7d50\u5408\u3059\u308b\u305f\u3081\u306e\u30ea\u30af\u30a8\u30b9\u30c8\u30dc\u30c7\u30a3."
+      },
       "TranscriptSegmentResponse": {
         "properties": {
           "id": {
@@ -1968,6 +2474,57 @@
         ],
         "title": "TranscriptSegmentResponse",
         "description": "\u8981\u7d04\u30ec\u30b9\u30dd\u30f3\u30b9\u5185\u306e\u6587\u5b57\u8d77\u3053\u3057\u30bb\u30b0\u30e1\u30f3\u30c8."
+      },
+      "TranscriptSegmentSplit": {
+        "properties": {
+          "at_ms": {
+            "type": "integer",
+            "title": "At Ms",
+            "description": "\u5206\u5272\u3059\u308b\u4f4d\u7f6e (\u30df\u30ea\u79d2\u5358\u4f4d). \u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u958b\u59cb\u6642\u523b\u3088\u308a\u5927\u304d\u304f\u3001\u7d42\u4e86\u6642\u523b\u3088\u308a\u5c0f\u3055\u3044\u5fc5\u8981\u304c\u3042\u308b"
+          },
+          "text_before": {
+            "type": "string",
+            "title": "Text Before",
+            "description": "\u5206\u5272\u5f8c\u306e\u524d\u534a\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u6587\u5b57\u8d77\u3053\u3057\u30c6\u30ad\u30b9\u30c8."
+          },
+          "text_after": {
+            "type": "string",
+            "title": "Text After",
+            "description": "\u5206\u5272\u5f8c\u306e\u5f8c\u534a\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u6587\u5b57\u8d77\u3053\u3057\u30c6\u30ad\u30b9\u30c8."
+          },
+          "speaker_before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speaker Before",
+            "description": "\u5206\u5272\u5f8c\u306e\u524d\u534a\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u8a71\u8005\u30e9\u30d9\u30eb. None \u306e\u5834\u5408\u306f\u5143\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u8a71\u8005\u30e9\u30d9\u30eb\u3092\u4f7f\u7528\u3059\u308b."
+          },
+          "speaker_after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speaker After",
+            "description": "\u5206\u5272\u5f8c\u306e\u5f8c\u534a\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u8a71\u8005\u30e9\u30d9\u30eb. None \u306e\u5834\u5408\u306f\u5143\u306e\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u8a71\u8005\u30e9\u30d9\u30eb\u3092\u4f7f\u7528\u3059\u308b."
+          }
+        },
+        "type": "object",
+        "required": [
+          "at_ms",
+          "text_before",
+          "text_after"
+        ],
+        "title": "TranscriptSegmentSplit",
+        "description": "\u30bb\u30b0\u30e1\u30f3\u30c8\u30922\u3064\u306b\u5206\u5272\u3059\u308b\u305f\u3081\u306e\u30ea\u30af\u30a8\u30b9\u30c8\u30dc\u30c7\u30a3."
       },
       "UserAdminUpdate": {
         "properties": {
