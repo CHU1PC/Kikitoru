@@ -6,6 +6,7 @@
 import * as z from 'zod'
 
 export const transcriptSegmentResponseSchema = z.object({
+  id: z.int().describe('セグメントの一意識別子'),
   speaker_label: z.string().describe('話者ラベル'),
   start_ms: z.int().describe('セグメント開始位置(ミリ秒)'),
   end_ms: z.int().describe('セグメント終了位置(ミリ秒)'),

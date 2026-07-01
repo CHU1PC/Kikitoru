@@ -1932,6 +1932,11 @@
       },
       "TranscriptSegmentResponse": {
         "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "\u30bb\u30b0\u30e1\u30f3\u30c8\u306e\u4e00\u610f\u8b58\u5225\u5b50"
+          },
           "speaker_label": {
             "type": "string",
             "title": "Speaker Label",
@@ -1955,6 +1960,7 @@
         },
         "type": "object",
         "required": [
+          "id",
           "speaker_label",
           "start_ms",
           "end_ms",
