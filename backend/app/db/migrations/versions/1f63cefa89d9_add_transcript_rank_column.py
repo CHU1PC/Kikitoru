@@ -38,15 +38,18 @@ def downgrade() -> None:
 
 
 def _backfill_ranks(conn: sa.Connection) -> None:
-    """Assign time-ordered fractional ranks to existing rows, per summary."""
+    """Assign (start_ms, end_ms)-ordered fractional ranks to existing rows, per summary."""
     rows = conn.execute(
-        sa.text("SELECT id, summary_id FROM transcript_segments ORDER BY summary_id, start_ms, id")
+        sa.text("SELECT id, summary_id FROM transcript_segments ORDER BY summary_id, start_ms, end_ms, id")
     ).all()
+
+    params: list[dict[str, str | int]] = []
     for _summary_id, group in groupby(rows, key=lambda row: row.summary_id):
         ids = [row.id for row in group]
         ranks = generate_n_keys_between(None, None, len(ids))
-        for seg_id, rank in zip(ids, ranks, strict=True):
-            conn.execute(
-                sa.text("UPDATE transcript_segments SET rank = :rank WHERE id = :id"),
-                {"rank": rank, "id": seg_id},
-            )
+        params.extend({"id": seq_id, "rank": rank} for seq_id, rank in zip(ids, ranks, strict=True))
+    if params:
+        conn.execute(
+            sa.text("UPDATE transcript_segments SET rank = :rank WHERE id = :id"),
+            params,
+        )
