@@ -42,7 +42,7 @@ _USER = User(id=uuid4(), email="owner@example.com", name="Owner", status=UserSta
 _VALID_CONTENT_TYPE = "audio/mpeg"
 _DUMMY_AUDIO = b"dummy audio content"
 _EMPTY_SUMMARY = Summary(overall_summary="test", topics=[], decisions=[], action_items=[])
-_DUMMY_SEGMENTS = [Segment(start=0.0, end=1.0, speaker_label="Speaker 1", text="hello")]
+_DUMMY_SEGMENTS = [Segment(start_ms=0, end_ms=1000, speaker_label="Speaker 1", text="hello")]
 
 
 def _make_session_mock(existing: object = None) -> AsyncMock:
@@ -391,12 +391,12 @@ def test_add_children_stages_topics_decisions_and_action_items() -> None:
     assert action.due_date == date(2025, 6, 1)
 
 
-def test_add_segments_converts_seconds_to_milliseconds() -> None:
-    """Segment(秒float) が TranscriptSegment(ms整数) に変換され summary_id 付きで add されることを確認するテスト."""
+def test_add_segments_registers_segments_with_summary_id() -> None:
+    """Segment が TranscriptSegment として summary_id 付きで add されることを確認するテスト."""
     summary_id = uuid4()
     segments = [
-        Segment(start=0.0, end=1.5, speaker_label="spk_0", text="hello"),
-        Segment(start=1.5, end=2.25, speaker_label="spk_1", text="world"),
+        Segment(start_ms=0, end_ms=1500, speaker_label="spk_0", text="hello"),
+        Segment(start_ms=1500, end_ms=2250, speaker_label="spk_1", text="world"),
     ]
     db_session = MagicMock()
 

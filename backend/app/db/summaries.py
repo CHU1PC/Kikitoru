@@ -193,9 +193,9 @@ def _add_segments(
     summary_id: UUID,
     segments: list[Segment],
 ) -> None:
-    """STT の Segment(秒 float) を TranscriptSegment(ms 整数) に変換して insert 用に登録する.
+    """STT の Segment(ms 整数) を TranscriptSegment として insert 用に登録する.
 
-    rank は時系列((start, end))順に fractional index を一括採番する. これにより
+    rank は時系列((start_ms, end_ms))順に fractional index を一括採番する. これにより
     read は rank 順に取得でき、後続の編集(挿入/分割)は隣接 rank の間へ差せる.
 
     Args:
@@ -203,7 +203,7 @@ def _add_segments(
         summary_id (UUID): 親要約の id (flush 後に確定).
         segments (list[Segment]): STT の話者分離済み文字起こしセグメント.
     """
-    ordered = sorted(segments, key=lambda seg: (seg.start, seg.end))
+    ordered = sorted(segments, key=lambda seg: (seg.start_ms, seg.end_ms))
     ranks = generate_n_keys_between(None, None, len(ordered))
     for seg, rank in zip(ordered, ranks, strict=True):
         db_session.add(
@@ -211,8 +211,8 @@ def _add_segments(
                 summary_id=summary_id,
                 rank=rank,
                 speaker_label=seg.speaker_label,
-                start_ms=round(seg.start * 1000),
-                end_ms=round(seg.end * 1000),
+                start_ms=seg.start_ms,
+                end_ms=seg.end_ms,
                 text=seg.text,
             )
         )
