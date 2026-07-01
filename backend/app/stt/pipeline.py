@@ -135,8 +135,8 @@ def _to_segments(transcript: Transcript) -> list[Segment]:
             if current_speaker:
                 segments.append(
                     Segment(
-                        start=current_start,
-                        end=current_end,
+                        start_ms=round(current_start * 1000),
+                        end_ms=round(current_end * 1000),
                         speaker_label=f"Speaker {int(current_speaker.removeprefix('spk_')) + 1}",
                         text=current_text
                     )
@@ -152,8 +152,8 @@ def _to_segments(transcript: Transcript) -> list[Segment]:
     if current_speaker:  # 最後のセグメントを追加する
         segments.append(
             Segment(
-                start=current_start,
-                end=current_end,
+                start_ms=round(current_start * 1000),
+                end_ms=round(current_end * 1000),
                 speaker_label=f"Speaker {int(current_speaker.removeprefix('spk_')) + 1}",
                 text=current_text
             )
