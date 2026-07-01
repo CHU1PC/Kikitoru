@@ -9,6 +9,11 @@
 */
 export type TranscriptSegmentResponse = {
     /**
+     * @description セグメントの一意識別子
+     * @type integer
+    */
+    id: number;
+    /**
      * @description 話者ラベル
      * @type string
     */
