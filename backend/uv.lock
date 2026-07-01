@@ -633,6 +633,7 @@ dependencies = [
 db = [
     { name = "alembic" },
     { name = "asyncpg" },
+    { name = "fractional-indexing" },
     { name = "sqlmodel" },
 ]
 dev = [
@@ -645,6 +646,7 @@ test = [
     { name = "asyncpg" },
     { name = "boto3" },
     { name = "fastapi", extra = ["standard"] },
+    { name = "fractional-indexing" },
     { name = "langchain-core" },
     { name = "langchain-google-genai" },
     { name = "loguru" },
@@ -682,6 +684,7 @@ requires-dist = [
 db = [
     { name = "alembic", specifier = ">=1.13" },
     { name = "asyncpg", specifier = ">=0.31.0" },
+    { name = "fractional-indexing", specifier = ">=0.1.3" },
     { name = "sqlmodel", specifier = ">=0.0.22" },
 ]
 dev = [
@@ -694,6 +697,7 @@ test = [
     { name = "asyncpg", specifier = ">=0.31.0" },
     { name = "boto3", specifier = ">=1.43.36" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.100.0" },
+    { name = "fractional-indexing", specifier = ">=0.1.3" },
     { name = "langchain-core", specifier = ">=0.3" },
     { name = "langchain-google-genai", specifier = ">=4.2.2" },
     { name = "loguru", specifier = ">=0.7.3" },
