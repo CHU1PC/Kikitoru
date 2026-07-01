@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, Column, DateTime, UniqueConstraint
+from sqlalchemy import BigInteger, Column, DateTime, String, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -234,6 +234,10 @@ class TranscriptSegment(SQLModel, table=True):
         ondelete="CASCADE",
         index=True,
         description="親 summary への外部キー",
+    )
+    rank: str = Field(
+        sa_column=Column(String(64, collation="C"), nullable=False, index=True),
+        description="表示順の fractional index キー. (start_ms, id) をシードに採番し、編集時は隣接 rank の間に生成する",
     )
     speaker_label: str = Field(..., max_length=64, description="話者のラベル (例: 'Speaker 1', 'Speaker 2')")
     start_ms: int = Field(..., description="このセグメントの開始時刻 (ミリ秒単位)")
