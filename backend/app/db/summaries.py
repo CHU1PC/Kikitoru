@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fractional_indexing import generate_n_keys_between
 from sqlalchemy import ColumnElement, func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, select
@@ -194,15 +195,21 @@ def _add_segments(
 ) -> None:
     """STT の Segment(秒 float) を TranscriptSegment(ms 整数) に変換して insert 用に登録する.
 
+    rank は時系列((start, end))順に fractional index を一括採番する. これにより
+    read は rank 順に取得でき、後続の編集(挿入/分割)は隣接 rank の間へ差せる.
+
     Args:
         db_session (AsyncSession): SQLAlchemy の非同期セッション.
         summary_id (UUID): 親要約の id (flush 後に確定).
         segments (list[Segment]): STT の話者分離済み文字起こしセグメント.
     """
-    for seg in segments:
+    ordered = sorted(segments, key=lambda seg: (seg.start, seg.end))
+    ranks = generate_n_keys_between(None, None, len(ordered))
+    for seg, rank in zip(ordered, ranks, strict=True):
         db_session.add(
             TranscriptSegment(
                 summary_id=summary_id,
+                rank=rank,
                 speaker_label=seg.speaker_label,
                 start_ms=round(seg.start * 1000),
                 end_ms=round(seg.end * 1000),
@@ -256,7 +263,10 @@ async def create_summary(
 
 
 async def get_transcript_segments(db_session: AsyncSession, summary_id: UUID) -> list[TranscriptSegment]:
-    """Summary の transcript セグメントを時系列順(start_ms, id)で返す.
+    """Summary の transcript セグメントを rank 順(rank, id)で返す.
+
+    rank 列は COLLATE "C" (byte 順) なので、素の ORDER BY rank が
+    Python の辞書順・fractional-indexing の意図順と一致する.
 
     Args:
         db_session (AsyncSession): SQLAlchemy の非同期セッション.
@@ -270,7 +280,7 @@ async def get_transcript_segments(db_session: AsyncSession, summary_id: UUID) ->
             select(TranscriptSegment)
             .where(col(TranscriptSegment.summary_id) == summary_id)
             .order_by(
-                col(TranscriptSegment.start_ms),
+                col(TranscriptSegment.rank),
                 col(TranscriptSegment.id)
             )
         )).all()
