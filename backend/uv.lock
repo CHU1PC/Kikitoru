@@ -390,6 +390,18 @@ wheels = [
 ]
 
 [[package]]
+name = "fractional-indexing"
+version = "0.1.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "setuptools" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/76/9e/2c14b6dc812defa58e9d515b44b4d126b48338545e14089413df50dadda3/fractional-indexing-0.1.3.tar.gz", hash = "sha256:59e25f441c213bf7f921aa329a6bf3e5930ee8d8852df0b4e930aaf39a39ac5e", size = 7791, upload-time = "2023-08-13T10:03:16.946Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/02/d1/627b86b1eb95ec2c7e012f0036e28a9335f3177f6c7e15047df6ee544bbc/fractional_indexing-0.1.3-py3-none-any.whl", hash = "sha256:389abb9da24add388af3f0146ee4fcf2ebec5816ee728fa672657e394d9a7824", size = 7971, upload-time = "2023-08-13T10:03:15.504Z" },
+]
+
+[[package]]
 name = "google-auth"
 version = "2.49.2"
 source = { registry = "https://pypi.org/simple" }
@@ -601,6 +613,7 @@ dependencies = [
     { name = "asyncpg" },
     { name = "boto3" },
     { name = "fastapi", extra = ["standard"] },
+    { name = "fractional-indexing" },
     { name = "google-auth" },
     { name = "greenlet" },
     { name = "httpx" },
@@ -649,6 +662,7 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.31.0" },
     { name = "boto3", specifier = ">=1.43.36" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.100.0" },
+    { name = "fractional-indexing", specifier = ">=0.1.3" },
     { name = "google-auth", specifier = ">=2.49" },
     { name = "greenlet", specifier = ">=3.5.0" },
     { name = "httpx", specifier = ">=0.28" },
@@ -1226,6 +1240,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/54/a2/2e6c090db384cc515069f4f85542bd5baf6786852073020ea73d4a76d3ea/sentry_sdk-2.60.0.tar.gz", hash = "sha256:0bd25e54e78ca02d0be512529fa644bbbf9e8470d7b26371294012d4ca93c978", size = 452946, upload-time = "2026-05-13T13:34:52.516Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/29/41/f2b800b7f12a05dd48c2a6280d4dd812d1425fc66ed3fe3fd99420c41d1a/sentry_sdk-2.60.0-py3-none-any.whl", hash = "sha256:28a536c03291c8bcb363cf35c611b32738ec118ff64d8d6383b096448ac4c803", size = 475616, upload-time = "2026-05-13T13:34:50.259Z" },
+]
+
+[[package]]
+name = "setuptools"
+version = "82.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/4f/db/cfac1baf10650ab4d1c111714410d2fbb77ac5a616db26775db562c8fab2/setuptools-82.0.1.tar.gz", hash = "sha256:7d872682c5d01cfde07da7bccc7b65469d3dca203318515ada1de5eda35efbf9", size = 1152316, upload-time = "2026-03-09T12:47:17.221Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9d/76/f789f7a86709c6b087c5a2f52f911838cad707cc613162401badc665acfe/setuptools-82.0.1-py3-none-any.whl", hash = "sha256:a59e362652f08dcd477c78bb6e7bd9d80a7995bc73ce773050228a348ce2e5bb", size = 1006223, upload-time = "2026-03-09T12:47:15.026Z" },
 ]
 
 [[package]]
