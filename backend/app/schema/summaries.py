@@ -68,6 +68,7 @@ class SummaryPageResponse(BaseModel):
 class TranscriptSegmentResponse(_ResponseModel):
     """要約レスポンス内の文字起こしセグメント."""
 
+    id: int = Field(..., description="セグメントの一意識別子")
     speaker_label: str = Field(..., description="話者ラベル")
     start_ms: int = Field(..., description="セグメント開始位置(ミリ秒)")
     end_ms: int = Field(..., description="セグメント終了位置(ミリ秒)")
