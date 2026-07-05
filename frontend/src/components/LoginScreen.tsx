@@ -36,7 +36,7 @@ export function LoginScreen({ onLogin }: Props) {
         </div>
         <h1 className="login-title">Kikitoru</h1>
         <p className="login-tagline">
-          会議の音声をアップロードするだけ。
+          会議の音声 / 動画をアップロードするだけ。
           <br />
           AI が議事録を自動で作成します。
         </p>
