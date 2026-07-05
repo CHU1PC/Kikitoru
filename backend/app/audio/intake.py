@@ -13,7 +13,8 @@ from fastapi import HTTPException
 if TYPE_CHECKING:
     from fastapi import UploadFile
 
-MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200 MB
+MAX_UPLOAD_BYTES = 500 * 1024 * 1024  # 500 MB
+_MAX_UPLOAD_MB = MAX_UPLOAD_BYTES // (1024 * 1024)
 _READ_CHUNK_SIZE = 1024 * 1024  # 1 MB
 _SPOOL_MAX_BYTES = 8 * 1024 * 1024  # 8 MB
 _MAGIC_SNIFF_BYTES = 8192
@@ -27,6 +28,8 @@ ALLOWED_MIME_TYPES = frozenset({
     "audio/x-wav",
     "audio/flac",
     "audio/x-flac",
+    "video/mp4",
+    "video/webm",
 })
 
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
@@ -87,7 +90,7 @@ async def spool_upload(file: UploadFile) -> tuple[tempfile.SpooledTemporaryFile[
         total += len(chunk)
         if total > MAX_UPLOAD_BYTES:
             spooled.close()
-            raise HTTPException(status_code=413, detail="File exceeds the 200 MB limit")
+            raise HTTPException(status_code=413, detail=f"File exceeds the {_MAX_UPLOAD_MB} MB limit")
         hasher.update(chunk)
         if len(head) < _MAGIC_SNIFF_BYTES:
             head.extend(chunk[: _MAGIC_SNIFF_BYTES - len(head)])

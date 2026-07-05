@@ -155,9 +155,26 @@ def test_summarize_audio_rejects_unsupported_content_type() -> None:
     assert response.status_code == HTTPStatus.UNSUPPORTED_MEDIA_TYPE
 
 
-def test_summarize_audio_rejects_oversized_file() -> None:
-    """サイズが大きすぎるファイルをHTTP 413 Request Entity Too Largeで拒否することを確認するテスト."""
-    oversized = b"x" * (200 * 1024 * 1024 + 1)
+@pytest.mark.parametrize("video_mime", ["video/mp4", "video/webm"])
+def test_summarize_accepts_video(audio_pipeline_mocks: SimpleNamespace, video_mime: str) -> None:
+    """動画 (video/mp4, video/webm) が 415 で弾かれず要約が返ることを確認するテスト."""
+    audio_pipeline_mocks.magic.from_buffer.return_value = video_mime
+
+    response = client.post(
+        "/api/v1/audio/summarize",
+        files={"file": ("meeting.mp4", _DUMMY_AUDIO, video_mime)},
+    )
+
+    assert response.status_code == HTTPStatus.OK
+
+
+def test_summarize_audio_rejects_oversized_file(monkeypatch: pytest.MonkeyPatch) -> None:
+    """MAX_UPLOAD_BYTES を超えるファイルを HTTP 413 で拒否することを確認するテスト.
+
+    実際に 500MB を確保せず、上限を小さく差し替えて閾値ロジックのみを検証する.
+    """
+    monkeypatch.setattr("app.audio.intake.MAX_UPLOAD_BYTES", 10)
+    oversized = b"x" * 11
 
     response = client.post(
         "/api/v1/audio/summarize",
