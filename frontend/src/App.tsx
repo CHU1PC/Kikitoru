@@ -38,7 +38,7 @@ function App() {
         <AdminUsers currentUserId={user.id} />
       ) : (
         <>
-          <p className="lead">会議の音声をアップロードすると議事録を作成します</p>
+          <p className="lead">会議の音声 / 動画をアップロードすると議事録を作成します</p>
           <UploadForm onSuccess={setSummary} />
           {summary && <SummaryView summary={summary} />}
         </>

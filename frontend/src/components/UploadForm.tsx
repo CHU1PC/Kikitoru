@@ -36,10 +36,10 @@ export function UploadForm({ onSuccess }: Props) {
     return (
         <form className="upload-form" onSubmit={handleSubmit}>
             <label className="field">
-            <span>音声ファイル (mp3 / m4a / wav / flac)</span>
+            <span>音声 / 動画ファイル (mp3 / m4a / wav / flac / mp4 / webm, 最大 500MB)</span>
             <input
                 type="file"
-                accept=".mp3,.m4a,.wav,.flac"
+                accept=".mp3,.m4a,.wav,.flac,.mp4,.webm"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
             </label>
