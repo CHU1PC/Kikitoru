@@ -2,6 +2,8 @@ import { useRef, useState, type DragEvent, type SyntheticEvent } from "react"
 import { uploadAudio, ApiError } from "../api/client"
 import { SpeakerStepper } from "./SpeakerStepper"
 import type { SummaryResponse } from "../gen/types"
+import { DatePicker } from "./DatePicker"
+
 
 type Props = {
     onSuccess: (summary: SummaryResponse) => void
@@ -92,13 +94,8 @@ export function UploadForm({ onSuccess }: Props) {
 
                 <div className="upload-row">
                     <div className="mini">
-                        <label>録音日（任意）</label>
-                        <input
-                            className="date-native"
-                            type="date"
-                            value={recordedAt}
-                            onChange={(e) => setRecordedAt(e.target.value)}
-                        />
+                        <label>録音日 (任意)</label>
+                        <DatePicker value={recordedAt} onChange={setRecordedAt} />
                     </div>
                     <div className="mini">
                         <label>話者数（任意）</label>

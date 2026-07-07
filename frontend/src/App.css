@@ -227,87 +227,6 @@
     text-align: center;
 }
 
-.lead {
-    color: var(--text);
-    margin-bottom: 24px;
-}
-
-.upload-form {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    padding: 28px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: var(--shadow);
-}
-
-.field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.field span {
-    font-size: 14px;
-    color: var(--text);
-    font-weight: 500;
-}
-
-.field input {
-    padding: 9px 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--bg);
-    color: var(--text-h);
-    font: inherit;
-    font-size: 15px;
-    transition: border-color 0.15s ease;
-}
-
-.field input:focus {
-    outline: none;
-    border-color: var(--accent);
-}
-
-.field input[type="file"] {
-    padding: 8px;
-    cursor: pointer;
-}
-
-.field input[type="file"]::file-selector-button {
-    margin-right: 12px;
-    padding: 6px 14px;
-    border: 1px solid var(--accent-border);
-    border-radius: 6px;
-    background: var(--accent-bg);
-    color: var(--text-h);
-    font: inherit;
-    font-size: 14px;
-    cursor: pointer;
-}
-
-.upload-form button {
-    padding: 12px 20px;
-    border: 1px solid var(--accent-border);
-    border-radius: 8px;
-    background: var(--accent-bg);
-    color: var(--text-h);
-    cursor: pointer;
-    font: inherit;
-    font-weight: 600;
-    transition: background 0.15s ease;
-}
-
-.upload-form button:hover:not(:disabled) {
-    background: var(--accent-border);
-}
-
-.upload-form button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 .error {
     color: #e5484d;
     font-size: 14px;
@@ -433,7 +352,15 @@
     cursor: not-allowed;
 }
 
-.date-native {
+/* ===== v4 glass date picker (portal) ===== */
+.datepick {
+    position: relative;
+}
+
+.date-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     width: 160px;
     padding: 8px 10px;
     border: 1px solid var(--glass-border);
@@ -442,11 +369,113 @@
     color: var(--ink);
     font: inherit;
     font-size: 13px;
+    transition: background 0.15s;
 }
 
-.date-native:focus {
-    outline: none;
-    border-color: color-mix(in srgb, var(--ink) 20%, transparent);
+.date-trigger:hover {
+    background: var(--glass-2);
+}
+
+.date-trigger .placeholder {
+    color: var(--muted);
+}
+
+.date-icon {
+    width: 15px;
+    height: 15px;
+    color: var(--muted);
+    flex: none;
+}
+
+.calendar {
+    position: fixed;
+    z-index: 100;
+    width: 244px;
+    padding: 12px;
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    background:
+        linear-gradient(180deg, var(--sheen), transparent 12%),
+        var(--popover);
+    backdrop-filter: blur(32px) saturate(200%);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    box-shadow:
+        0 22px 50px -20px rgba(0, 0, 0, 0.7),
+        inset 0 1px 0 var(--glass-hi);
+}
+
+.cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.cal-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.cal-nav {
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--glass-border);
+    border-radius: 7px;
+    background: var(--glass-clear);
+    color: var(--text);
+    font-size: 15px;
+    display: grid;
+    place-items: center;
+}
+
+.cal-nav:hover {
+    background: var(--glass-2);
+    color: var(--ink);
+}
+
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.cal-dow {
+    margin-bottom: 4px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.cal-dow span {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    padding: 4px 0;
+}
+
+.cal-day {
+    aspect-ratio: 1;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text);
+    font-size: 12.5px;
+}
+
+.cal-day:hover {
+    background: var(--glass-2);
+    color: var(--ink);
+}
+
+.cal-day.is-empty {
+    visibility: hidden;
+}
+
+.cal-day.is-selected {
+    background: var(--ink);
+    color: var(--canvas);
+    font-weight: 600;
 }
 
 .stepper {
@@ -709,10 +738,16 @@
     width: 100%;
     max-width: 400px;
     padding: 48px 40px;
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    background: var(--bg);
-    box-shadow: var(--shadow);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    background:
+        linear-gradient(180deg, var(--sheen), transparent 8%),
+        var(--glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow:
+        0 40px 90px -40px rgba(0, 0, 0, 0.7),
+        inset 0 1px 0 var(--glass-hi);
     text-align: center;
     animation: login-rise 0.4s ease both;
 }
@@ -735,8 +770,9 @@
     height: 64px;
     font-size: 30px;
     border-radius: 18px;
-    background: var(--accent-bg);
-    border: 1px solid var(--accent-border);
+    background: var(--accent-soft);
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 var(--glass-hi);
 }
 
 .login-title {
@@ -795,37 +831,6 @@
     opacity: 0.75;
 }
 
-/* --- App header (approved) --- */
-.app-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
-}
-
-.app-header-brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.app-header-title {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 600;
-    letter-spacing: -0.3px;
-    color: var(--text-h);
-}
-
-.app-header-user {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
 .user-name {
     font-size: 14px;
     color: var(--text);
@@ -856,12 +861,6 @@
 
 .ghost-btn:hover {
     border-color: var(--accent-border);
-}
-
-/* --- App header nav (admin) --- */
-.app-header-nav {
-    display: flex;
-    gap: 4px;
 }
 
 .nav-link {
