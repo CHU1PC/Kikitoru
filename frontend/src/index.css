@@ -92,7 +92,7 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* アンビエント: 暖色グロー (drift) + ドットパターン */
+/* アンビエント: 暖色グロー + ドットパターン (静止) */
 body::before {
     content: "";
     position: fixed;
@@ -102,7 +102,6 @@ body::before {
         radial-gradient(38% 40% at 18% 12%, var(--g1), transparent 60%),
         radial-gradient(34% 36% at 86% 26%, var(--g2), transparent 60%),
         radial-gradient(48% 44% at 52% 104%, var(--g3), transparent 62%);
-    animation: drift 22s ease-in-out infinite alternate;
 }
 
 body::after {
@@ -113,21 +112,6 @@ body::after {
     background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.6px);
     background-size: 22px 22px;
     pointer-events: none;
-}
-
-@keyframes drift {
-    from {
-        transform: translate3d(0, 0, 0) scale(1);
-    }
-    to {
-        transform: translate3d(-3%, -2%, 0) scale(1.08);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    body::before {
-        animation: none;
-    }
 }
 
 #root {
