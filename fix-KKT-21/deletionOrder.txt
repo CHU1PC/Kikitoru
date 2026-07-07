@@ -1,5 +1,0 @@
-alembic_version
-topics
-decisions
-action_items
-summaries

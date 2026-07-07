@@ -1,9 +1,0 @@
-users
-summaries
-action_items
-decisions
-oauth_identities
-topics
-transcript_segments
-user_sessions
-alembic_version
