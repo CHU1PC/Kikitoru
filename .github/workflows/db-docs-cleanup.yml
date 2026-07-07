@@ -1,0 +1,68 @@
+name: DB Documentation Cleanup
+
+# gh-pages に残った「消えたブランチ」のドキュメント dir を live ブランチと突き合わせて掃除する (reconcile)。
+# 注意: delete / workflow_dispatch は *default ブランチ上の* このファイル版で発火するため、
+# このファイルは default ブランチに載せる必要がある。
+
+on:
+  delete:
+  workflow_dispatch:
+
+concurrency:
+  group: db-docs-cleanup
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  prune:
+    # tag 削除では走らせない (branch 削除 or 手動のみ)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.ref_type == 'branch' }}
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout gh-pages
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          ref: gh-pages
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prune docs dirs whose branch no longer exists
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          declare -A keep
+          while IFS= read -r ref; do
+            branch="${ref#refs/heads/}"
+            keep["${branch//\//-}"]=1
+          done < <(git ls-remote --heads origin | awk '{print $2}')
+
+          if [[ ${#keep[@]} -eq 0 ]]; then
+            echo "No live branches resolved (ls-remote failed?). Aborting." >&2
+            exit 1
+          fi
+
+          removed=0
+          for d in */; do
+            name="${d%/}"
+            if [[ -z "${keep[$name]:-}" ]]; then
+              echo "prune: $name (no live branch)"
+              git rm -rq "$name"
+              removed=1
+            else
+              echo "keep : $name"
+            fi
+          done
+
+          if [[ "$removed" -eq 0 ]]; then
+            echo "Nothing to prune."
+            exit 0
+          fi
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "auto: prune db docs for deleted branches"
+          git push origin gh-pages
