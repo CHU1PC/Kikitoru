@@ -1,111 +1,174 @@
+/* ===== Kikitoru v4 テーマ基盤 (design/mockups/main-screen-mock-v4.html 由来) ===== */
+:root,
+[data-theme="dark"] {
+    color-scheme: dark;
+    --accent: #fb923c;
+    --accent-strong: #f97316;
+    --accent-glow: rgba(249, 115, 22, 0.3);
+    --accent-soft: rgba(251, 146, 60, 0.1);
+    --ink: #f4f3f8;
+    --text: #a8a3b4;
+    --muted: #75707f;
+    --canvas: #08080c;
+    --glass: rgba(255, 255, 255, 0.045);
+    --glass-2: rgba(255, 255, 255, 0.07);
+    --glass-clear: rgba(255, 255, 255, 0.022);
+    --popover: rgba(22, 21, 28, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.09);
+    --glass-hi: rgba(255, 255, 255, 0.08);
+    --dot: rgba(255, 255, 255, 0.06);
+    --sheen: rgba(255, 255, 255, 0.06);
+    --ok: #4ade80;
+    --g1: rgba(249, 115, 22, 0.09);
+    --g2: rgba(234, 88, 12, 0.05);
+    --g3: rgba(251, 146, 60, 0.05);
+}
+
+[data-theme="light"] {
+    color-scheme: light;
+    --accent: #ea580c;
+    --accent-strong: #ea580c;
+    --accent-glow: rgba(234, 88, 12, 0.2);
+    --accent-soft: rgba(234, 88, 12, 0.07);
+    --ink: #1a1622;
+    --text: #58515f;
+    --muted: #948e9c;
+    --canvas: #eceaf2;
+    --glass: rgba(255, 255, 255, 0.7);
+    --glass-2: rgba(255, 255, 255, 0.82);
+    --glass-clear: rgba(255, 255, 255, 0.32);
+    --popover: rgba(250, 249, 252, 0.62);
+    --glass-border: rgba(20, 16, 30, 0.08);
+    --glass-hi: rgba(255, 255, 255, 0.9);
+    --dot: rgba(20, 16, 30, 0.05);
+    --sheen: rgba(255, 255, 255, 0.22);
+    --ok: #16a34a;
+    --g1: rgba(249, 115, 22, 0.08);
+    --g2: rgba(234, 88, 12, 0.045);
+    --g3: rgba(251, 146, 60, 0.06);
+}
+
+/* 後方互換 alias: 旧コンポーネントが参照する変数を v4 トークンに橋渡し。
+      各画面を本 v4 化する後続スライスで順次不要になる。 */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
+    --text-h: var(--ink);
+    --bg: var(--canvas);
+    --border: var(--glass-border);
+    --accent-bg: var(--accent-soft);
+    --accent-border: color-mix(in srgb, var(--accent) 35%, transparent);
+    --code-bg: var(--glass-2);
+    --social-bg: var(--glass);
     --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+        0 24px 60px -30px rgba(0, 0, 0, 0.7),
+        inset 0 1px 0 var(--glass-hi);
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+    --sans:
+        -apple-system, system-ui, "SF Pro Display", "Inter", "Segoe UI", Roboto,
+        sans-serif;
+    --heading: var(--sans);
+    --mono: ui-monospace, Consolas, monospace;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    height: 100%;
 }
 
 body {
-  margin: 0;
+    margin: 0;
+    background: var(--canvas);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    letter-spacing: -0.1px;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* アンビエント: 暖色グロー (drift) + ドットパターン */
+body::before {
+    content: "";
+    position: fixed;
+    inset: -20%;
+    z-index: -1;
+    background:
+        radial-gradient(38% 40% at 18% 12%, var(--g1), transparent 60%),
+        radial-gradient(34% 36% at 86% 26%, var(--g2), transparent 60%),
+        radial-gradient(48% 44% at 52% 104%, var(--g3), transparent 62%);
+    animation: drift 22s ease-in-out infinite alternate;
+}
+
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.6px);
+    background-size: 22px 22px;
+    pointer-events: none;
+}
+
+@keyframes drift {
+    from {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+        transform: translate3d(-3%, -2%, 0) scale(1.08);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body::before {
+        animation: none;
+    }
+}
+
+#root {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
 }
 
 h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+h2,
+h3 {
+    margin: 0;
+    font-family: var(--heading);
+    color: var(--ink);
+    font-weight: 600;
+    letter-spacing: -0.02em;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
 p {
-  margin: 0;
+    margin: 0;
+}
+
+button {
+    font: inherit;
+    cursor: pointer;
+}
+
+.num {
+    font-variant-numeric: tabular-nums;
 }
 
 code,
 .counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+    font-family: var(--mono);
+    display: inline-flex;
+    border-radius: 4px;
+    color: var(--ink);
 }
 
 code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+    font-size: 13px;
+    padding: 3px 7px;
+    background: var(--glass-2);
 }
