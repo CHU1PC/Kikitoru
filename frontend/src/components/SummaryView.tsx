@@ -4,38 +4,77 @@ type Props = {
     summary: SummaryResponse
 }
 
+function shortDate(iso: string): string {
+    const d = new Date(iso)
+    if (Number.isNaN(d.getTime())) return iso
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, "0")
+    const day = String(d.getDate()).padStart(2, "0")
+    return `${y}-${m}-${day}`
+}
+
 export function SummaryView({ summary }: Props) {
     return (
-        <article className="summary">
-            <h2>{summary.filename}</h2>
-            <p>{summary.overall_summary}</p>
-            <h3>議題</h3>
-            <ul>
+        <div className="summary">
+            <div className="sum-head">
+                <h2>{summary.filename}</h2>
+                <div className="meta">
+                    <span className="pill num">{shortDate(summary.created_at)}</span>
+                </div>
+            </div>
+
+            <p className="overall">{summary.overall_summary}</p>
+
+            <section className="sec">
+                <div className="sec-label">
+                    議題 <span className="count num">{summary.topics.length}</span>
+                </div>
                 {summary.topics.map((topic, i) => (
-                    <li key={i}>
-                        <strong>{topic.title}</strong>: {topic.summary}
-                    </li>
+                    <div className="row" key={i}>
+                        <div className="t">{topic.title}</div>
+                        <div className="s">{topic.summary}</div>
+                    </div>
                 ))}
-            </ul>
-            <h3>決定事項</h3>
-            <ul>
+            </section>
+
+            <section className="sec">
+                <div className="sec-label">
+                    決定事項{" "}
+                    <span className="count num">{summary.decisions.length}</span>
+                </div>
                 {summary.decisions.map((decision, i) => (
-                    <li key={i}>
-                        {decision.description}
-                        {decision.decided_by && <span> ({decision.decided_by})</span>}
-                    </li>
+                    <div className="drow" key={i}>
+                        <span className="tick">✓</span>
+                        <span>
+                            <span className="dx">{decision.description}</span>
+                            {decision.decided_by && (
+                                <span className="by">{decision.decided_by}</span>
+                            )}
+                        </span>
+                    </div>
                 ))}
-            </ul>
-            <h3>アクションアイテム</h3>
-            <ul>
+            </section>
+
+            <section className="sec">
+                <div className="sec-label">
+                    アクション{" "}
+                    <span className="count num">
+                        {summary.action_items.length}
+                    </span>
+                </div>
                 {summary.action_items.map((item, i) => (
-                    <li key={i}>
-                        {item.description}
-                        {item.assignee && <span> / 担当: {item.assignee}</span>}
-                        {item.due_date && <span> / 期限: {item.due_date}</span>}
-                    </li>
+                    <div className="arow" key={i}>
+                        <span className="abox"></span>
+                        <span className="ax">{item.description}</span>
+                        {item.assignee && (
+                            <span className="who">{item.assignee}</span>
+                        )}
+                        {item.due_date && (
+                            <span className="due num">{item.due_date}</span>
+                        )}
+                    </div>
                 ))}
-            </ul>
-        </article>
+            </section>
+        </div>
     )
 }
