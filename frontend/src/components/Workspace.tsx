@@ -14,7 +14,7 @@ type Props = {
 
 export function Workspace({ user, onLogout }: Props) {
     const [view, setView] = useState<"main" | "admin">("main")
-    const { items, activeId, detail, select, startNew, addUploaded } =
+    const { items, listLoading, listError, activeId, detail, select, startNew, addUploaded, reloadList } =
         useSummaries()
 
     const isAdmin = view === "admin" && user.role === "admin"
@@ -33,8 +33,11 @@ export function Workspace({ user, onLogout }: Props) {
                         <Sidebar
                             items={items}
                             activeId={activeId}
+                            loading={listLoading}
+                            error={listError}
                             onSelect={select}
                             onNew={startNew}
+                            onRetry={reloadList}
                         />
                     )}
                     <main className="main">

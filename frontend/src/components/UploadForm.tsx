@@ -46,7 +46,7 @@ export function UploadForm({ onSuccess }: Props) {
     }
 
     return (
-        <div className="view-upload">
+        <>
             <div className="uphead">
                 <h2>新規要約</h2>
                 <p>会議の音声・動画をアップロードすると議事録を作成します</p>
@@ -116,6 +116,6 @@ export function UploadForm({ onSuccess }: Props) {
 
                 {error && <p className="error">{error}</p>}
             </form>
-        </div>
+        </>
     )
 }

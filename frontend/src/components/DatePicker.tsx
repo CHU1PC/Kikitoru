@@ -47,11 +47,18 @@ export function DatePicker({ value, onChange }: Props) {
         function onKey(e: KeyboardEvent) {
             if (e.key === "Escape") setOpen(false)
         }
+        function onScrollResize() {
+            setOpen(false)
+        }
         document.addEventListener("mousedown", onDown)
         document.addEventListener("keydown", onKey)
+        window.addEventListener("scroll", onScrollResize, true)
+        window.addEventListener("resize", onScrollResize)
         return () => {
             document.removeEventListener("mousedown", onDown)
             document.removeEventListener("keydown", onKey)
+            window.removeEventListener("scroll", onScrollResize, true)
+            window.removeEventListener("resize", onScrollResize)
         }
     }, [open])
 
