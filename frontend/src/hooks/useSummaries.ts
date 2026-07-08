@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { getSummaries, getSummary } from "../api/client"
 import type { SummaryListItem, SummaryResponse } from "../gen/types"
 
@@ -8,18 +8,38 @@ import type { SummaryListItem, SummaryResponse } from "../gen/types"
  */
 export function useSummaries() {
     const [items, setItems] = useState<SummaryListItem[]>([])
+    const [listLoading, setListLoading] = useState(true)
+    const [listError, setListError] = useState(false)
     const [activeId, setActiveId] = useState<string | null>(null)
     const [detail, setDetail] = useState<SummaryResponse | null>(null)
+    const latestReq = useRef(0)
 
-    useEffect(() => {
+    const loadList = useCallback(() => {
         getSummaries()
             .then((page) => setItems(page.items))
-            .catch(() => setItems([]))
+            .catch(() => setListError(true))
+            .finally(() => setListLoading(false))
     }, [])
 
+    const retryLoad = useCallback(() => {
+        setListLoading(true)
+        setListError(false)
+        loadList()
+    }, [loadList])
+
+    useEffect(() => {
+        loadList()
+    }, [loadList])
+
     const select = useCallback(async (id: string) => {
+        const reqId = ++latestReq.current
         setActiveId(id)
-        setDetail(await getSummary(id))
+        try {
+            const full = await getSummary(id)
+            if (latestReq.current === reqId) setDetail(full)
+        } catch {
+            if (latestReq.current === reqId) setDetail(null)
+        }
     }, [])
 
     const startNew = useCallback(() => {
@@ -35,10 +55,10 @@ export function useSummaries() {
             overall_summary: summary.overall_summary,
             group_id: summary.group_id,
         }
-        setItems((prev) => [item, ...prev])
+        setItems((prev) => [item, ...prev.filter((x) => x.id !== item.id)])
         setActiveId(summary.id)
         setDetail(summary)
     }, [])
 
-    return { items, activeId, detail, select, startNew, addUploaded }
+    return { items, listLoading, listError, activeId, detail, select, startNew, addUploaded, reloadList: retryLoad }
 }

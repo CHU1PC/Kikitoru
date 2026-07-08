@@ -1,16 +1,8 @@
 import type { SummaryResponse } from "../gen/types"
+import { formatDate } from "../utils/date"
 
 type Props = {
     summary: SummaryResponse
-}
-
-function shortDate(iso: string): string {
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return iso
-    const y = d.getFullYear()
-    const m = String(d.getMonth() + 1).padStart(2, "0")
-    const day = String(d.getDate()).padStart(2, "0")
-    return `${y}-${m}-${day}`
 }
 
 export function SummaryView({ summary }: Props) {
@@ -19,7 +11,7 @@ export function SummaryView({ summary }: Props) {
             <div className="sum-head">
                 <h2>{summary.filename}</h2>
                 <div className="meta">
-                    <span className="pill num">{shortDate(summary.created_at)}</span>
+                    <span className="pill num">{formatDate(summary.created_at)}</span>
                 </div>
             </div>
 
@@ -35,6 +27,7 @@ export function SummaryView({ summary }: Props) {
                         <div className="s">{topic.summary}</div>
                     </div>
                 ))}
+                {summary.topics.length === 0 && <p className="sec-empty">議題はありません。</p>}
             </section>
 
             <section className="sec">
@@ -53,6 +46,7 @@ export function SummaryView({ summary }: Props) {
                         </span>
                     </div>
                 ))}
+                {summary.decisions.length === 0 && <p className="sec-empty">決定事項はありません。</p>}
             </section>
 
             <section className="sec">
@@ -74,6 +68,7 @@ export function SummaryView({ summary }: Props) {
                         )}
                     </div>
                 ))}
+                {summary.action_items.length === 0 && <p className="sec-empty">アクションはありません。</p>}
             </section>
         </div>
     )

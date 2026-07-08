@@ -1,10 +1,14 @@
 import type { SummaryListItem } from "../gen/types"
+import { formatShortDate } from "../utils/date"
 
 type Props = {
     items: SummaryListItem[]
     activeId: string | null
+    loading?: boolean
+    error?: boolean
     onSelect: (id: string) => void
     onNew: () => void
+    onRetry?: () => void
 }
 
 function titleOf(filename: string): string {
@@ -14,16 +18,8 @@ function titleOf(filename: string): string {
     return base || filename
 }
 
-function shortDate(iso: string): string {
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return ""
-    const mm = String(d.getMonth() + 1).padStart(2, "0")
-    const dd = String(d.getDate()).padStart(2, "0")
-    return `${mm}-${dd}`
-}
 
-
-export function Sidebar({ items, activeId, onSelect, onNew }: Props) {
+export function Sidebar({ items, activeId, loading, error, onSelect, onNew, onRetry }: Props) {
     return (
         <aside className="sidebar">
             <div className="sb-top">
@@ -45,8 +41,20 @@ export function Sidebar({ items, activeId, onSelect, onNew }: Props) {
 
             <div className="sb-label">履歴</div>
 
+            {/* sb-top / newbtn / sb-label は既存のまま */}
             <div className="histlist">
-                {items.length === 0 ? (
+                {loading ? (
+                    <p className="hist-empty">読み込み中...</p>
+                ) : error ? (
+                    <div className="hist-error">
+                        <span>一覧の取得に失敗しました</span>
+                        {onRetry && (
+                            <button type="button" className="ghost" onClick={onRetry}>
+                                再試行
+                            </button>
+                        )}
+                    </div>
+                ) : items.length === 0 ? (
                     <p className="hist-empty">まだ要約がありません</p>
                 ) : (
                     items.map((item) => (
@@ -57,7 +65,7 @@ export function Sidebar({ items, activeId, onSelect, onNew }: Props) {
                             onClick={() => onSelect(item.id)}
                         >
                             <span className="hi-title">{titleOf(item.filename)}</span>
-                            <span className="hi-meta num">{shortDate(item.created_at)}</span>
+                            <span className="hi-meta num">{formatShortDate(item.created_at)}</span>
                         </button>
                     ))
                 )}
