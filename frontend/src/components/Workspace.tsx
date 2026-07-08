@@ -2,7 +2,7 @@ import { useState } from "react"
 import { AppHeader } from "./AppHeader"
 import { Sidebar } from "./Sidebar"
 import { UploadForm } from "./UploadForm"
-import { SummaryView } from "./SummaryView"
+import { SummaryDetail } from "./SummaryDetail"
 import { AdminUsers } from "./AdminUsers"
 import { useSummaries } from "../hooks/useSummaries"
 import type { UserPublic } from "../gen/types"
@@ -45,7 +45,7 @@ export function Workspace({ user, onLogout }: Props) {
                             {isAdmin ? (
                                 <AdminUsers currentUserId={user.id} />
                             ) : detail ? (
-                                <SummaryView summary={detail} />
+                                <SummaryDetail key={detail.id} summary={detail} />
                             ) : (
                                 <UploadForm onSuccess={addUploaded} />
                             )}
