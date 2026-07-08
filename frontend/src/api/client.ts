@@ -1,6 +1,11 @@
 import { ApiErrorBody } from "./schemas"
-import { summaryResponseSchema, summaryPageResponseSchema } from "../gen/zod"
-import type { SummaryResponse, SummaryPageResponse, UserPublic, UserAdminUpdate, UserStatusKey } from "../gen/types"
+import type { SummaryResponse, SummaryPageResponse, UserPublic, UserAdminUpdate, UserStatusKey, TranscriptSegmentResponse } from "../gen/types"
+import {
+    summaryResponseSchema,
+    summaryPageResponseSchema,
+    getTranscriptEndpointApiV1SummariesSummaryIdTranscriptGetResponseSchema as transcriptListSchema,
+} from "../gen/zod"
+
 
 const API_BASE = "http://localhost:8000"
 
@@ -35,6 +40,16 @@ export async function getSummary(id: string): Promise<SummaryResponse> {
     await throwIfNotOk(res)
     const json = await res.json()
     return summaryResponseSchema.parse(json)
+}
+
+export async function getTranscript(id: string): Promise<TranscriptSegmentResponse[]> {
+    const res = await fetch(
+        `${API_BASE}/api/v1/summaries/${id}/transcript`,
+        {credentials: "include",}
+    )
+    await throwIfNotOk(res)
+    const json = await res.json()
+    return transcriptListSchema.parse(json)
 }
 
 export async function getSummaries(limit: number = 50, offset: number = 0): Promise<SummaryPageResponse> {
