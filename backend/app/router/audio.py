@@ -3,14 +3,14 @@ from __future__ import annotations
 import hashlib
 from datetime import date  # noqa: TC003 - FastAPI resolves the dependency annotation at runtime
 from typing import Annotated
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
 
 from app.audio.intake import ALLOWED_MIME_TYPES, MAX_UPLOAD_BYTES, sanitize_filename, spool_upload
 from app.db.models import JobStatus
 from app.db.summaries import find_by_content_hash
-from app.db.transcription_jobs import create_job, find_active_job_by_hash
+from app.db.transcription_jobs import create_job, find_active_job_by_hash, get_owned_job, list_active_jobs
 from app.dependencies import (
     ApprovedUser,  # noqa: TC001 — FastAPI resolves the dependency annotation at runtime
     DbSessionDep,  # noqa: TC001 — FastAPI resolves the dependency annotation at runtime
@@ -92,3 +92,43 @@ async def summarize_audio_endpoint(
         return TranscriptionJobResponse.model_validate(job)
     finally:
         spooled.close()
+
+
+@router.get("/jobs/{job_id}")
+async def get_job_endpoint(
+    job_id: UUID, db_session: DbSessionDep, user: ApprovedUser
+) -> TranscriptionJobResponse:
+    """1件のジョブ状態を返す (polling 用). 他ユーザー/存在しないは 404.
+
+    Args:
+        job_id (UUID): ジョブID
+        db_session (AsyncSession): データベースセッション
+        user (ApprovedUser): 承認されたユーザー
+
+    Returns:
+        TranscriptionJobResponse: ジョブの状態
+
+    Raises:
+        HTTPException: 404 - ジョブが見つからない場合
+    """
+    job = await get_owned_job(db_session, user.id, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return TranscriptionJobResponse.model_validate(job)
+
+
+@router.get("/jobs")
+async def list_jobs_endpoint(
+    db_session: DbSessionDep, user: ApprovedUser
+) -> list[TranscriptionJobResponse]:
+    """自分の進行中(pending/processing)ジョブ一覧を返す (サイドバーの pending 項目用).
+
+    Args:
+        db_session (AsyncSession): データベースセッション
+        user (ApprovedUser): 承認されたユーザー
+
+    Returns:
+        list[TranscriptionJobResponse]: 進行中ジョブの状態リスト
+    """
+    jobs = await list_active_jobs(db_session, user.id)
+    return [TranscriptionJobResponse.model_validate(j) for j in jobs]

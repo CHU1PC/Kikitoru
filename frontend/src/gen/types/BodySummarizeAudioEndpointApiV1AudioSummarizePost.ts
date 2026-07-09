@@ -6,7 +6,7 @@
 /**
  * @type object
 */
-export type BodySummarizeAudioApiV1AudioSummarizePost = {
+export type BodySummarizeAudioEndpointApiV1AudioSummarizePost = {
     /**
      * @type string
     */

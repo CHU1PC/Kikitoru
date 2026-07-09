@@ -5,6 +5,7 @@ import { UploadForm } from "./UploadForm"
 import { SummaryDetail } from "./SummaryDetail"
 import { AdminUsers } from "./AdminUsers"
 import { useSummaries } from "../hooks/useSummaries"
+import { useJobs } from "../hooks/useJobs"
 import type { UserPublic } from "../gen/types"
 
 type Props = {
@@ -14,9 +15,11 @@ type Props = {
 
 export function Workspace({ user, onLogout }: Props) {
     const [view, setView] = useState<"main" | "admin">("main")
-    const { items, listLoading, listError, activeId, detail, select, startNew, addUploaded, reloadList } =
-        useSummaries()
-
+    const { items, listLoading, listError, activeId, detail, select, startNew, reloadList } = useSummaries()
+    const { jobs, startUpload } = useJobs((summaryId) => {
+        reloadList()
+        if (summaryId) select(summaryId) // cache hit なら既存要約を開く
+    })
     const isAdmin = view === "admin" && user.role === "admin"
 
     return (
@@ -38,6 +41,7 @@ export function Workspace({ user, onLogout }: Props) {
                             onSelect={select}
                             onNew={startNew}
                             onRetry={reloadList}
+                            jobs={jobs}
                         />
                     )}
                     <main className="main">
@@ -47,7 +51,7 @@ export function Workspace({ user, onLogout }: Props) {
                             ) : detail ? (
                                 <SummaryDetail key={detail.id} summary={detail} />
                             ) : (
-                                <UploadForm onSuccess={addUploaded} />
+                                <UploadForm onStartUpload={startUpload} />
                             )}
                         </div>
                     </main>

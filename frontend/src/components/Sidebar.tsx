@@ -1,4 +1,4 @@
-import type { SummaryListItem } from "../gen/types"
+import type { SummaryListItem, TranscriptionJobResponse } from "../gen/types"
 import { formatShortDate } from "../utils/date"
 
 type Props = {
@@ -9,6 +9,7 @@ type Props = {
     onSelect: (id: string) => void
     onNew: () => void
     onRetry?: () => void
+    jobs: TranscriptionJobResponse[]
 }
 
 function titleOf(filename: string): string {
@@ -19,7 +20,7 @@ function titleOf(filename: string): string {
 }
 
 
-export function Sidebar({ items, activeId, loading, error, onSelect, onNew, onRetry }: Props) {
+export function Sidebar({ items, activeId, loading, error, onSelect, onNew, onRetry, jobs }: Props) {
     return (
         <aside className="sidebar">
             <div className="sb-top">
@@ -43,6 +44,25 @@ export function Sidebar({ items, activeId, loading, error, onSelect, onNew, onRe
 
             {/* sb-top / newbtn / sb-label は既存のまま */}
             <div className="histlist">
+                {jobs.map((job) => (
+                    <div
+                        key={job.id}
+                        className={`jobitem${job.status === "failed" ? " failed" : ""}`}
+                    >
+                        <span className="hi-title">{titleOf(job.filename)}</span>
+                        {job.status === "failed" ? (
+                            <span className="ji-status ji-failed" title={job.error ?? undefined}>
+                                失敗
+                            </span>
+                        ) : (
+                            <span className="ji-status ji-pending">
+                                <span className="ji-spinner" aria-hidden />
+                                処理中
+                            </span>
+                        )}
+                    </div>
+                ))}
+
                 {loading ? (
                     <p className="hist-empty">読み込み中...</p>
                 ) : error ? (
@@ -55,7 +75,7 @@ export function Sidebar({ items, activeId, loading, error, onSelect, onNew, onRe
                         )}
                     </div>
                 ) : items.length === 0 ? (
-                    <p className="hist-empty">まだ要約がありません</p>
+                    jobs.length === 0 && <p className="hist-empty">まだ要約がありません</p>
                 ) : (
                     items.map((item) => (
                         <button

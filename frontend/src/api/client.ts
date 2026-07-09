@@ -1,8 +1,10 @@
 import { ApiErrorBody } from "./schemas"
-import type { SummaryResponse, SummaryPageResponse, UserPublic, UserAdminUpdate, UserStatusKey, TranscriptSegmentResponse } from "../gen/types"
+import type { SummaryResponse, SummaryPageResponse, UserPublic, UserAdminUpdate, UserStatusKey, TranscriptSegmentResponse, TranscriptionJobResponse } from "../gen/types"
 import {
     summaryResponseSchema,
     summaryPageResponseSchema,
+    transcriptionJobResponseSchema,
+    listJobsEndpointApiV1AudioJobsGetResponseSchema as jobListSchema,
     getTranscriptEndpointApiV1SummariesSummaryIdTranscriptGetResponseSchema as transcriptListSchema,
 } from "../gen/zod"
 
@@ -21,6 +23,7 @@ export class ApiError extends Error {
         this.detail = detail
     }
 }
+
 
 async function throwIfNotOk(res: Response): Promise<void> {
     if(res.ok) return
@@ -42,6 +45,7 @@ export async function getSummary(id: string): Promise<SummaryResponse> {
     return summaryResponseSchema.parse(json)
 }
 
+
 export async function getTranscript(id: string): Promise<TranscriptSegmentResponse[]> {
     const res = await fetch(
         `${API_BASE}/api/v1/summaries/${id}/transcript`,
@@ -51,6 +55,7 @@ export async function getTranscript(id: string): Promise<TranscriptSegmentRespon
     const json = await res.json()
     return transcriptListSchema.parse(json)
 }
+
 
 export async function getSummaries(limit: number = 50, offset: number = 0): Promise<SummaryPageResponse> {
     const params = new URLSearchParams({limit: limit.toString(), offset: offset.toString()})
@@ -64,14 +69,14 @@ export async function getSummaries(limit: number = 50, offset: number = 0): Prom
 }
 
 
-type UploadAudioInput = {
+export type UploadAudioInput = {
     file: File
     recorded_at?: string
     num_speakers?: number
 }
 
 
-export async function uploadAudio(input: UploadAudioInput): Promise<SummaryResponse> {
+export async function uploadAudio(input: UploadAudioInput): Promise<TranscriptionJobResponse> {
     const formData = new FormData()
     formData.append("file", input.file)
     if (input.recorded_at) {
@@ -92,7 +97,29 @@ export async function uploadAudio(input: UploadAudioInput): Promise<SummaryRespo
 
     await throwIfNotOk(res)
     const json = await res.json()
-    return summaryResponseSchema.parse(json)
+    return transcriptionJobResponseSchema.parse(json)
+}
+
+
+export async function getJob(id: string): Promise<TranscriptionJobResponse> {
+    const res = await fetch(
+        `${API_BASE}/api/v1/audio/jobs/${id}`,
+        {credentials: "include",}
+    )
+    await throwIfNotOk(res)
+    const json = await res.json()
+    return transcriptionJobResponseSchema.parse(json)
+}
+
+
+export async function listJobs(): Promise<TranscriptionJobResponse[]> {
+    const res = await fetch(
+        `${API_BASE}/api/v1/audio/jobs`,
+        {credentials: "include",}
+    )
+    await throwIfNotOk(res)
+    const json = await res.json()
+    return jobListSchema.parse(json)
 }
 
 

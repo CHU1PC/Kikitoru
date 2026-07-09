@@ -5,7 +5,7 @@
 
 import * as z from 'zod'
 
-export const bodySummarizeAudioApiV1AudioSummarizePostSchema = z.object({
+export const bodySummarizeAudioEndpointApiV1AudioSummarizePostSchema = z.object({
   file: z.instanceof(File),
   recorded_at: z.union([z.iso.date(), z.null()]).optional(),
   num_speakers: z.union([z.int().min(1).max(10), z.null()]).optional(),
