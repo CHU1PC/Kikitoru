@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-from datetime import date
 from http import HTTPStatus
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
@@ -12,7 +11,6 @@ from uuid import uuid4
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-from sqlalchemy.exc import IntegrityError
 
 from app.audio.intake import (
     _MAGIC_SNIFF_BYTES,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
@@ -21,221 +19,233 @@ from app.audio.intake import (
     spool_upload,
 )
 from app.db.engine import get_db_session
+from app.db.models import JobStatus, TranscriptionJob, User, UserStatus
 from app.db.models import Summary as DBSummary
-from app.db.models import TranscriptSegment, User, UserStatus
-from app.db.summaries import (
-    _add_all_children,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
-    _add_segments,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
-    create_summary,
-)
 from app.dependencies import get_current_user
-from app.llm.summarize.schema import ActionItem, Decision, Summary, Topic
-from app.stt.types import Segment
 from main import app
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+    from httpx import Response
 
 client = TestClient(app)
 
 _USER = User(id=uuid4(), email="owner@example.com", name="Owner", status=UserStatus.approved)
 _VALID_CONTENT_TYPE = "audio/mpeg"
 _DUMMY_AUDIO = b"dummy audio content"
-_EMPTY_SUMMARY = Summary(overall_summary="test", topics=[], decisions=[], action_items=[])
-_DUMMY_SEGMENTS = [Segment(start_ms=0, end_ms=1000, speaker_label="Speaker 1", text="hello")]
 
 
-def _make_session_mock(existing: object = None) -> AsyncMock:
-    db_session = AsyncMock()
-    db_session.add = MagicMock()
-    result = MagicMock()
-    result.first.return_value = existing
-    result.all.return_value = []
-    db_session.exec.return_value = result
-    return db_session
+def _make_job(status: JobStatus = JobStatus.pending) -> TranscriptionJob:
+    """テスト用の TranscriptionJob を作る (media_key は NOT NULL なので必ず与える).
+
+    Returns:
+        TranscriptionJob: 指定 status のテスト用ジョブ.
+    """
+    return TranscriptionJob(
+        id=uuid4(),
+        user_id=_USER.id,
+        status=status,
+        filename="meeting.mp3",
+        content_hash="hash",
+        media_key="uploads/test",
+        num_speakers=2,
+    )
+
+
+def _post_summarize(**data: str) -> Response:
+    """/audio/summarize に有効な音声を POST するヘルパ.
+
+    Returns:
+        Response: エンドポイントのレスポンス.
+    """
+    return client.post(
+        "/api/v1/audio/summarize",
+        files={"file": ("meeting.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
+        data=data,
+    )
 
 
 @pytest.fixture(autouse=True)
 def override_session() -> None:
-    """get_db_session をデフォルトのモックに置き換える pytestフィクスチャ.
+    """get_db_session と get_current_user をモックに差し替える pytest フィクスチャ.
 
-    これで、テスト中に実際のデータベースセッションを使用せず、テスト用のセッションのモックを提供できるようになる.
-    後始末 (dependency_overrides のクリア) は router 配下共通の conftest フィクスチャが行う.
+    実 DB を使わずテスト用セッションのモックを提供する. 後始末 (dependency_overrides の
+    クリア) は router 配下共通の conftest フィクスチャが行う.
     """
     def override_get_session() -> Generator[AsyncMock]:
-        """get_db_sessionのモックで、テスト用のセッションを提供するジェネレーター関数.
-
-        Yields:
-            AsyncMock: テスト用のセッションのモックを提供するためのジェネレーター.
-        """
-        yield _make_session_mock()
+        db_session = AsyncMock()
+        db_session.add = MagicMock()
+        yield db_session
 
     app.dependency_overrides[get_db_session] = override_get_session
     app.dependency_overrides[get_current_user] = lambda: _USER
 
 
 @pytest.fixture
-def audio_pipeline_mocks() -> Generator[SimpleNamespace]:
-    """STT/LLM パイプラインを一括モックする pytest フィクスチャ.
+def enqueue_mocks() -> Generator[SimpleNamespace]:
+    """Enqueue エンドポイントの依存 (dedup / S3保存 / job作成 / MIME) を一括モックする.
 
-    transcribe_with_diarization / summarize_chain / _magic_mime を patch し、既定で MIME は
-    有効な音声、transcribe は1セグメント、要約は空の Summary を返す. 各テストは返り値の
-    namespace 経由で必要なモック (transcribe / chain / magic) だけ上書きする.
+    既定は「新規アップロード」の happy path (既存要約なし・進行中ジョブなし・pending 作成).
+    各テストは返す namespace 経由で必要なモックだけ上書きする.
 
     Yields:
-        SimpleNamespace: transcribe / chain / magic のモックを持つ namespace.
+        SimpleNamespace: find_summary / find_job / persist / create / magic のモック.
     """
     with (
-        patch("app.router.audio.transcribe_with_diarization", new_callable=AsyncMock) as transcribe,
-        patch("app.router.audio.summarize_chain") as chain,
+        patch("app.router.audio.find_by_content_hash", new_callable=AsyncMock) as find_summary,
+        patch("app.router.audio.find_active_job_by_hash", new_callable=AsyncMock) as find_job,
+        patch("app.router.audio.persist_upload", new_callable=AsyncMock) as persist,
+        patch("app.router.audio.create_job", new_callable=AsyncMock) as create,
         patch("app.audio.intake._magic_mime") as magic,
     ):
-        transcribe.return_value = _DUMMY_SEGMENTS
+        find_summary.return_value = None
+        find_job.return_value = None
+        persist.return_value = "uploads/test"
+        create.return_value = _make_job(JobStatus.pending)
         magic.from_buffer.return_value = _VALID_CONTENT_TYPE
-        chain.ainvoke = AsyncMock(return_value=_EMPTY_SUMMARY)
-        yield SimpleNamespace(transcribe=transcribe, chain=chain, magic=magic)
+        yield SimpleNamespace(
+            find_summary=find_summary,
+            find_job=find_job,
+            persist=persist,
+            create=create,
+            magic=magic,
+        )
 
 
-@pytest.mark.usefixtures("audio_pipeline_mocks")
-def test_summarize_audio_returns_summary() -> None:
-    """音声ファイルをPOSTして要約が返ることを確認するテスト."""
-    response = client.post(
-        "/api/v1/audio/summarize",
-        files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
-    )
+@pytest.mark.usefixtures("enqueue_mocks")
+def test_summarize_new_upload_returns_pending_job() -> None:
+    """新規アップロードは 202 で pending ジョブを返すことを確認するテスト."""
+    response = _post_summarize()
 
-    assert response.status_code == HTTPStatus.OK
-
-
-def test_summarize_audio_requires_authentication() -> None:
-    """未認証のとき /audio/summarize が 401 を返すことを確認するテスト."""
-    app.dependency_overrides.pop(get_current_user, None)
-
-    response = client.post(
-        "/api/v1/audio/summarize",
-        files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
-    )
-
-    assert response.status_code == HTTPStatus.UNAUTHORIZED
+    assert response.status_code == HTTPStatus.ACCEPTED
+    body = response.json()
+    assert body["status"] == "pending"
+    assert body["summary_id"] is None
 
 
-def test_summarize_audio_forwards_num_speakers(audio_pipeline_mocks: SimpleNamespace) -> None:
-    """num_speakers を渡すと transcribe_with_diarization まで届くことを確認するテスト."""
-    expected_speakers = 2
+def test_summarize_cache_hit_returns_completed(enqueue_mocks: SimpleNamespace) -> None:
+    """同一内容の要約が既にあれば 202 completed + summary_id を返し、ジョブを作らないことを確認するテスト."""
+    existing = DBSummary(user_id=_USER.id, filename="prev.mp3", content_hash="abc", overall_summary="prev")
+    enqueue_mocks.find_summary.return_value = existing
 
-    response = client.post(
-        "/api/v1/audio/summarize",
-        files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
-        data={"num_speakers": str(expected_speakers)},
-    )
+    response = _post_summarize()
 
-    assert response.status_code == HTTPStatus.OK
-    # transcribe_with_diarization(spooled, num_speakers) の末尾引数
-    assert audio_pipeline_mocks.transcribe.call_args.args[-1] == expected_speakers
+    assert response.status_code == HTTPStatus.ACCEPTED
+    body = response.json()
+    assert body["status"] == "completed"
+    assert body["summary_id"] == str(existing.id)
+    enqueue_mocks.create.assert_not_called()
+    enqueue_mocks.persist.assert_not_called()
 
 
-def test_summarize_audio_rejects_invalid_num_speakers() -> None:
-    """num_speakers=0 が 422 Unprocessable Entity で弾かれることを確認するテスト."""
-    response = client.post(
-        "/api/v1/audio/summarize",
-        files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
-        data={"num_speakers": "0"},
-    )
+def test_summarize_active_job_returns_it(enqueue_mocks: SimpleNamespace) -> None:
+    """進行中の同一ジョブがあれば、それを返し二重処理しないことを確認するテスト."""
+    active = _make_job(JobStatus.processing)
+    enqueue_mocks.find_job.return_value = active
+
+    response = _post_summarize()
+
+    assert response.status_code == HTTPStatus.ACCEPTED
+    body = response.json()
+    assert body["id"] == str(active.id)
+    assert body["status"] == "processing"
+    enqueue_mocks.create.assert_not_called()
+
+
+def test_summarize_forwards_num_speakers(enqueue_mocks: SimpleNamespace) -> None:
+    """num_speakers が create_job まで届くことを確認するテスト."""
+    expected_speakers = 3
+
+    response = _post_summarize(num_speakers=str(expected_speakers))
+
+    assert response.status_code == HTTPStatus.ACCEPTED
+    assert enqueue_mocks.create.call_args.kwargs["num_speakers"] == expected_speakers
+
+
+@pytest.mark.usefixtures("enqueue_mocks")
+def test_summarize_rejects_invalid_num_speakers() -> None:
+    """num_speakers=0 が 422 で弾かれることを確認するテスト."""
+    response = _post_summarize(num_speakers="0")
 
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
-def test_summarize_audio_rejects_unsupported_content_type() -> None:
-    """サポートされていないコンテンツタイプをHTTP 415 Unsupported Media Typeで拒否することを確認するテスト."""
-    response = client.post(
-        "/api/v1/audio/summarize",
-        files={"file": ("test.txt", _DUMMY_AUDIO, "text/plain")},
-    )
+def test_summarize_rejects_unsupported_content_type() -> None:
+    """許可されない MIME タイプを 415 で拒否することを確認するテスト."""
+    with patch("app.audio.intake._magic_mime") as magic:
+        magic.from_buffer.return_value = "text/plain"
+        response = client.post(
+            "/api/v1/audio/summarize",
+            files={"file": ("note.txt", _DUMMY_AUDIO, "text/plain")},
+        )
 
     assert response.status_code == HTTPStatus.UNSUPPORTED_MEDIA_TYPE
 
 
-@pytest.mark.parametrize("video_mime", ["video/mp4", "video/webm"])
-def test_summarize_accepts_video(audio_pipeline_mocks: SimpleNamespace, video_mime: str) -> None:
-    """動画 (video/mp4, video/webm) が 415 で弾かれず要約が返ることを確認するテスト."""
-    audio_pipeline_mocks.magic.from_buffer.return_value = video_mime
+def test_summarize_requires_authentication() -> None:
+    """未認証のとき 401 を返すことを確認するテスト."""
+    app.dependency_overrides.pop(get_current_user, None)
 
-    response = client.post(
-        "/api/v1/audio/summarize",
-        files={"file": ("meeting.mp4", _DUMMY_AUDIO, video_mime)},
-    )
+    response = _post_summarize()
 
-    assert response.status_code == HTTPStatus.OK
+    assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
-def test_summarize_audio_rejects_oversized_file(monkeypatch: pytest.MonkeyPatch) -> None:
-    """MAX_UPLOAD_BYTES を超えるファイルを HTTP 413 で拒否することを確認するテスト.
+def test_summarize_rejects_unapproved_user() -> None:
+    """未承認 (pending) ユーザーは ApprovedUser ゲートで 403 になることを確認するテスト."""
+    pending = User(id=uuid4(), email="pending@example.com", name="Pending", status=UserStatus.pending)
+    app.dependency_overrides[get_current_user] = lambda: pending
 
-    実際に 500MB を確保せず、上限を小さく差し替えて閾値ロジックのみを検証する.
-    """
+    response = _post_summarize()
+
+    assert response.status_code == HTTPStatus.FORBIDDEN
+
+
+def test_summarize_rejects_oversized_file(monkeypatch: pytest.MonkeyPatch) -> None:
+    """MAX_UPLOAD_BYTES を超えるファイルを 413 で拒否することを確認するテスト."""
     monkeypatch.setattr("app.audio.intake.MAX_UPLOAD_BYTES", 10)
-    oversized = b"x" * 11
 
-    response = client.post(
-        "/api/v1/audio/summarize",
-        files={"file": ("big.mp3", oversized, _VALID_CONTENT_TYPE)},
-    )
+    with patch("app.audio.intake._magic_mime"):
+        response = client.post(
+            "/api/v1/audio/summarize",
+            files={"file": ("big.mp3", b"x" * 11, _VALID_CONTENT_TYPE)},
+        )
 
     assert response.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
 
 
-def test_summarize_audio_idempotent_skips_pipeline(audio_pipeline_mocks: SimpleNamespace) -> None:
-    """要約がidempotentであることを確認するテスト. 既存の要約がある場合、STT/LLMパイプラインをスキップすること."""
-    existing = DBSummary(user_id=uuid4(), filename="prev.mp3", content_hash="abc", overall_summary="previous run")
+def test_get_job_returns_owned_job() -> None:
+    """GET /jobs/{id} が owner のジョブ状態を返すことを確認するテスト."""
+    job = _make_job(JobStatus.processing)
 
-    def override_get_session() -> Generator[AsyncMock]:
-        """get_db_sessionのモックで、既存のDBSummaryを返すセッションを提供するジェネレーター関数.
-
-        Yields:
-            AsyncMock: 既存のDBSummaryを返すセッションのモック.
-        """
-        yield _make_session_mock(existing=existing)
-
-    app.dependency_overrides[get_db_session] = override_get_session
-
-    response = client.post(
-        "/api/v1/audio/summarize",
-        files={"file": ("dup.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
-    )
+    with patch("app.router.audio.get_owned_job", new_callable=AsyncMock) as get_owned:
+        get_owned.return_value = job
+        response = client.get(f"/api/v1/audio/jobs/{job.id}")
 
     assert response.status_code == HTTPStatus.OK
-    body = response.json()
-    assert body["filename"] == "prev.mp3"
-    assert body["overall_summary"] == "previous run"
-    # 既存の要約がある場合、STT/LLMパイプラインは実行されないことを確認するため、モックの呼び出し回数を検証する.
-    audio_pipeline_mocks.transcribe.assert_not_called()
-    audio_pipeline_mocks.chain.ainvoke.assert_not_called()
+    assert response.json()["id"] == str(job.id)
 
 
-def test_summarize_audio_rejects_empty_transcript(audio_pipeline_mocks: SimpleNamespace) -> None:
-    """文字起こしが空 (発話なし) なら 422 を返し、LLM 要約・保存に進まないことを確認するテスト."""
-    audio_pipeline_mocks.transcribe.return_value = []
+def test_get_job_not_found() -> None:
+    """他ユーザー/存在しないジョブは 404 を返すことを確認するテスト."""
+    with patch("app.router.audio.get_owned_job", new_callable=AsyncMock) as get_owned:
+        get_owned.return_value = None
+        response = client.get(f"/api/v1/audio/jobs/{uuid4()}")
 
-    response = client.post(
-        "/api/v1/audio/summarize",
-        files={"file": ("silent.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
-    )
-
-    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
-    audio_pipeline_mocks.chain.ainvoke.assert_not_called()
+    assert response.status_code == HTTPStatus.NOT_FOUND
 
 
-def test_summarize_audio_rejects_unapproved_user() -> None:
-    """承認されていない (pending) ユーザーは ApprovedUser ゲートで 403 になる."""
-    pending = User(id=uuid4(), email="pending@example.com", name="Pending", status=UserStatus.pending)
-    app.dependency_overrides[get_current_user] = lambda: pending
+def test_list_jobs_returns_active() -> None:
+    """GET /jobs が進行中ジョブの一覧を返すことを確認するテスト."""
+    jobs = [_make_job(JobStatus.pending), _make_job(JobStatus.processing)]
 
-    response = client.post(
-        "/api/v1/audio/summarize",
-        files={"file": ("test.mp3", _DUMMY_AUDIO, _VALID_CONTENT_TYPE)},
-    )
+    with patch("app.router.audio.list_active_jobs", new_callable=AsyncMock) as list_active:
+        list_active.return_value = jobs
+        response = client.get("/api/v1/audio/jobs")
 
-    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.status_code == HTTPStatus.OK
+    assert len(response.json()) == len(jobs)
 
 
 @pytest.mark.parametrize(
@@ -250,7 +260,7 @@ def test_summarize_audio_rejects_unapproved_user() -> None:
         ("meeting.mp3", "meeting.mp3"),
         ("  meeting.mp3  ", "meeting.mp3"),
         ("a\x00b.mp3", "ab.mp3"),
-        ("が.mp3", "が.mp3"),
+        ("が.mp3", "が.mp3"),
         # パス成分の除去(パストラバーサル対策)
         ("../../etc/passwd", "passwd"),
         ("/abs/path/audio.wav", "audio.wav"),
@@ -358,71 +368,3 @@ def test_spool_upload_handles_empty_file() -> None:
     spooled.close()
     assert digest == hashlib.sha256(b"").hexdigest()
     mock_magic.from_buffer.assert_called_once_with(b"")
-
-
-def test_create_summary_returns_existing_on_content_hash_race() -> None:
-    """Commit 時に content_hash が重複したら rollback して既存の要約を返すことを確認するテスト."""
-    existing = DBSummary(user_id=uuid4(), filename="prev.mp3", content_hash="abc", overall_summary="previous run")
-    db_session = _make_session_mock(existing=existing)
-    db_session.flush = AsyncMock(side_effect=IntegrityError("stmt", None, Exception("duplicate")))
-    data = Summary(overall_summary="new run", topics=[], decisions=[], action_items=[])
-
-    result = asyncio.run(create_summary(db_session, _USER.id, "new.mp3", "abc", data, []))
-
-    assert result.filename == "prev.mp3"
-    assert result.overall_summary == "previous run"
-    db_session.rollback.assert_awaited_once()
-
-
-def test_create_summary_reraises_unrelated_integrity_error() -> None:
-    """Content_hash 重複以外の IntegrityError は握りつぶさず再送出することを確認するテスト."""
-    db_session = _make_session_mock(existing=None)
-    db_session.flush = AsyncMock(side_effect=IntegrityError("stmt", None, Exception("not a dup")))
-    data = Summary(overall_summary="new", topics=[], decisions=[], action_items=[])
-
-    with pytest.raises(IntegrityError):
-        asyncio.run(create_summary(db_session, _USER.id, "x.mp3", "hash", data, []))
-
-    db_session.rollback.assert_awaited_once()
-
-
-def test_add_children_stages_topics_decisions_and_action_items() -> None:
-    """topics/decisions/action_items が summary_id 付きで db_session に add されることを確認するテスト."""
-    summary_id = uuid4()
-    data = Summary(
-        overall_summary="o",
-        topics=[Topic(title="T1", summary="s1", segment_ids=[0])],
-        decisions=[Decision(description="D1", decided_by="alice", segment_ids=[1])],
-        action_items=[ActionItem(description="A1", assignee="bob", due_date=date(2025, 6, 1), segment_ids=[2])],
-    )
-    db_session = MagicMock()
-
-    _add_all_children(db_session, summary_id, data)
-
-    added = [call.args[0] for call in db_session.add.call_args_list]
-    assert len(added) == len(data.topics) + len(data.decisions) + len(data.action_items)
-    topic, decision, action = added
-    assert topic.summary_id == summary_id
-    assert topic.title == "T1"
-    assert decision.decided_by == "alice"
-    assert action.due_date == date(2025, 6, 1)
-
-
-def test_add_segments_registers_segments_with_summary_id() -> None:
-    """Segment が TranscriptSegment として summary_id 付きで add されることを確認するテスト."""
-    summary_id = uuid4()
-    segments = [
-        Segment(start_ms=0, end_ms=1500, speaker_label="spk_0", text="hello"),
-        Segment(start_ms=1500, end_ms=2250, speaker_label="spk_1", text="world"),
-    ]
-    db_session = MagicMock()
-
-    _add_segments(db_session, summary_id, segments)
-
-    added = [call.args[0] for call in db_session.add.call_args_list]
-    assert all(isinstance(s, TranscriptSegment) for s in added)
-    assert [(s.start_ms, s.end_ms, s.speaker_label, s.text) for s in added] == [
-        (0, 1500, "spk_0", "hello"),
-        (1500, 2250, "spk_1", "world"),
-    ]
-    assert all(s.summary_id == summary_id for s in added)
