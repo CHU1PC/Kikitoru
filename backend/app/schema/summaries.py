@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.db.models import JobStatus
+
 
 class _ResponseModel(BaseModel):
     """model_validate で ORM 行から直接構築する response モデルの基底."""
@@ -54,6 +56,17 @@ class SummaryResponse(SummaryListItem):
     topics: list[TopicResponse] = Field(..., description="会議で議論された議題")
     decisions: list[DecisionResponse] = Field(..., description="会議で決定された事項")
     action_items: list[ActionItemResponse] = Field(..., description="会議で割り当てられたアクションアイテム")
+
+
+class TranscriptionJobResponse(_ResponseModel):
+    """非同期文字起こしジョブの状態レスポンス."""
+
+    id: UUID = Field(..., description="ジョブの一意識別子")
+    status: JobStatus = Field(..., description="ジョブの状態")
+    filename: str = Field(..., description="アップロードされた音声ファイル名")
+    created_at: datetime = Field(..., description="ジョブが作成された日時")
+    summary_id: UUID | None = Field(default=None, description="ジョブが完了した場合の要約の一意識別子")
+    error: str | None = Field(default=None, description="ジョブが失敗した場合のエラーメッセージ")
 
 
 class SummaryPageResponse(BaseModel):

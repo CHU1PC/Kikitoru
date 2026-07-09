@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
 from uuid import UUID, uuid4
@@ -168,6 +170,11 @@ class Summary(SQLModel, table=True):
         index=True,
         description="この要約が属する要約グループのID (あれば)",
     )
+    media_key: str | None = Field(
+        default=None,
+        max_length=255,
+        description="元の音声/動画の S3 キー(uploads/{job_id})."
+    )
 
 
 class Topic(SQLModel, table=True):
@@ -301,7 +308,7 @@ class TranscriptionJob(SQLModel, table=True):
         description="音声と num_speakers の SHA-256 hex. 重複排除に使用する",
     )
     num_speakers: int | None = Field(default=None, ge=1, le=10, description="話者数のヒント(1-10). Noneなら自動推定")
-    audio_key: str | None = Field(default=None, max_length=255, description="音声ファイルのS3キー (あれば)")
+    media_key: str = Field(..., max_length=255, description="音声/動画の S3 キー (あれば)")
     recorded_at: date | None = Field(default=None, description="会議が録音された日付 (あれば)")
     summary_id: UUID | None = Field(
         default=None,

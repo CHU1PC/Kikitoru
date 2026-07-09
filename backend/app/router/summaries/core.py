@@ -3,6 +3,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
+from loguru import logger
 
 from app.db.summaries import build_summary_read, get_owned_summary, get_transcript_segments, list_summaries_page
 from app.db.summary_group import get_owned_group
@@ -14,6 +15,7 @@ from app.schema.summaries import (
     SummaryResponse,
     TranscriptSegmentResponse,
 )
+from app.storage import delete_object
 
 router = APIRouter(tags=["summaries"])
 
@@ -223,5 +225,12 @@ async def permanently_delete_summary_endpoint(
     summary = await get_owned_summary(db_session, user.id, summary_id, include_deleted=True)
     if summary is None or summary.deleted_at is None:
         raise HTTPException(status_code=404, detail="Summary not found")
-    await db_session.delete(summary)
+    media_key = summary.media_key  # 行削除前に控える
+    await db_session.delete(summary)  # DB にデータがあるのに S3 にメディアが無い場合を避けるために DB 削除は先に行う
     await db_session.commit()
+    # DB 削除後にメディアを best-effort で削除 (失敗しても 204。孤児は S3 ライフサイクルで回収)
+    if media_key:
+        try:
+            await delete_object(media_key)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Failed to delete media {media_key}: {e}")
