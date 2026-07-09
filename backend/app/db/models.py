@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, Column, DateTime, String, UniqueConstraint
+from sqlalchemy import BigInteger, Column, DateTime, Index, String, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -265,4 +265,70 @@ class SummaryGroup(SQLModel, table=True):
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False),
         description="要約グループが作成された日時 (UTC)",
+    )
+
+
+class JobStatus(StrEnum):
+    """文字起こしジョブの状態."""
+
+    pending = "pending"
+    processing = "processing"
+    completed = "completed"
+    failed = "failed"
+
+
+class TranscriptionJob(SQLModel, table=True):
+    """アップロード音声を非同期に文字起こし・要約するジョブ."""
+
+    __tablename__ = "transcription_jobs"  # pyright: ignore[reportAssignmentType]
+    __table_args__ = (
+        Index("ix_transcription_jobs_status_created_at", "status", "created_at"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True, description="ジョブの一意識別子")
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        ondelete="CASCADE",
+        index=True,
+        description="このジョブが属するユーザーのID",
+    )
+    status: JobStatus = Field(default=JobStatus.pending, description="ジョブの状態")
+    filename: str = Field(..., max_length=255, description="アップロードされた音声ファイル名")
+    content_hash: str = Field(
+        ...,
+        max_length=64,
+        index=True,
+        description="音声と num_speakers の SHA-256 hex. 重複排除に使用する",
+    )
+    num_speakers: int | None = Field(default=None, ge=1, le=10, description="話者数のヒント(1-10). Noneなら自動推定")
+    audio_key: str | None = Field(default=None, max_length=255, description="音声ファイルのS3キー (あれば)")
+    recorded_at: date | None = Field(default=None, description="会議が録音された日付 (あれば)")
+    summary_id: UUID | None = Field(
+        default=None,
+        foreign_key="summaries.id",
+        ondelete="SET NULL",
+        index=True,
+        description="このジョブが作成した要約のID (あれば)",
+    )
+    error: str | None = Field(default=None, description="ジョブのエラー内容 (あれば)")
+    attempts: int = Field(default=0, description="ジョブの再試行回数")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="ジョブが作成された日時 (UTC)",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=lambda: datetime.now(UTC)),
+        description="ジョブが最後に更新された日時 (UTC)",
+    )
+    started_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+        description="ジョブが開始された日時 (UTC). 未開始なら None",
+    )
+    completed_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+        description="ジョブが完了した日時 (UTC). 未完了なら None",
     )
