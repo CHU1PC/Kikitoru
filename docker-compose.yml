@@ -19,7 +19,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    environment:
+    environment: &backend-env
       # glibc malloc arena 数を制限して RSS 単調増加を抑える
       MALLOC_ARENA_MAX: "2"
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/kikitoru
@@ -39,6 +39,18 @@ services:
       ENABLE_DOCS: ${ENABLE_DOCS:-false}
     ports:
       - "8000:8000"
+
+  # STT ジョブを非同期処理する worker。backend と同じイメージ・env を共有し、HTTP は公開しない。
+  worker:
+    build:
+      context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+      PYTHONPATH: /app
+    command: uv run app/worker.py
 
 volumes:
   postgres_data:

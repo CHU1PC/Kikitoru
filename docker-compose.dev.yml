@@ -25,7 +25,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    environment:
+    environment: &backend-env
       # glibc malloc arena 数を制限して RSS 単調増加を抑える
       MALLOC_ARENA_MAX: "2"
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-dev_password}@db:5432/kikitoru
@@ -61,6 +61,31 @@ services:
         - action: sync
           path: ./backend/alembic.ini
           target: /app/alembic.ini
+        - action: rebuild
+          path: ./backend/pyproject.toml
+        - action: rebuild
+          path: ./backend/uv.lock
+        - action: rebuild
+          path: ./backend/Dockerfile
+
+  # STT ジョブを非同期処理する worker。backend と同じイメージ・env を共有し、
+  # HTTP は公開しない (ポーリングループのみ)。コード変更は sync+restart で拾う。
+  worker:
+    build:
+      context: ./backend
+    container_name: kikitoru-dev-worker
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *backend-env
+      PYTHONPATH: /app
+    command: uv run app/worker.py
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./backend/app
+          target: /app/app
         - action: rebuild
           path: ./backend/pyproject.toml
         - action: rebuild
