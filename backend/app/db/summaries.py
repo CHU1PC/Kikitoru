@@ -225,6 +225,7 @@ async def create_summary(
     content_hash: str,
     data: LLMSummary,
     segments: list[Segment],
+    media_key: str | None = None,
 ) -> SummaryResponse:
     """要約と、それに紐づくトピック・決定事項・アクションアイテムを永続化する.
 
@@ -235,6 +236,7 @@ async def create_summary(
         content_hash (str): アップロード音声の SHA-256 hex ダイジェスト.
         data (LLMSummary): LLM が生成した構造化要約.
         segments (list[Segment]): STT の話者分離済み文字起こしセグメント.
+        media_key (str | None, optional): 元の音声/動画の S3 キー.
 
     Returns:
         SummaryResponse: 作成された (または content_hash 競合時は既存の) 要約.
@@ -244,7 +246,11 @@ async def create_summary(
             (重複競合は既存行を返すことで処理される).
     """
     summary = Summary(
-        user_id=user_id, filename=filename, content_hash=content_hash, overall_summary=data.overall_summary
+        user_id=user_id,
+        filename=filename,
+        content_hash=content_hash,
+        overall_summary=data.overall_summary,
+        media_key=media_key
     )
     try:
         db_session.add(summary)

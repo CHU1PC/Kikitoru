@@ -27,7 +27,7 @@ def upgrade() -> None:
     sa.Column("filename", sa.String(length=255), nullable=False),
     sa.Column("content_hash", sa.String(length=64), nullable=False),
     sa.Column("num_speakers", sa.Integer(), nullable=True),
-    sa.Column("audio_key", sa.String(length=255), nullable=True),
+    sa.Column("media_key", sa.String(length=255), nullable=False),
     sa.Column("recorded_at", sa.Date(), nullable=True),
     sa.Column("summary_id", sa.Uuid(), nullable=True),
     sa.Column("error", sa.String(), nullable=True),

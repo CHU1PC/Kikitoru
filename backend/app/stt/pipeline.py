@@ -1,43 +1,37 @@
 import asyncio
 import uuid
-from typing import IO
 
 import boto3
 from loguru import logger
 
 from app.settings import settings
-from app.storage import s3
+from app.storage import TRANSCRIPT_PREFIX, delete_object, get_object_bytes, media_uri
 from app.stt.schema import Transcript
 from app.stt.types import Segment
 
 transcribe = boto3.client("transcribe", region_name=settings.AWS_REGION)  # pyright: ignore[reportUnknownMemberType]
 
 
-async def transcribe_with_diarization(audio: IO[bytes], num_speakers: int | None = None) -> list[Segment]:
-    """AWS Transcribeを用いて音声を文字起こしし、話者を分離する.
+async def transcribe_with_diarization(media_key: str, num_speakers: int | None = None) -> list[Segment]:
+    """S3 上の音声/動画 (media_key) を AWS Transcribe で文字起こしし, 話者分離する.
 
-    S3に音声ファイルをアップロードし、AWS Transcribeのバッチジョブを開始する。
-    ジョブが完了するまで待機し、結果を取得して話者分離されたセグメントのリストに変換する。
-    最後に、S3上の音声ファイルと文字起こし結果を削除する。
+    音声は既に S3 (uploads/{job_id}) に永続化されている前提で, MediaFileUri から直接読む
 
     Args:
-        audio (IO[bytes]): 音声ファイルのバイナリストリーム
+        media_key (str): S3 上の音声/動画のキー
         num_speakers (int | None, optional): 話者数. Defaults to None.
 
     Returns:
         list[Segment]: 話者分離されたセグメントのリスト
     """
     job_name = f"transcription-job-{uuid.uuid4()}"
-    audio_key = f"audio/{job_name}"
-    transcript_key = f"transcripts/{job_name}.json"
+    transcript_key = f"{TRANSCRIPT_PREFIX}/{job_name}.json"
 
     try:
-        await asyncio.to_thread(s3.upload_fileobj, audio, settings.S3_BUCKET, audio_key)
-
         await asyncio.to_thread(
             transcribe.start_transcription_job,
             TranscriptionJobName=job_name,
-            Media={"MediaFileUri": f"s3://{settings.S3_BUCKET}/{audio_key}"},
+            Media={"MediaFileUri": media_uri(media_key)},
             LanguageCode="ja-JP",
             OutputBucketName=settings.S3_BUCKET,
             OutputKey=transcript_key,
@@ -45,18 +39,15 @@ async def transcribe_with_diarization(audio: IO[bytes], num_speakers: int | None
                 "ShowSpeakerLabels": True,
                 "MaxSpeakerLabels": min(max(2, num_speakers or 10), 10)
             } if num_speakers != 1 else {},
-        )  # MaxSpeakerLabels は 2 以上である必要があるため、num_speakers が 1 の場合は話者分離を無効化する
+        )
 
         await _wait_for_completion(job_name)
 
-        obj = await asyncio.to_thread(
-            s3.get_object, Bucket=settings.S3_BUCKET, Key=transcript_key
-        )
-        body = await asyncio.to_thread(obj["Body"].read)
+        body = await get_object_bytes(transcript_key)
         transcript = Transcript.model_validate_json(body)
         return _to_segments(transcript)
     finally:
-        await asyncio.to_thread(_cleanup, job_name, audio_key, transcript_key)
+        await _cleanup(job_name, transcript_key)
 
 
 async def _wait_for_completion(job_name: str, *, max_attempts: int = 360, poll_interval: int = 5) -> None:
@@ -86,21 +77,19 @@ async def _wait_for_completion(job_name: str, *, max_attempts: int = 360, poll_i
     raise TimeoutError(msg)
 
 
-def _cleanup(job_name: str, audio_key: str, transcript_key: str) -> None:
-    """AWS Transcribe のジョブと S3 上の音声ファイル・文字起こし結果を削除するクリーンアップ関数.
+async def _cleanup(job_name: str, transcript_key: str) -> None:
+    """Transcribe の結果 JSON とジョブを削除する.
 
     Args:
         job_name (str): AWS Transcribe のジョブ名
-        audio_key (str): S3 にアップロードした音声ファイルのキー
-        transcript_key (str): S3 にアップロードした文字起こし結果のキー
+        transcript_key (str): S3上のトランスクリプト JSON のキー
     """
-    for key in (audio_key, transcript_key):
-        try:
-            s3.delete_object(Bucket=settings.S3_BUCKET, Key=key)
-        except Exception as e:  # noqa: BLE001 - どのような例外でも処理を続けたい
-            logger.error(f"Error deleting {key}: {e}")
     try:
-        transcribe.delete_transcription_job(TranscriptionJobName=job_name)
+        await delete_object(transcript_key)
+    except Exception as e:  # noqa: BLE001 - どのような例外でも処理を続けたい
+        logger.error(f"Error deleting {transcript_key}: {e}")
+    try:
+        await asyncio.to_thread(transcribe.delete_transcription_job, TranscriptionJobName=job_name)
     except Exception as e:  # noqa: BLE001 - どのような例外でも処理を続けたい
         logger.error(f"Error deleting transcription job {job_name}: {e}")
 
