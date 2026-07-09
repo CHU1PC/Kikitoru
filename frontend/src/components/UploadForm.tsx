@@ -1,20 +1,17 @@
 import { useRef, useState, type DragEvent, type SyntheticEvent } from "react"
-import { uploadAudio, ApiError } from "../api/client"
 import { SpeakerStepper } from "./SpeakerStepper"
-import type { SummaryResponse } from "../gen/types"
+import type { UploadAudioInput } from "../api/client"
 import { DatePicker } from "./DatePicker"
 
 
 type Props = {
-    onSuccess: (summary: SummaryResponse) => void
+    onStartUpload: (input: UploadAudioInput) => void
 }
 
-export function UploadForm({ onSuccess }: Props) {
+export function UploadForm({ onStartUpload }: Props) {
     const [file, setFile] = useState<File | null>(null)
     const [recordedAt, setRecordedAt] = useState("")
     const [numSpeakers, setNumSpeakers] = useState("2")
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
     const [dragging, setDragging] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
 
@@ -25,24 +22,17 @@ export function UploadForm({ onSuccess }: Props) {
         if (droppedFile) setFile(droppedFile)
     }
 
-    async function handleSubmit(e: SyntheticEvent<HTMLFormElement>) {
+    function handleSubmit(e: SyntheticEvent<HTMLFormElement>) {
         e.preventDefault()
         if (!file) return
-
-        setLoading(true)
-        setError(null)
-        try {
-            const summary = await uploadAudio({
-                file,
-                recorded_at: recordedAt || undefined,
-                num_speakers: numSpeakers ? Number(numSpeakers) : undefined,
-            })
-            onSuccess(summary)
-        } catch (err) {
-            setError(err instanceof ApiError ? err.detail : "予期しないエラーが発生しました")
-        } finally {
-            setLoading(false)
-        }
+        onStartUpload({
+            file,
+            recorded_at: recordedAt || undefined,
+            num_speakers: numSpeakers ? Number(numSpeakers) : undefined,
+        })
+        setFile(null)
+        setRecordedAt("")
+        setNumSpeakers("2")
     }
 
     return (
@@ -105,16 +95,11 @@ export function UploadForm({ onSuccess }: Props) {
                         />
                     </div>
                     <span className="spacer"></span>
-                    <button
-                        type="submit"
-                        className="primary"
-                        disabled={!file || loading}
-                    >
-                        {loading ? "要約中..." : "要約する"}
+                    <button type="submit" className="primary" disabled={!file}>
+                        要約する
                     </button>
                 </div>
 
-                {error && <p className="error">{error}</p>}
             </form>
         </>
     )

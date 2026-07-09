@@ -172,3 +172,50 @@ async def reclaim_stale_jobs(db_session: AsyncSession, *, older_than_seconds: in
     if stale:
         await db_session.commit()
     return len(stale)
+
+
+async def get_owned_job(
+    db_session: AsyncSession, user_id: UUID, job_id: UUID
+) -> TranscriptionJob | None:
+    """Owner スコープで job を1件取得する. 他ユーザー/存在しない場合は None.
+
+    Args:
+        db_session (AsyncSession): DBセッション
+        user_id (UUID): 所有者のユーザーID
+        job_id (UUID): ジョブID
+
+    Returns:
+        TranscriptionJob | None: 一致するジョブ. なければ None
+    """
+    return (
+        await db_session.exec(
+            select(TranscriptionJob).where(
+                col(TranscriptionJob.id) == job_id,
+                col(TranscriptionJob.user_id) == user_id,
+            )
+        )
+    ).first()
+
+
+async def list_active_jobs(db_session: AsyncSession, user_id: UUID) -> list[TranscriptionJob]:
+    """User の進行中(pending/processing)ジョブを新しい順に返す (サイドバーの pending 表示用).
+
+    Args:
+        db_session (AsyncSession): DBセッション
+        user_id (UUID): 所有者のユーザーID
+
+    Returns:
+        list[TranscriptionJob]: 進行中ジョブのリスト (新しい順)
+    """
+    return list(
+        (
+            await db_session.exec(
+                select(TranscriptionJob)
+                .where(
+                    col(TranscriptionJob.user_id) == user_id,
+                    col(TranscriptionJob.status).in_(_ACTIVE_STATUS),
+                )
+                .order_by(col(TranscriptionJob.created_at).desc())
+            )
+        ).all()
+    )

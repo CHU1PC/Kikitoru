@@ -47,18 +47,5 @@ export function useSummaries() {
         setDetail(null)
     }, [])
 
-    const addUploaded = useCallback((summary: SummaryResponse) => {
-        const item: SummaryListItem = {
-            id: summary.id,
-            filename: summary.filename,
-            created_at: summary.created_at,
-            overall_summary: summary.overall_summary,
-            group_id: summary.group_id,
-        }
-        setItems((prev) => [item, ...prev.filter((x) => x.id !== item.id)])
-        setActiveId(summary.id)
-        setDetail(summary)
-    }, [])
-
-    return { items, listLoading, listError, activeId, detail, select, startNew, addUploaded, reloadList: retryLoad }
+    return { items, listLoading, listError, activeId, detail, select, startNew, reloadList: retryLoad }
 }
