@@ -41,7 +41,9 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint("id")
     )
     op.create_index(op.f("ix_transcription_jobs_content_hash"), "transcription_jobs", ["content_hash"], unique=False)
-    op.create_index("ix_transcription_jobs_status_created_at", "transcription_jobs", ["status", "created_at"], unique=False)
+    op.create_index(
+        "ix_transcription_jobs_status_created_at", "transcription_jobs", ["status", "created_at"], unique=False
+    )
     op.create_index(op.f("ix_transcription_jobs_summary_id"), "transcription_jobs", ["summary_id"], unique=False)
     op.create_index(op.f("ix_transcription_jobs_user_id"), "transcription_jobs", ["user_id"], unique=False)
     # ### end Alembic commands ###
