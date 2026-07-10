@@ -80,7 +80,8 @@ services:
     environment:
       <<: *backend-env
       PYTHONPATH: /app
-    command: uv run app/worker.py
+    command: uv run --no-sync app/worker.py
+    restart: unless-stopped
     develop:
       watch:
         - action: sync+restart
