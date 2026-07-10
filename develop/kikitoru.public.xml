@@ -72,6 +72,7 @@
             <child column="summary_id" foreignKey="decisions_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="decisions"/>
             <child column="summary_id" foreignKey="topics_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="topics"/>
             <child column="summary_id" foreignKey="transcript_segments_summary_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="transcript_segments"/>
+            <child column="summary_id" foreignKey="transcription_jobs_summary_id_fkey" implied="false" onDeleteCascade="false" schema="public" table="transcription_jobs"/>
          </column>
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="filename" nullable="false" remarks="" size="255" type="varchar" typeCode="12"/>
          <column autoUpdated="false" defaultValue="null" digits="6" id="2" name="created_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
@@ -84,6 +85,7 @@
          <column autoUpdated="false" defaultValue="null" digits="0" id="7" name="group_id" nullable="true" remarks="" size="2147483647" type="uuid" typeCode="1111">
             <parent column="id" foreignKey="fk_summaries_group_id" implied="false" onDeleteCascade="false" schema="public" table="summary_groups"/>
          </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="8" name="media_key" nullable="true" remarks="" size="255" type="varchar" typeCode="12"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="summaries_pkey" unique="true">
             <column ascending="true" name="id"/>
@@ -159,6 +161,48 @@
             <column ascending="true" name="summary_id"/>
          </index>
       </table>
+      <table name="transcription_jobs" remarks="" schema="public" type="TABLE">
+         <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="user_id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="transcription_jobs_user_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="users"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="status" nullable="false" remarks="" size="2147483647" type="jobstatus" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="filename" nullable="false" remarks="" size="255" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="content_hash" nullable="false" remarks="" size="64" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="num_speakers" nullable="true" remarks="" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="6" name="media_key" nullable="false" remarks="" size="255" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="7" name="recorded_at" nullable="true" remarks="" size="13" type="date" typeCode="91"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="8" name="summary_id" nullable="true" remarks="" size="2147483647" type="uuid" typeCode="1111">
+            <parent column="id" foreignKey="transcription_jobs_summary_id_fkey" implied="false" onDeleteCascade="false" schema="public" table="summaries"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="9" name="error" nullable="true" remarks="" size="2147483647" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="10" name="attempts" nullable="false" remarks="" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="11" name="created_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="12" name="updated_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="13" name="started_at" nullable="true" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="14" name="completed_at" nullable="true" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="transcription_jobs_pkey" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="ix_transcription_jobs_content_hash" unique="false">
+            <column ascending="true" name="content_hash"/>
+         </index>
+         <index name="ix_transcription_jobs_status_created_at" unique="false">
+            <column ascending="true" name="status"/>
+            <column ascending="true" name="created_at"/>
+         </index>
+         <index name="ix_transcription_jobs_summary_id" unique="false">
+            <column ascending="true" name="summary_id"/>
+         </index>
+         <index name="ix_transcription_jobs_user_id" unique="false">
+            <column ascending="true" name="user_id"/>
+         </index>
+         <index name="uq_transcription_jobs_active_hash" unique="true">
+            <column ascending="true" name="user_id"/>
+            <column ascending="true" name="content_hash"/>
+         </index>
+      </table>
       <table name="user_sessions" remarks="" schema="public" type="TABLE">
          <column autoUpdated="false" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111"/>
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="user_id" nullable="false" remarks="" size="2147483647" type="uuid" typeCode="1111">
@@ -190,6 +234,7 @@
             <child column="user_id" foreignKey="oauth_identities_user_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="oauth_identities"/>
             <child column="user_id" foreignKey="fk_summaries_user_id" implied="false" onDeleteCascade="true" schema="public" table="summaries"/>
             <child column="user_id" foreignKey="summary_groups_user_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="summary_groups"/>
+            <child column="user_id" foreignKey="transcription_jobs_user_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="transcription_jobs"/>
             <child column="user_id" foreignKey="user_sessions_user_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="user_sessions"/>
          </column>
          <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="email" nullable="true" remarks="" size="320" type="varchar" typeCode="12"/>

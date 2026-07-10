@@ -1,4 +1,5 @@
 alembic_version
+transcription_jobs
 user_sessions
 transcript_segments
 topics

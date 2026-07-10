@@ -7,4 +7,5 @@ oauth_identities
 topics
 transcript_segments
 user_sessions
+transcription_jobs
 alembic_version
