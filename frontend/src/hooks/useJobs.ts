@@ -21,7 +21,13 @@ export function useJobs(onCompleted: (summaryId?: string | null) => void) {
     useEffect(() => {
         let active = true
         listJobs()
-            .then((js) => { if (active) setJobs(js) })
+            .then((js) => {
+                if (!active) return
+                setJobs((prev) => {
+                    const serverIds = new Set(js.map((j) => j.id))
+                    return [...prev.filter((j) => !serverIds.has(j.id)), ...js]
+                })
+            })
             .catch(() => {})
         return () => { active = false }
     }, [])
@@ -63,7 +69,7 @@ export function useJobs(onCompleted: (summaryId?: string | null) => void) {
     }, [hasActive])
 
     const startUpload = useCallback((input: UploadAudioInput) => {
-        const tempId = `${TEMP_PREFIX}${crypto.randomUUID()}`
+        const tempId = `${TEMP_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2)}`
         const optimistic: TranscriptionJobResponse = {
             id: tempId,
             status: "processing",
@@ -81,8 +87,10 @@ export function useJobs(onCompleted: (summaryId?: string | null) => void) {
                     setJobs((prev) => prev.filter((x) => x.id !== tempId))
                     onCompletedRef.current(job.summary_id)
                 } else {
-                    // 本物の job に差し替え (以降 polling は本物の id で走る)
-                    setJobs((prev) => prev.map((x) => (x.id === tempId ? job : x)))
+                    // 本物の job に差し替え。既に同 id の job があれば重複させない (同一ファイル再アップ対策)
+                    setJobs((prev) =>
+                        prev.filter((x) => x.id !== job.id).map((x) => (x.id === tempId ? job : x)),
+                    )
                 }
             })
             .catch((err) => {
