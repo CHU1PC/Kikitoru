@@ -9,6 +9,7 @@ from sqlmodel import col, select
 
 from app.db.models import ActionItem, Decision, Summary, Topic, TranscriptSegment
 from app.schema.summaries import ActionItemResponse, DecisionResponse, SummaryResponse, TopicResponse
+from app.storage import delete_object
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -262,6 +263,8 @@ async def create_summary(
         await db_session.rollback()
         existing = await find_by_content_hash(db_session, user_id, content_hash)
         if existing is not None:
+            if media_key is not None and existing.media_key != media_key:
+                await delete_object(media_key)
             return await build_summary_read(db_session, existing)
         raise
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from datetime import UTC, datetime
 from http import HTTPStatus
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
@@ -26,6 +27,7 @@ from main import app
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from uuid import UUID
 
     from httpx import Response
 
@@ -36,14 +38,14 @@ _VALID_CONTENT_TYPE = "audio/mpeg"
 _DUMMY_AUDIO = b"dummy audio content"
 
 
-def _make_job(status: JobStatus = JobStatus.pending) -> TranscriptionJob:
+def _make_job(status: JobStatus = JobStatus.pending, *, job_id: UUID | None = None) -> TranscriptionJob:
     """テスト用の TranscriptionJob を作る (media_key は NOT NULL なので必ず与える).
 
     Returns:
         TranscriptionJob: 指定 status のテスト用ジョブ.
     """
     return TranscriptionJob(
-        id=uuid4(),
+        id=job_id or uuid4(),
         user_id=_USER.id,
         status=status,
         filename="meeting.mp3",
@@ -51,6 +53,15 @@ def _make_job(status: JobStatus = JobStatus.pending) -> TranscriptionJob:
         media_key="uploads/test",
         num_speakers=2,
     )
+
+
+def _create_job_echo(_db: object, *, job_id: UUID, **_kwargs: object) -> TranscriptionJob:
+    """create_job のモック: 渡された job_id を持つ新規 pending job を返す (実挙動と同じ).
+
+    Returns:
+        TranscriptionJob: job_id を id に持つ pending ジョブ.
+    """
+    return _make_job(job_id=job_id)
 
 
 def _post_summarize(**data: str) -> Response:
@@ -97,18 +108,20 @@ def enqueue_mocks() -> Generator[SimpleNamespace]:
         patch("app.router.audio.find_active_job_by_hash", new_callable=AsyncMock) as find_job,
         patch("app.router.audio.persist_upload", new_callable=AsyncMock) as persist,
         patch("app.router.audio.create_job", new_callable=AsyncMock) as create,
+        patch("app.router.audio.delete_object", new_callable=AsyncMock) as delete,
         patch("app.audio.intake._magic_mime") as magic,
     ):
         find_summary.return_value = None
         find_job.return_value = None
         persist.return_value = "uploads/test"
-        create.return_value = _make_job(JobStatus.pending)
+        create.side_effect = _create_job_echo
         magic.from_buffer.return_value = _VALID_CONTENT_TYPE
         yield SimpleNamespace(
             find_summary=find_summary,
             find_job=find_job,
             persist=persist,
             create=create,
+            delete=delete,
             magic=magic,
         )
 
@@ -203,16 +216,46 @@ def test_summarize_rejects_unapproved_user() -> None:
 
 
 def test_summarize_rejects_oversized_file(monkeypatch: pytest.MonkeyPatch) -> None:
-    """MAX_UPLOAD_BYTES を超えるファイルを 413 で拒否することを確認するテスト."""
-    monkeypatch.setattr("app.audio.intake.MAX_UPLOAD_BYTES", 10)
+    """Endpoint の 413 ガード (file.size > MAX_UPLOAD_BYTES) を確認するテスト."""
+    monkeypatch.setattr("app.router.audio.MAX_UPLOAD_BYTES", 10)
 
-    with patch("app.audio.intake._magic_mime"):
-        response = client.post(
-            "/api/v1/audio/summarize",
-            files={"file": ("big.mp3", b"x" * 11, _VALID_CONTENT_TYPE)},
-        )
+    response = client.post(
+        "/api/v1/audio/summarize",
+        files={"file": ("big.mp3", b"x" * 11, _VALID_CONTENT_TYPE)},
+    )
 
     assert response.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+
+
+def test_summarize_trashed_summary_returns_409(enqueue_mocks: SimpleNamespace) -> None:
+    """同一内容の要約がゴミ箱にある場合 409 を返し, ジョブを作らないことを確認するテスト."""
+    trashed = DBSummary(
+        user_id=_USER.id,
+        filename="prev.mp3",
+        content_hash="abc",
+        overall_summary="prev",
+        deleted_at=datetime.now(UTC),
+    )
+    enqueue_mocks.find_summary.return_value = trashed
+
+    response = _post_summarize()
+
+    assert response.status_code == HTTPStatus.CONFLICT
+    enqueue_mocks.create.assert_not_called()
+    enqueue_mocks.persist.assert_not_called()
+
+
+def test_summarize_race_loss_deletes_orphan_media(enqueue_mocks: SimpleNamespace) -> None:
+    """並行作成に敗北し既存 job が返った場合, アップロード済み media を削除することを確認するテスト."""
+    winner = _make_job(JobStatus.processing)  # 別 id (競合の勝者)
+    enqueue_mocks.create.side_effect = None
+    enqueue_mocks.create.return_value = winner
+
+    response = _post_summarize()
+
+    assert response.status_code == HTTPStatus.ACCEPTED
+    assert response.json()["id"] == str(winner.id)
+    enqueue_mocks.delete.assert_awaited_once_with("uploads/test")
 
 
 def test_get_job_returns_owned_job() -> None:

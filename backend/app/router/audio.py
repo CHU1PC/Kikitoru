@@ -17,7 +17,7 @@ from app.dependencies import (
 )
 from app.rate_limit import AUDIO_SUMMARIZE_RATE_LIMIT, limiter
 from app.schema.summaries import TranscriptionJobResponse
-from app.storage import persist_upload
+from app.storage import delete_object, persist_upload
 
 router = APIRouter(prefix="/audio", tags=["audio"])
 
@@ -46,6 +46,7 @@ async def summarize_audio_endpoint(
         TranscriptionJobResponse: 非同期文字起こしジョブの状態レスポンス
 
     Raises:
+        HTTPException: 409 - 同一内容の要約が既にゴミ箱にある場合
         HTTPException: 413 - アップロードファイルが最大サイズを超えた場合
         HTTPException: 415 - サポートされていないファイルタイプの場合
     """
@@ -62,6 +63,9 @@ async def summarize_audio_endpoint(
         # 1. 既存の要約があるか確認
         existing = await find_by_content_hash(db_session, user.id, content_hash)
         if existing is not None:
+            if existing.deleted_at is not None:
+                # 同一内容の要約がゴミ箱にある -> 新規作成せず, その旨を伝える (復元機能は将来対応)
+                raise HTTPException(status_code=409, detail="この音声の要約は既にゴミ箱にあります")
             return TranscriptionJobResponse(
                 id=uuid4(),
                 status=JobStatus.completed,
@@ -88,6 +92,9 @@ async def summarize_audio_endpoint(
             num_speakers=num_speakers,
             recorded_at=recorded_at,
         )
+        if job.id != job_id:
+            # 並行作成に敗北し既存 job が返った -> 今アップした media は孤児なので削除する
+            await delete_object(media_key)
 
         return TranscriptionJobResponse.model_validate(job)
     finally:
