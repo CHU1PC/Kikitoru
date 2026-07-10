@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
 from uuid import UUID, uuid4
 
-from sqlalchemy import BigInteger, Column, DateTime, Index, String, UniqueConstraint
+from sqlalchemy import BigInteger, Column, DateTime, Index, String, UniqueConstraint, text
 from sqlmodel import Field, SQLModel
 
 
@@ -290,6 +290,13 @@ class TranscriptionJob(SQLModel, table=True):
     __tablename__ = "transcription_jobs"  # pyright: ignore[reportAssignmentType]
     __table_args__ = (
         Index("ix_transcription_jobs_status_created_at", "status", "created_at"),
+        Index(
+            "uq_transcription_jobs_active_hash",
+            "user_id",
+            "content_hash",
+            unique=True,
+            postgresql_where=text("status IN ('pending', 'processing')"),
+        ),
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True, description="ジョブの一意識別子")

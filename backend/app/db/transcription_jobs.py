@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, select
 
 from app.db.models import JobStatus, TranscriptionJob
@@ -66,7 +67,10 @@ async def create_job(
         recorded_at (date | None): 会議が録音された日付. Noneなら不明
 
     Returns:
-        TranscriptionJob: 作成された文字起こしジョブ
+        TranscriptionJob: 作成された文字起こしジョブ. 進行中の同一ジョブが並行作成された場合はその既存ジョブ.
+
+    Raises:
+        IntegrityError: 一意制約違反だが進行中の同一ジョブが見つからない場合 (想定外).
     """
     job = TranscriptionJob(
         id=job_id,
@@ -79,7 +83,14 @@ async def create_job(
         recorded_at=recorded_at,
     )
     db_session.add(job)
-    await db_session.commit()
+    try:
+        await db_session.commit()
+    except IntegrityError:
+        await db_session.rollback()
+        existing = await find_active_job_by_hash(db_session, user_id, content_hash)
+        if existing is not None:
+            return existing
+        raise
     return job
 
 
