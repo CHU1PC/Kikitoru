@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent, type SyntheticEvent } from "react"
+import { useRef, useEffect, useState, type DragEvent, type SyntheticEvent } from "react"
 import { SpeakerStepper } from "./SpeakerStepper"
 import type { UploadAudioInput } from "../api/client"
 import { DatePicker } from "./DatePicker"
@@ -14,6 +14,11 @@ export function UploadForm({ onStartUpload }: Props) {
     const [numSpeakers, setNumSpeakers] = useState("2")
     const [dragging, setDragging] = useState(false)
     const inputRef = useRef<HTMLInputElement>(null)
+    const submittingRef = useRef(false)
+
+    useEffect(() => {
+        if (file) submittingRef.current = false
+    }, [file])
 
     function handleDrop(e: DragEvent<HTMLDivElement>) {
         e.preventDefault()
@@ -24,7 +29,8 @@ export function UploadForm({ onStartUpload }: Props) {
 
     function handleSubmit(e: SyntheticEvent<HTMLFormElement>) {
         e.preventDefault()
-        if (!file) return
+        if (!file || submittingRef.current) return
+        submittingRef.current = true
         onStartUpload({
             file,
             recorded_at: recordedAt || undefined,
