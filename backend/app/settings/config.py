@@ -11,6 +11,10 @@ class Settings(BaseSettings):
 
     FRONTEND_URL: str = Field(default="http://localhost:5173", description="フロントエンドの URL")
 
+    WORKER_CONCURRENT_LIMIT: int = Field(
+        default=4, ge=1, le=10, description="ワーカーの最大同時ジョブ処理数"
+    )
+
     DATABASE_URL: SecretStr = Field(default=..., description="データベース接続用の URL")
     DATABASE_SSL_MODE: str = Field(
         default="disable",
