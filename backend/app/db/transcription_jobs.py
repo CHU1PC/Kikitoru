@@ -165,7 +165,11 @@ async def reclaim_stale_jobs(db_session: AsyncSession, *, older_than_seconds: in
 
     Args:
         db_session (AsyncSession): DBセッション
-        older_than_seconds (int, optional): この秒数より古いジョブを stale とみなす. Defaults to 60*60.
+        older_than_seconds (int, optional): この秒数より古いジョブを stale とみなす.
+            Defaults to 60*60. **並列 worker 環境では実際のジョブ最大実行時間を上回る
+            必要がある** (下回ると, 実行中のジョブを別レーンが再 claim して二重処理が
+            発生). 呼び出し側 (worker.py の `_STALE_JOB_THRESHOLD_SECONDS`) で
+            STT + LLM + margin から導出した値を渡すこと.
 
     Returns:
         int: 復帰させたジョブの件数

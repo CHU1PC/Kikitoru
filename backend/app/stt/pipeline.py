@@ -11,6 +11,11 @@ from app.stt.types import Segment
 
 transcribe = boto3.client("transcribe", region_name=settings.AWS_REGION)  # pyright: ignore[reportUnknownMemberType]
 
+_STT_MAX_ATTEMPTS = 360
+_STT_POLL_INTERVAL_SECONDS = 5
+# STT (AWS Transcribe) 完了待ちの最大秒数. worker.py の reclaim 閾値算出に使う.
+STT_MAX_WAIT_SECONDS = _STT_MAX_ATTEMPTS * _STT_POLL_INTERVAL_SECONDS
+
 
 async def transcribe_with_diarization(media_key: str, num_speakers: int | None = None) -> list[Segment]:
     """S3 上の音声/動画 (media_key) を AWS Transcribe で文字起こしし, 話者分離する.
@@ -50,13 +55,18 @@ async def transcribe_with_diarization(media_key: str, num_speakers: int | None =
         await _cleanup(job_name, transcript_key)
 
 
-async def _wait_for_completion(job_name: str, *, max_attempts: int = 360, poll_interval: int = 5) -> None:
+async def _wait_for_completion(
+    job_name: str,
+    *,
+    max_attempts: int = _STT_MAX_ATTEMPTS,
+    poll_interval: int = _STT_POLL_INTERVAL_SECONDS,
+) -> None:
     """AWS Transcribe のジョブが完了するまで待機する.
 
     Args:
         job_name (str): AWS Transcribe のジョブ名
-        max_attempts (int, optional): 最大ポーリング回数. Defaults to 360.
-        poll_interval (int, optional): ポーリング間隔(秒). Defaults to 5.
+        max_attempts (int, optional): 最大ポーリング回数. Defaults to _STT_MAX_ATTEMPTS (360).
+        poll_interval (int, optional): ポーリング間隔(秒). Defaults to _STT_POLL_INTERVAL_SECONDS (5).
 
     Raises:
         RuntimeError: ジョブが失敗した場合に送出される
