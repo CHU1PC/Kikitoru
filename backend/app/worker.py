@@ -79,13 +79,13 @@ async def run_worker() -> None:
             try:
                 await _process_job(db_session, job)
                 logger.info(f"Job {job.id} completed successfully")
-            except Exception as e:  # noqa: BLE001 - どのジョブ失敗でもループは止めない
+            except Exception as e:  # ruff:ignore[blind-except] - どのジョブ失敗でもループは止めない
                 logger.error(f"Failed to process job {job.id}: {e}")
                 try:
                     await db_session.rollback()
                     await db_session.refresh(job)
                     await mark_failed(db_session, job, str(e))
-                except Exception as inner:  # noqa: BLE001 - どのジョブ失敗でもループは止めない
+                except Exception as inner:  # ruff:ignore[blind-except] - どのジョブ失敗でもループは止めない
                     logger.error(f"Failed to mark job {job.id} as failed: {inner} (stale reclaim で回収)")
 
 
