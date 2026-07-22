@@ -22,6 +22,7 @@ services:
     environment: &backend-env
       # glibc malloc arena 数を制限して RSS 単調増加を抑える
       MALLOC_ARENA_MAX: "2"
+      WORKER_CONCURRENT_LIMIT: ${WORKER_CONCURRENT_LIMIT:-4}
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@db:5432/kikitoru
       # AWS Transcribe / S3 (STT)
       AWS_REGION: ${AWS_REGION:-ap-northeast-1}
