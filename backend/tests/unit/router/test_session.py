@@ -53,7 +53,7 @@ def test_me_returns_current_user_public() -> None:
 
 def test_logout_revokes_session_and_deletes_cookie() -> None:
     """有効なセッションのとき revoked_at を立て、Cookie を削除することを確認するテスト."""
-    user_session = UserSession(user_id=uuid4(), token_hash="hash")  # noqa: S106
+    user_session = UserSession(user_id=uuid4(), token_hash="hash")  # ruff:ignore[hardcoded-password-func-arg]
     db_session = _db_session_with_session(user_session)
     request = MagicMock()
     request.cookies.get.return_value = "token"
@@ -83,7 +83,7 @@ def test_logout_without_cookie_is_idempotent() -> None:
 
 def test_logout_already_revoked_skips_commit() -> None:
     """既に取り消し済みのセッションでは commit せず Cookie 削除だけ行うことを確認するテスト."""
-    revoked = UserSession(user_id=uuid4(), token_hash="hash", revoked_at=datetime.now(UTC))  # noqa: S106
+    revoked = UserSession(user_id=uuid4(), token_hash="hash", revoked_at=datetime.now(UTC))  # ruff:ignore[hardcoded-password-func-arg]
     db_session = _db_session_with_session(revoked)
     request = MagicMock()
     request.cookies.get.return_value = "token"

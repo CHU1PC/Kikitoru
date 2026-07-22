@@ -41,7 +41,7 @@ def test_valid_session_cookie_authenticates(db_call: Callable[..., tuple[str, st
 
 def test_expired_session_is_rejected(db_call: Callable[..., str]) -> None:
     """期限切れのセッション Cookie では /auth/me が 401 になることを確認するテスト."""
-    raw_token = "expired-token"  # noqa: S105
+    raw_token = "expired-token"  # ruff:ignore[hardcoded-password-string]
 
     async def _setup(session: AsyncSession) -> str:
         user = User(email="owner@example.com", name="Owner")

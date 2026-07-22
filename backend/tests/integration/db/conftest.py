@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-import subprocess  # noqa: S404 -- alembic upgrade を固定引数で起動するためにのみ使う
+import subprocess  # ruff:ignore[suspicious-subprocess-import] -- alembic upgrade を固定引数で起動するためにのみ使う
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, cast

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import date  # noqa: TC003 - FastAPI resolves the dependency annotation at runtime
+from datetime import (
+    date,  # ruff:ignore[typing-only-standard-library-import] - FastAPI resolves the dependency annotation at runtime
+)
 from typing import Annotated
 from uuid import UUID, uuid4
 
@@ -12,8 +14,8 @@ from app.db.models import JobStatus
 from app.db.summaries import find_by_content_hash
 from app.db.transcription_jobs import create_job, find_active_job_by_hash, get_owned_job, list_active_jobs
 from app.dependencies import (
-    ApprovedUser,  # noqa: TC001 — FastAPI resolves the dependency annotation at runtime
-    DbSessionDep,  # noqa: TC001 — FastAPI resolves the dependency annotation at runtime
+    ApprovedUser,  # ruff:ignore[typing-only-first-party-import] — FastAPI resolves the dependency annotation at runtime
+    DbSessionDep,  # ruff:ignore[typing-only-first-party-import] — FastAPI resolves the dependency annotation at runtime
 )
 from app.rate_limit import AUDIO_SUMMARIZE_RATE_LIMIT, limiter
 from app.schema.summaries import TranscriptionJobResponse
@@ -25,7 +27,7 @@ router = APIRouter(prefix="/audio", tags=["audio"])
 @router.post("/summarize", status_code=202)
 @limiter.limit(AUDIO_SUMMARIZE_RATE_LIMIT)  # pyright: ignore[reportUntypedFunctionDecorator, reportUntypedClassDecorator, reportUnknownMemberType]
 async def summarize_audio_endpoint(
-    request: Request,  # noqa: ARG001 — FastAPI resolves the dependency annotation at runtime
+    request: Request,  # ruff:ignore[unused-function-argument] — FastAPI resolves the dependency annotation at runtime
     file: UploadFile,
     db_session: DbSessionDep,
     user: ApprovedUser,

@@ -1,7 +1,9 @@
 import json
 from datetime import date
 
-from app.llm.summarize.chain import _format_input  # noqa: PLC2701  # pyright: ignore[reportPrivateUsage]
+from app.llm.summarize.chain import (
+    _format_input,  # ruff:ignore[import-private-name]  # pyright: ignore[reportPrivateUsage]
+)
 from app.stt.types import Segment
 
 _RECORDED_AT = date(2025, 6, 1)

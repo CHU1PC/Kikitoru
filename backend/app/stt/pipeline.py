@@ -86,11 +86,11 @@ async def _cleanup(job_name: str, transcript_key: str) -> None:
     """
     try:
         await delete_object(transcript_key)
-    except Exception as e:  # noqa: BLE001 - どのような例外でも処理を続けたい
+    except Exception as e:  # ruff:ignore[blind-except] - どのような例外でも処理を続けたい
         logger.error(f"Error deleting {transcript_key}: {e}")
     try:
         await asyncio.to_thread(transcribe.delete_transcription_job, TranscriptionJobName=job_name)
-    except Exception as e:  # noqa: BLE001 - どのような例外でも処理を続けたい
+    except Exception as e:  # ruff:ignore[blind-except] - どのような例外でも処理を続けたい
         logger.error(f"Error deleting transcription job {job_name}: {e}")
 
 
