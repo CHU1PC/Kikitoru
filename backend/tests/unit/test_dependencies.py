@@ -48,7 +48,7 @@ def _db_session_with(user_session: object, user: object) -> AsyncMock:
 def test_returns_user_for_valid_session() -> None:
     """有効なセッションのとき現在の User を返すことを確認するテスト."""
     user = User(id=uuid4(), email="taro@example.com", name="Taro")
-    user_session = UserSession(user_id=user.id, token_hash="hash")  # noqa: S106
+    user_session = UserSession(user_id=user.id, token_hash="hash")  # ruff:ignore[hardcoded-password-func-arg]
     db_session = _db_session_with(user_session, user)
 
     result = asyncio.run(get_current_user(_request_with_token("token"), db_session))
@@ -79,7 +79,7 @@ def test_raises_401_when_session_not_found() -> None:
 def test_raises_401_when_session_revoked() -> None:
     """セッションが取り消し済みのとき 401 を送出することを確認するテスト."""
     user = User(id=uuid4(), email="taro@example.com", name="Taro")
-    user_session = UserSession(user_id=user.id, token_hash="hash", revoked_at=datetime.now(UTC))  # noqa: S106
+    user_session = UserSession(user_id=user.id, token_hash="hash", revoked_at=datetime.now(UTC))  # ruff:ignore[hardcoded-password-func-arg]
     db_session = _db_session_with(user_session, user)
 
     with pytest.raises(HTTPException) as exc:
@@ -92,7 +92,7 @@ def test_raises_401_when_session_expired() -> None:
     """セッションが期限切れのとき 401 を送出することを確認するテスト."""
     user = User(id=uuid4(), email="taro@example.com", name="Taro")
     expired = datetime.now(UTC) - timedelta(days=1)
-    user_session = UserSession(user_id=user.id, token_hash="hash", expires_at=expired)  # noqa: S106
+    user_session = UserSession(user_id=user.id, token_hash="hash", expires_at=expired)  # ruff:ignore[hardcoded-password-func-arg]
     db_session = _db_session_with(user_session, user)
 
     with pytest.raises(HTTPException) as exc:
@@ -103,7 +103,7 @@ def test_raises_401_when_session_expired() -> None:
 
 def test_raises_401_when_user_missing() -> None:
     """セッションは有効だが User が存在しないとき 401 を送出することを確認するテスト."""
-    user_session = UserSession(user_id=uuid4(), token_hash="hash")  # noqa: S106
+    user_session = UserSession(user_id=uuid4(), token_hash="hash")  # ruff:ignore[hardcoded-password-func-arg]
     db_session = _db_session_with(user_session, None)
 
     with pytest.raises(HTTPException) as exc:

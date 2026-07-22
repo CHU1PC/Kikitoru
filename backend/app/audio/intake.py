@@ -82,7 +82,7 @@ async def spool_upload(file: UploadFile) -> tuple[tempfile.SpooledTemporaryFile[
     Raises:
         HTTPException: 累積サイズが MAX_UPLOAD_BYTES を超えた場合は 413.
     """
-    spooled: tempfile.SpooledTemporaryFile[bytes] = tempfile.SpooledTemporaryFile(max_size=_SPOOL_MAX_BYTES)  # noqa: SIM115
+    spooled: tempfile.SpooledTemporaryFile[bytes] = tempfile.SpooledTemporaryFile(max_size=_SPOOL_MAX_BYTES)  # ruff:ignore[open-file-with-context-handler]
     hasher = hashlib.sha256()
     head = bytearray()
     total = 0

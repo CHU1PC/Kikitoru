@@ -19,12 +19,12 @@ _PROVIDER = "google"
 _STATE_COOKIE = "oauth_state"
 _STATE_MAX_AGE = 600  # seconds
 _GOOGLE_AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
-_GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"  # noqa: S105
+_GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"  # ruff:ignore[hardcoded-password-string]
 
 
 @router.get("/start")
 @limiter.limit(OAUTH_RATE_LIMIT)  # pyright: ignore[reportUntypedFunctionDecorator, reportUnknownMemberType]
-async def start_oauth(request: Request) -> RedirectResponse:  # noqa: ARG001
+async def start_oauth(request: Request) -> RedirectResponse:  # ruff:ignore[unused-function-argument]
     """Googleの認可画面へリダイレクトしてCSRF対策のstateをCookieに保存する.
 
     Args:

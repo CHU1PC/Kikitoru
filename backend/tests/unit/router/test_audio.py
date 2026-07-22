@@ -14,8 +14,8 @@ from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.audio.intake import (
-    _MAGIC_SNIFF_BYTES,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
-    _MAX_FILENAME_LENGTH,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
+    _MAGIC_SNIFF_BYTES,  # pyright: ignore[reportPrivateUsage]  # ruff:ignore[import-private-name]
+    _MAX_FILENAME_LENGTH,  # pyright: ignore[reportPrivateUsage]  # ruff:ignore[import-private-name]
     sanitize_filename,
     spool_upload,
 )

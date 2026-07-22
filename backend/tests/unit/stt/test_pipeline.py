@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.stt.pipeline import (
-    _to_segments,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
-    _wait_for_completion,  # pyright: ignore[reportPrivateUsage]  # noqa: PLC2701
+    _to_segments,  # pyright: ignore[reportPrivateUsage]  # ruff:ignore[import-private-name]
+    _wait_for_completion,  # pyright: ignore[reportPrivateUsage]  # ruff:ignore[import-private-name]
 )
 from app.stt.schema import Transcript
 from app.stt.types import Segment

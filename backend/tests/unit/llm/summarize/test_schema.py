@@ -28,4 +28,4 @@ from app.llm.summarize.schema import ActionItem
 )
 def test_parse_due_date(raw: object, expected: date | None) -> None:
     """due_date を date/datetime/ISO文字列から解釈し、解釈不能なら None にすることを確認するテスト."""
-    assert ActionItem._parse_due_date(raw) == expected  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+    assert ActionItem._parse_due_date(raw) == expected  # ruff:ignore[private-member-access]  # pyright: ignore[reportPrivateUsage]

@@ -24,10 +24,10 @@ from app.settings import Settings
 )
 def test_parse_allowed_origins(raw: object, expected: list[str]) -> None:
     """ALLOWED_ORIGINS をカンマ区切り/JSON配列/リストから正しく解釈することを確認するテスト."""
-    assert Settings._parse_allowed_origins(raw) == expected  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+    assert Settings._parse_allowed_origins(raw) == expected  # ruff:ignore[private-member-access]  # pyright: ignore[reportPrivateUsage]
 
 
 def test_parse_allowed_origins_rejects_invalid_json() -> None:
     """[ で始まる不正な JSON を ValueError で弾くことを確認するテスト."""
     with pytest.raises(ValueError, match="invalid"):
-        Settings._parse_allowed_origins('["https://a.com"')  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+        Settings._parse_allowed_origins('["https://a.com"')  # ruff:ignore[private-member-access]  # pyright: ignore[reportPrivateUsage]

@@ -232,5 +232,5 @@ async def permanently_delete_summary_endpoint(
     if media_key:
         try:
             await delete_object(media_key)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:  # ruff:ignore[blind-except]
             logger.warning(f"Failed to delete media {media_key}: {e}")
