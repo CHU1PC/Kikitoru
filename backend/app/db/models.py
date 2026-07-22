@@ -1,0 +1,348 @@
+from __future__ import annotations
+
+from datetime import UTC, date, datetime, timedelta
+from enum import StrEnum
+from uuid import UUID, uuid4
+
+from sqlalchemy import BigInteger, Column, DateTime, Index, String, UniqueConstraint, text
+from sqlmodel import Field, SQLModel
+
+
+class UserRole(StrEnum):
+    """ユーザーの役割."""
+
+    user = "user"
+    admin = "admin"
+
+
+class UserStatus(StrEnum):
+    """ユーザーの状態."""
+
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+
+class User(SQLModel, table=True):
+    """システムのユーザー."""
+
+    __tablename__ = "users"  # pyright: ignore[reportAssignmentType]
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True, description="ユーザーの一意識別子")
+    email: str | None = Field(default=None, max_length=320, description="ユーザーのメールアドレス")
+    name: str = Field(default="", max_length=255, description="ユーザーのフルネーム")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="ユーザーが作成された日時 (UTC)",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=lambda: datetime.now(UTC)),
+        description="ユーザーが最後に更新された日時 (UTC)",
+    )
+    role: UserRole = Field(default=UserRole.user, description="ユーザーの役割")
+    status: UserStatus = Field(default=UserStatus.pending, description="ユーザーの状態")
+
+
+class OAuthIdentity(SQLModel, table=True):
+    """ユーザーの外部 IdP アカウント(provider, subjectのペア)."""
+
+    __tablename__ = "oauth_identities"  # pyright: ignore[reportAssignmentType]
+    __table_args__ = (
+        UniqueConstraint("provider", "subject", name="uq_provider_subject"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True, description="OAuth identity の一意識別子")
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        ondelete="CASCADE",
+        index=True,
+        description="このOAuthIdentityが属するユーザーのID",
+    )
+    provider: str = Field(..., max_length=50, description="OAuth プロバイダ名 (例: 'google', 'github')")
+    subject: str = Field(
+        ...,
+        max_length=255,
+        description="プロバイダのシステム内でのユーザーの一意識別子"
+    )
+    email: str | None = Field(
+        default=None,
+        max_length=320,
+        description="OAuth プロバイダから取得したメールアドレス (あれば)"
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="OAuth identity が作成された日時 (UTC)",
+    )
+
+
+class UserSession(SQLModel, table=True):
+    """ログインを維持するためのユーザーセッション."""
+
+    __tablename__ = "user_sessions"  # pyright: ignore[reportAssignmentType]
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True, description="セッションの一意識別子")
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        ondelete="CASCADE",
+        index=True,
+        description="このセッションが属するユーザーのID",
+    )
+    token_hash: str = Field(..., max_length=64, unique=True, description="SHA-256でハッシュ化されたセッショントークン")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="このセッションが作成された日時 (UTC)",
+    )
+    expires_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC) + timedelta(days=1),
+        sa_column=Column(DateTime(timezone=True), nullable=False, index=True),
+        description="このセッションが期限切れになる日時 (UTC)",
+    )
+    last_seen_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=lambda: datetime.now(UTC)),
+        description="このセッションが最後に使用された日時 (UTC)",
+    )
+    revoked_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+        description="このセッションが削除された日時 (UTC). アクティブなら null",
+    )
+    user_agent: str | None = Field(
+        default=None,
+        max_length=512,
+        description="クライアントのブラウザから取得したユーザーエージェント文字列"
+    )
+    ip_address: str | None = Field(
+        default=None,
+        max_length=45,
+        description="セッションを作成したクライアントのIPアドレス"
+    )
+
+
+class Summary(SQLModel, table=True):
+    """永続化された会議の要約."""
+
+    __tablename__ = "summaries"  # pyright: ignore[reportAssignmentType]
+    __table_args__ = (
+        UniqueConstraint("user_id", "content_hash", name="uq_summaries_user_content_hash"),
+    )
+
+    id: UUID = Field(
+        default_factory=uuid4,
+        primary_key=True,
+        description="要約の一意識別子",
+    )
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        ondelete="CASCADE",
+        index=True,
+        description="ユーザーのID",
+    )
+    filename: str = Field(..., max_length=255, description="アップロードされた音声ファイル名")
+    content_hash: str | None = Field(
+        default=None,
+        max_length=64,
+        index=True,
+        description=(
+            "音声と num_speakers を組み合わせた SHA-256 hex ダイジェスト. "
+            "話者数の設定ごとに再アップロードを冪等にする"
+        ),
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="要約が作成された日時 (UTC)",
+    )
+    overall_summary: str = Field(..., description="会議全体の要約")
+    deleted_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+        description="要約が削除された日時 (UTC). アクティブなら None",
+    )
+    group_id: UUID | None = Field(
+        default=None,
+        foreign_key="summary_groups.id",
+        ondelete="SET NULL",
+        index=True,
+        description="この要約が属する要約グループのID (あれば)",
+    )
+    media_key: str | None = Field(
+        default=None,
+        max_length=255,
+        description="元の音声/動画の S3 キー(uploads/{job_id})."
+    )
+
+
+class Topic(SQLModel, table=True):
+    """会議で議論された議題."""
+
+    __tablename__ = "topics"  # pyright: ignore[reportAssignmentType]
+
+    id: int | None = Field(default=None, primary_key=True, description="主キー")
+    summary_id: UUID = Field(
+        foreign_key="summaries.id",
+        ondelete="CASCADE",
+        index=True,
+        description="親 summary への外部キー",
+    )
+    title: str = Field(..., description="議題のタイトル")
+    summary: str = Field(..., description="議題の詳細な要約")
+
+
+class Decision(SQLModel, table=True):
+    """会議中に決定された事項."""
+
+    __tablename__ = "decisions"  # pyright: ignore[reportAssignmentType]
+
+    id: int | None = Field(default=None, primary_key=True, description="主キー")
+    summary_id: UUID = Field(
+        foreign_key="summaries.id",
+        ondelete="CASCADE",
+        index=True,
+        description="親 summary への外部キー",
+    )
+    description: str = Field(..., description="決定事項の説明")
+    decided_by: str | None = Field(default=None, description="決定した人物またはグループ")
+
+
+class ActionItem(SQLModel, table=True):
+    """会議中に割り当てられたアクションアイテム."""
+
+    __tablename__ = "action_items"  # pyright: ignore[reportAssignmentType]
+
+    id: int | None = Field(default=None, primary_key=True, description="主キー")
+    summary_id: UUID = Field(
+        foreign_key="summaries.id",
+        ondelete="CASCADE",
+        index=True,
+        description="親 summary への外部キー",
+    )
+    description: str = Field(..., description="アクションアイテムの説明")
+    assignee: str | None = Field(default=None, description="アクションアイテムの担当者")
+    due_date: date | None = Field(default=None, description="アクションアイテムの期限")
+
+
+class TranscriptSegment(SQLModel, table=True):
+    """会議の文字起こし(話者分離済み)の1セグメント."""
+
+    __tablename__ = "transcript_segments"  # pyright: ignore[reportAssignmentType]
+
+    id: int | None = Field(
+        default=None,
+        sa_column=Column(BigInteger, primary_key=True, autoincrement=True),
+        description="主キー"
+    )
+    summary_id: UUID = Field(
+        foreign_key="summaries.id",
+        ondelete="CASCADE",
+        index=True,
+        description="親 summary への外部キー",
+    )
+    rank: str = Field(
+        sa_column=Column(String(64, collation="C"), nullable=False, index=True),
+        description="表示順の fractional index キー. 時系列順にシード採番し、編集時は隣接 rank の間に生成する",
+    )
+    speaker_label: str = Field(..., max_length=64, description="話者のラベル (例: 'Speaker 1', 'Speaker 2')")
+    start_ms: int = Field(..., description="このセグメントの開始時刻 (ミリ秒単位)")
+    end_ms: int = Field(..., description="このセグメントの終了時刻 (ミリ秒単位)")
+    text: str = Field(..., description="このセグメントの文字起こしテキスト")
+
+
+class SummaryGroup(SQLModel, table=True):
+    """要約をまとめるユーザー所有のフォルダ."""
+
+    __tablename__ = "summary_groups"  # pyright: ignore[reportAssignmentType]
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_summary_groups_user_name"),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True, description="要約グループの一意識別子")
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        ondelete="CASCADE",
+        index=True,
+        description="この要約グループが属するユーザーのID",
+    )
+    name: str = Field(..., max_length=255, description="要約グループの名前")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="要約グループが作成された日時 (UTC)",
+    )
+
+
+class JobStatus(StrEnum):
+    """文字起こしジョブの状態."""
+
+    pending = "pending"
+    processing = "processing"
+    completed = "completed"
+    failed = "failed"
+
+
+class TranscriptionJob(SQLModel, table=True):
+    """アップロード音声を非同期に文字起こし・要約するジョブ."""
+
+    __tablename__ = "transcription_jobs"  # pyright: ignore[reportAssignmentType]
+    __table_args__ = (
+        Index("ix_transcription_jobs_status_created_at", "status", "created_at"),
+        Index(
+            "uq_transcription_jobs_active_hash",
+            "user_id",
+            "content_hash",
+            unique=True,
+            postgresql_where=text("status IN ('pending', 'processing')"),
+        ),
+    )
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True, description="ジョブの一意識別子")
+    user_id: UUID = Field(
+        foreign_key="users.id",
+        ondelete="CASCADE",
+        index=True,
+        description="このジョブが属するユーザーのID",
+    )
+    status: JobStatus = Field(default=JobStatus.pending, description="ジョブの状態")
+    filename: str = Field(..., max_length=255, description="アップロードされた音声ファイル名")
+    content_hash: str = Field(
+        ...,
+        max_length=64,
+        index=True,
+        description="音声と num_speakers の SHA-256 hex. 重複排除に使用する",
+    )
+    num_speakers: int | None = Field(default=None, ge=1, le=10, description="話者数のヒント(1-10). Noneなら自動推定")
+    media_key: str = Field(..., max_length=255, description="音声/動画の S3 キー (あれば)")
+    recorded_at: date | None = Field(default=None, description="会議が録音された日付 (あれば)")
+    summary_id: UUID | None = Field(
+        default=None,
+        foreign_key="summaries.id",
+        ondelete="SET NULL",
+        index=True,
+        description="このジョブが作成した要約のID (あれば)",
+    )
+    error: str | None = Field(default=None, description="ジョブのエラー内容 (あれば)")
+    attempts: int = Field(default=0, description="ジョブの再試行回数")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="ジョブが作成された日時 (UTC)",
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=lambda: datetime.now(UTC)),
+        description="ジョブが最後に更新された日時 (UTC)",
+    )
+    started_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+        description="ジョブが開始された日時 (UTC). 未開始なら None",
+    )
+    completed_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+        description="ジョブが完了した日時 (UTC). 未完了なら None",
+    )

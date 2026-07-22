@@ -1,0 +1,100 @@
+name: DB Documentation
+
+# SchemaSpy で DB スキーマのドキュメントを生成し、gh-pages の <branch-dir>/ に deploy する。
+# 任意のブランチへの push で backend/app/db/** が変更された場合に発火。
+# 各ブランチは独立したディレクトリにデプロイされるため、複数 PR のスキーマを並列に閲覧可能。
+# 公開先: https://<owner>.github.io/Kikitoru/<branch-dir>/
+
+on:
+  push:
+    branches-ignore:
+      - gh-pages
+    paths:
+      - 'backend/app/db/models.py'
+      - 'backend/app/db/migrations/versions/**'
+      - '.github/workflows/db-docs.yml'
+
+  workflow_dispatch:
+
+concurrency:
+  group: db-docs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  deploy-db-docs:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: kikitoru
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+
+      - name: Sanitize branch name
+        id: branch
+        run: |
+          SANITIZED="${{ github.ref_name }}"
+          SANITIZED="${SANITIZED//\//-}"
+          echo "dir=${SANITIZED}" >> "$GITHUB_OUTPUT"
+          echo "Branch directory: ${SANITIZED}"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: Install backend dependencies (db group only)
+        working-directory: backend
+        run: uv sync --frozen --only-group db
+
+      - name: Run migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:ci_password@localhost:5432/kikitoru
+        run: uv run --no-sync alembic upgrade head
+
+      - name: Generate SchemaSpy docs
+        run: |
+          mkdir -p site
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            --network host \
+            -v "$PWD/site:/output" \
+            schemaspy/schemaspy:7.0.2@sha256:c8f98116a5cfe4b00b379eeb23b2022cdea4c9192cbccb843a75049e752479b7 \
+            -t pgsql \
+            -host localhost \
+            -port 5432 \
+            -db kikitoru \
+            -u postgres \
+            -p ci_password \
+            -s public \
+            -vizjs
+
+      - name: Add .nojekyll
+        run: touch site/.nojekyll
+
+      - name: Deploy to gh-pages/${{ steps.branch.outputs.dir }}/
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453  # v4.1.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          destination_dir: ${{ steps.branch.outputs.dir }}
+          keep_files: false
+          commit_message: "auto: deploy DB docs for ${{ github.ref_name }} @ ${{ github.sha }}"

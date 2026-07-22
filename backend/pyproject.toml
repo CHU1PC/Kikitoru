@@ -1,0 +1,110 @@
+[project]
+name = "kikitoru"
+version = "0.1.0"
+description = "AI-powered meeting minutes from voice recordings, with Japanese language support."
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "alembic>=1.13",
+    "asyncpg>=0.31.0",
+    "boto3>=1.43.36",
+    "fastapi[standard]>=0.100.0",
+    "fractional-indexing>=0.1.3",
+    "google-auth>=2.49",
+    "greenlet>=3.5.0",
+    "httpx>=0.28",
+    "langchain-core>=0.3",
+    "langchain-google-genai>=4.2.2",
+    "loguru>=0.7.3",
+    "pydantic>=2.13.3",
+    "pydantic-settings>=2.5",
+    "python-dotenv>=1.0",
+    "python-magic>=0.4",
+    "ruff>=0.15.17",
+    "slowapi>=0.1.10",
+    "sqlmodel>=0.0.22",
+]
+
+[dependency-groups]
+dev = [
+    "boto3-stubs[s3,transcribe]>=1.43.36",
+    "keyrings-alt>=5.0.2",
+    "pytest>=8.3",
+    "ruff>=0.7",
+]
+db = [
+    "alembic>=1.13",
+    "sqlmodel>=0.0.22",
+    "asyncpg>=0.31.0",
+    "fractional-indexing>=0.1.3",
+]
+
+test = [
+    "pytest>=8.3",
+    "fastapi[standard]>=0.100.0",
+    "sqlmodel>=0.0.22",
+    "asyncpg>=0.31.0",
+    "pydantic>=2.13.3",
+    "pydantic-settings>=2.5",
+    "langchain-core>=0.3",
+    "langchain-google-genai>=4.2.2",
+    "loguru>=0.7.3",
+    "python-magic>=0.4",
+    "slowapi>=0.1.10",
+    "boto3>=1.43.36",
+    "fractional-indexing>=0.1.3",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests/unit"]
+
+[tool.pyrefly]
+project-includes = ["app", "tests"]  # ← プロジェクトのソースディレクトリに合わせて変更
+python-version = "3.13.0"
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+target-version = "py313"
+extend-include = ["*.ipynb"]
+
+[tool.ruff.lint]
+preview = true
+select = ["ALL"]
+ignore = [
+    "COM812",  # missing-trailing-comma (conflicts with formatter)
+    "ISC001",  # single-line-implicit-string-concatenation (conflicts with formatter)
+    "D100",    # undocumented-public-module
+    "D104",    # undocumented-public-package
+    "D203",    # incorrect-blank-line-before-class (conflicts with D211)
+    "D213",    # multi-line-summary-second-line (conflicts with D212)
+    "CPY001",  # missing-copyright-notice (社内プロダクトのため不要)
+    "ERA001",  # commented-out-code (日本語のセクションコメントが誤検知される)
+    "PLR0913", # too-many-arguments (プロンプト構築関数等で自然に多引数になる)
+    "PLR0917", # too-many-positional-arguments (同上)
+    "PLR6301", # no-self-use (framework override メソッドで誤検知される)
+    "TD003",   # missing-todo-link (Issue リンク強制は不要)
+]
+fixable = ["ALL"]
+unfixable = []
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # S101: use of assert detected (pytest は assert が前提のため許容)
+# INP001 only: Alembic's versions/ is an implicit namespace package by design;
+# adding __init__.py would make Alembic try to load it as a revision and break.
+"app/db/migrations/**" = ["INP001"]
+
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = ["pydantic.BaseModel", "sqlmodel.SQLModel"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
