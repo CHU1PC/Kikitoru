@@ -14,6 +14,7 @@ dependencies = [
     "langchain-core>=0.3",
     "langchain-google-genai>=4.2.2",
     "loguru>=0.7.3",
+    "procrastinate>=3.9.0",
     "psycopg[binary,pool]>=3.3.4",
     "pydantic>=2.13.3",
     "pydantic-settings>=2.5",
@@ -59,7 +60,7 @@ pythonpath = ["."]
 testpaths = ["tests/unit"]
 
 [tool.pyrefly]
-project-includes = ["app", "tests"]  # ← プロジェクトのソースディレクトリに合わせて変更
+project-includes = ["app", "tests"]
 python-version = "3.13.0"
 
 [tool.ruff]
@@ -90,10 +91,10 @@ unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]  # S101: use of assert detected (pytest は assert が前提のため許容)
-# INP001 only: Alembic's versions/ is an implicit namespace package by design;
-# adding __init__.py would make Alembic try to load it as a revision and break.
-"app/db/migrations/**" = ["INP001"]
+"tests/**" = ["S101"]  # S101: pytest は assert が前提のため許容
+# INP001: Alembic の migration ファイルは, SQLAlchemy のモデル定義に依存するため, 型チェックを無効化する.
+# E501: 外部ライブラリ由来の SQL (procrastinate schema.sql 等) を op.execute に raw string で埋め込むため, 行長を自主管理できない.
+"app/db/migrations/**" = ["INP001", "E501"]
 
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel", "sqlmodel.SQLModel"]

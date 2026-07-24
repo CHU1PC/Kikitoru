@@ -1,7 +1,11 @@
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 
+from app.queue.app import queue_app
 from app.rate_limit import limiter, rate_limit_exceeded_handler
 from app.router.admin import router as admin_router
 from app.router.audio import router as audio_router
@@ -10,10 +14,23 @@ from app.router.oauth import oauth_router
 from app.router.summaries import summaries_router
 from app.settings import settings
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
+    """FastAPI の lifespan.
+
+    Args:
+        _app (FastAPI): FastAPI アプリケーション.
+    """
+    async with queue_app.open_async():
+        yield
+
+
 app = FastAPI(
     docs_url="/docs" if settings.ENABLE_DOCS else None,
     redoc_url="/redoc" if settings.ENABLE_DOCS else None,
     openapi_url="/openapi.json" if settings.ENABLE_DOCS else None,
+    lifespan=lifespan
 )
 
 app.state.limiter = limiter
