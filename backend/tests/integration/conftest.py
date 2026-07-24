@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 load_dotenv(_PROJECT_ROOT / ".env")
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://unused:unused@localhost/unused")
+os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://unused:unused@localhost/unused")
 os.environ.setdefault("S3_BUCKET", "unused")
 os.environ.setdefault("GOOGLE_API_KEY", "unused")
 os.environ.setdefault("GOOGLE_CLIENT_ID", "unused")

@@ -67,7 +67,7 @@ jobs:
       - name: Run migrations
         working-directory: backend
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:ci_password@localhost:5432/kikitoru
+          DATABASE_URL: postgresql+psycopg://postgres:ci_password@localhost:5432/kikitoru
         run: uv run --no-sync alembic upgrade head
 
       - name: Generate SchemaSpy docs
