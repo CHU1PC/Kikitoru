@@ -28,7 +28,7 @@ services:
     environment: &backend-env
       # glibc malloc arena 数を制限して RSS 単調増加を抑える
       MALLOC_ARENA_MAX: "2"
-      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-dev_password}@db:5432/kikitoru
+      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD:-dev_password}@db:5432/kikitoru
       DATABASE_SSL_MODE: ${DATABASE_SSL_MODE:-disable}
       # AWS Transcribe / S3 (STT)。dev は IAM ロールが無いので開発者のローカルキーを使用する
       AWS_REGION: ${AWS_REGION:-ap-northeast-1}

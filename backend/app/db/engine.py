@@ -16,7 +16,7 @@ engine = create_async_engine(
     settings.DATABASE_URL.get_secret_value(),
     echo=False,
     pool_pre_ping=True,
-    connect_args={"ssl": settings.DATABASE_SSL_MODE},
+    connect_args={"sslmode": settings.DATABASE_SSL_MODE},
 )
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 

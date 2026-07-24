@@ -28,7 +28,7 @@ _BACKEND_DIR = Path(__file__).resolve().parents[3]
 # CI は service container を TEST_DATABASE_URL で渡す。
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://postgres:test_password@localhost:5433/kikitoru_test",
+    "postgresql+psycopg://postgres:test_password@localhost:5433/kikitoru_test",
 )
 
 _engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)

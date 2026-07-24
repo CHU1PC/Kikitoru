@@ -19,9 +19,7 @@ class Settings(BaseSettings):
     DATABASE_SSL_MODE: str = Field(
         default="disable",
         description=(
-            "asyncpg 用の PostgreSQL SSL モード. 'disable' (平文) は backend と DB が "
-            "同一ホストにある場合 (例: docker-compose) のみ妥当. マネージド DB や "
-            "ネットワーク越しの接続では 'verify-full' を使い、サーバ証明書とホスト名を検証する."
+            "psycopg 用の PostgreSQL SSL モード. disable or verify-full"
         ),
     )
 
