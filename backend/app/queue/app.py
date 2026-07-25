@@ -26,4 +26,5 @@ queue_app = App(
             settings.DATABASE_URL.get_secret_value(), settings.DATABASE_SSL_MODE
         ),
     ),
+    import_paths=["app.queue.tasks"],
 )
