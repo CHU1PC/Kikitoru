@@ -1,0 +1,15 @@
+users
+procrastinate_workers
+summary_groups
+summaries
+procrastinate_jobs
+action_items
+decisions
+oauth_identities
+procrastinate_events
+procrastinate_periodic_defers
+topics
+transcript_segments
+user_sessions
+transcription_jobs
+alembic_version
