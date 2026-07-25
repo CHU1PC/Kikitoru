@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlmodel import col, select
@@ -83,35 +83,6 @@ async def add_pending_job(
     return job
 
 
-async def claim_next_job(db_session: AsyncSession) -> TranscriptionJob | None:
-    """Pending のジョブを取得して status を processing に更新する.
-
-    FOR UPDATE SKIP LOCKED で他 worker がロック中の行を飛ばし、最古の pending を1件ロック取得して
-    processing に更新する。複数 worker でも二重処理しない。
-
-    Args:
-        db_session (AsyncSession): DBセッション
-
-    Returns:
-        TranscriptionJob | None: 取得したジョブ. なければ None
-    """
-    stmt = (
-        select(TranscriptionJob)
-        .where(col(TranscriptionJob.status) == JobStatus.pending)
-        .order_by(col(TranscriptionJob.created_at).asc())
-        .limit(1)
-        .with_for_update(skip_locked=True)
-    )
-    job = (await db_session.exec(stmt)).first()
-    if job is None:
-        return None
-    job.status = JobStatus.processing
-    job.started_at = datetime.now(UTC)
-    db_session.add(job)
-    await db_session.commit()
-    return job
-
-
 async def mark_completed(db_session: AsyncSession, job: TranscriptionJob, summary_id: UUID) -> None:
     """ジョブを completed にし, 作成した要約を紐づける.
 
@@ -147,35 +118,6 @@ async def mark_failed(db_session: AsyncSession, job: TranscriptionJob, error: st
         job.completed_at = datetime.now(UTC)
     db_session.add(job)
     await db_session.commit()
-
-
-async def reclaim_stale_jobs(db_session: AsyncSession, *, older_than_seconds: int = 60 * 60) -> int:
-    """長時間 processing のままのジョブを pending に戻す.
-
-    Args:
-        db_session (AsyncSession): DBセッション
-        older_than_seconds (int, optional): この秒数より古いジョブを stale とみなす.
-            Defaults to 60*60. **並列 worker 環境では実際のジョブ最大実行時間を上回る
-            必要がある** (下回ると, 実行中のジョブを別レーンが再 claim して二重処理が
-            発生). 呼び出し側 (worker.py の `_STALE_JOB_THRESHOLD_SECONDS`) で
-            STT + LLM + margin から導出した値を渡すこと.
-
-    Returns:
-        int: 復帰させたジョブの件数
-    """
-    threshold = datetime.now(UTC) - timedelta(seconds=older_than_seconds)
-    stmt = select(TranscriptionJob).where(
-        col(TranscriptionJob.status) == JobStatus.processing,
-        col(TranscriptionJob.started_at) < threshold,
-    )
-    stale = (await db_session.exec(stmt)).all()
-    for job in stale:
-        job.status = JobStatus.pending
-        job.started_at = None
-        db_session.add(job)
-    if stale:
-        await db_session.commit()
-    return len(stale)
 
 
 async def get_owned_job(

@@ -13,8 +13,6 @@ transcribe = boto3.client("transcribe", region_name=settings.AWS_REGION)  # pyri
 
 _STT_MAX_ATTEMPTS = 360
 _STT_POLL_INTERVAL_SECONDS = 5
-# STT (AWS Transcribe) 完了待ちの最大秒数. worker.py の reclaim 閾値算出に使う.
-STT_MAX_WAIT_SECONDS = _STT_MAX_ATTEMPTS * _STT_POLL_INTERVAL_SECONDS
 
 
 async def transcribe_with_diarization(media_key: str, num_speakers: int | None = None) -> list[Segment]:
