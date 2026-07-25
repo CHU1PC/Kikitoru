@@ -17,10 +17,12 @@ from app.settings.config import llm_semaphore
 from app.stt.pipeline import transcribe_with_diarization
 
 _MEETING_TZ = ZoneInfo("Asia/Tokyo")
+_MAX_ATTEMPTS = 3
 
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from procrastinate import JobContext
     from sqlmodel.ext.asyncio.session import AsyncSession
 
     from app.db.models import TranscriptionJob
@@ -68,12 +70,14 @@ async def _run_transcription_pipeline(db_session: AsyncSession, job: Transcripti
 @queue_app.task(
     name="process_transcription_job",
     queue="stt",
-    retry=RetryStrategy(max_attempts=3, exponential_wait=60),
+    retry=RetryStrategy(max_attempts=_MAX_ATTEMPTS, exponential_wait=60),
+    pass_context=True,
 )
-async def process_transcription_job(job_id: UUID, user_id: UUID) -> None:
+async def process_transcription_job(context: JobContext, job_id: UUID, user_id: UUID) -> None:
     """1件の TranscriptionJob を STT -> 要約 -> completed まで処理する task.
 
     Args:
+        context (JobContext): procrastinate 実行時 context. attempts を retry 判定に使う
         job_id (UUID): TranscriptionJob の ID
         user_id (UUID): User の ID
     """
@@ -82,20 +86,22 @@ async def process_transcription_job(job_id: UUID, user_id: UUID) -> None:
         if job is None:  # get_owned_job が Job を取得できなかった時
             logger.error(f"Task called for non-existent job {job_id}")
             return
-        if job.status in {JobStatus.completed, JobStatus.failed}:  # すでに Job が完了しているもしくは失敗した場合
+        if job.status in {JobStatus.completed, JobStatus.failed}:
             logger.warning(f"Task called for job {job_id} with status {job.status}")
             return
 
         job.status = JobStatus.processing
-        job.started_at = datetime.now(_MEETING_TZ)
+        if context.job.attempts == 0:
+            job.started_at = datetime.now(_MEETING_TZ)
         db_session.add(job)
         await db_session.commit()
 
         try:
             await _run_transcription_pipeline(db_session, job)
         except Exception as e:
-            logger.error(f"Failed job {job.id}: {e}")
+            logger.error(f"Failed job {job.id} (attempt {context.job.attempts + 1}/{_MAX_ATTEMPTS}): {e}")
             await db_session.rollback()
             await db_session.refresh(job)  # rollback 後の in-memory は使えないので DB から読み直す
-            await mark_failed(db_session, job, str(e))
+            is_final = context.job.attempts + 1 >= _MAX_ATTEMPTS
+            await mark_failed(db_session, job, str(e), is_final=is_final)
             raise
