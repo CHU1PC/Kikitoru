@@ -325,7 +325,6 @@ class TranscriptionJob(SQLModel, table=True):
         description="このジョブが作成した要約のID (あれば)",
     )
     error: str | None = Field(default=None, description="ジョブのエラー内容 (あれば)")
-    attempts: int = Field(default=0, description="ジョブの再試行回数")
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False),
