@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from sqlalchemy.exc import IntegrityError
 from sqlmodel import col, select
 
 from app.db.models import JobStatus, TranscriptionJob
@@ -43,7 +42,7 @@ async def find_active_job_by_hash(
     ).first()
 
 
-async def create_job(
+async def add_pending_job(
     db_session: AsyncSession,
     *,
     job_id: UUID,
@@ -54,23 +53,20 @@ async def create_job(
     num_speakers: int | None,
     recorded_at: date | None,
 ) -> TranscriptionJob:
-    """文字起こしジョブを作成する.
+    """Pending の TranscriptionJob をセッションに追加する (commit はしない).
 
     Args:
-        db_session (AsyncSession): DBセッション
-        job_id (UUID): ジョブID
-        user_id (UUID): ユーザーID
+        db_session (AsyncSession): DB セッション. commit は呼び出し側でおこなう.
+        job_id (UUID): ジョブID.
+        user_id (UUID): ユーザー ID.
         filename (str): アップロードされた音声ファイル名
-        content_hash (str): 音声と話者数のSHA-256 hex
-        media_key (str): 音声/動画の S3 キー
-        num_speakers (int | None): 話者数のヒント(1-10). Noneなら自動推定
-        recorded_at (date | None): 会議が録音された日付. Noneなら不明
+        content_hash (str): 音声と話者数の SHA-256 hex.
+        media_key (str): 音声/動画の S3 キー.
+        num_speakers (int | None): 話者数のヒント (1-10).
+        recorded_at (date | None): 会議が録音された日付.
 
     Returns:
-        TranscriptionJob: 作成された文字起こしジョブ. 進行中の同一ジョブが並行作成された場合はその既存ジョブ.
-
-    Raises:
-        IntegrityError: 一意制約違反だが進行中の同一ジョブが見つからない場合 (想定外).
+        TranscriptionJob: セッションに追加された TranscriptionJob
     """
     job = TranscriptionJob(
         id=job_id,
@@ -83,14 +79,7 @@ async def create_job(
         recorded_at=recorded_at,
     )
     db_session.add(job)
-    try:
-        await db_session.commit()
-    except IntegrityError:
-        await db_session.rollback()
-        existing = await find_active_job_by_hash(db_session, user_id, content_hash)
-        if existing is not None:
-            return existing
-        raise
+    await db_session.flush()
     return job
 
 

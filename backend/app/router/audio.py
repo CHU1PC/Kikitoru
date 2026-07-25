@@ -8,15 +8,18 @@ from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Form, HTTPException, Request, UploadFile
+from procrastinate.exceptions import AlreadyEnqueued
+from sqlalchemy.exc import IntegrityError
 
 from app.audio.intake import ALLOWED_MIME_TYPES, MAX_UPLOAD_BYTES, sanitize_filename, spool_upload
 from app.db.models import JobStatus
 from app.db.summaries import find_by_content_hash
-from app.db.transcription_jobs import create_job, find_active_job_by_hash, get_owned_job, list_active_jobs
+from app.db.transcription_jobs import add_pending_job, find_active_job_by_hash, get_owned_job, list_active_jobs
 from app.dependencies import (
     ApprovedUser,  # ruff:ignore[typing-only-first-party-import] — FastAPI resolves the dependency annotation at runtime
     DbSessionDep,  # ruff:ignore[typing-only-first-party-import] — FastAPI resolves the dependency annotation at runtime
 )
+from app.queue.tasks import process_transcription_job
 from app.rate_limit import AUDIO_SUMMARIZE_RATE_LIMIT, limiter
 from app.schema.summaries import TranscriptionJobResponse
 from app.storage import delete_object, persist_upload
@@ -51,6 +54,8 @@ async def summarize_audio_endpoint(
         HTTPException: 409 - 同一内容の要約が既にゴミ箱にある場合
         HTTPException: 413 - アップロードファイルが最大サイズを超えた場合
         HTTPException: 415 - サポートされていないファイルタイプの場合
+        AlreadyEnqueued: queueing_lock のジョブがすでに todo 状態にある時に
+        IntegrityError: unique_content_hash 制約違反時
     """
     if file.size is not None and file.size > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail=f"File exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit")
@@ -84,21 +89,33 @@ async def summarize_audio_endpoint(
         # 3. 新規
         job_id = uuid4()
         media_key = await persist_upload(spooled, job_id)
-        job = await create_job(
-            db_session,
-            job_id=job_id,
-            user_id=user.id,
-            filename=sanitize_filename(file.filename),
-            content_hash=content_hash,
-            media_key=media_key,
-            num_speakers=num_speakers,
-            recorded_at=recorded_at,
-        )
-        if job.id != job_id:
-            # 並行作成に敗北し既存 job が返った -> 今アップした media は孤児なので削除する
-            await delete_object(media_key)
+        try:
+            job = await add_pending_job(  # flush() を行うため IntegrityError が起こりうる
+                db_session,
+                job_id=job_id,
+                user_id=user.id,
+                filename=sanitize_filename(file.filename),
+                content_hash=content_hash,
+                media_key=media_key,
+                num_speakers=num_speakers,
+                recorded_at=recorded_at,
+            )
+            psycopg_conn = (await (await db_session.connection()).get_raw_connection()).driver_connection
 
-        return TranscriptionJobResponse.model_validate(job)
+            await process_transcription_job.configure(
+                connection=psycopg_conn,
+                queueing_lock=f"stt:{user.id}:{content_hash}",
+            ).defer_async(job_id=str(job.id), user_id=str(user.id))
+
+            await db_session.commit()
+            return TranscriptionJobResponse.model_validate(job)
+        except (IntegrityError, AlreadyEnqueued):
+            await db_session.rollback()
+            await delete_object(media_key)
+            existing = await find_active_job_by_hash(db_session, user.id, content_hash)
+            if existing is not None:
+                return TranscriptionJobResponse.model_validate(existing)
+            raise
     finally:
         spooled.close()
 
