@@ -21,6 +21,26 @@ if config.config_file_name is not None:
 target_metadata = SQLModel.metadata
 
 
+def _include_object(
+    obj: object,  # ruff:ignore[unused-function-argument]
+    name: str | None,
+    type_: str,  # ruff:ignore[unused-function-argument]
+    reflected: bool,  # ruff:ignore[unused-function-argument, boolean-type-hint-positional-argument]
+    compare_to: object | None,  # ruff:ignore[unused-function-argument]
+) -> bool:
+    """Autogenerate から procrastinate 管理下のオブジェクトを除外する.
+
+    procrastinate schema は raw SQL migration (b45ad4f9f69c) で管理されるので Kikitoru
+    の Python model には現れない. これを除外しないと autogenerate が「model に無い =
+    削除対象」と誤検出して procrastinate_* テーブル (積まれた job / worker heartbeat /
+    履歴) を drop する migration を毎回吐く.
+
+    Returns:
+        bool: True で対象に含める, False で除外.
+    """
+    return not (name and "procrastinate_" in name)
+
+
 def _get_database_url() -> str:
     """Read DATABASE_URL directly from the environment.
 
@@ -49,6 +69,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=_include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -56,7 +77,11 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     """Run migrations against an already-established synchronous connection."""
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=_include_object,
+    )
     with context.begin_transaction():
         context.run_migrations()
 
