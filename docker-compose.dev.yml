@@ -5,10 +5,8 @@ services:
     environment:
       POSTGRES_DB: kikitoru
       POSTGRES_USER: postgres
-      # .env の POSTGRES_PASSWORD を読む。未設定なら dev_password にフォールバック。
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password}
     ports:
-      # ホスト側に 5432 を公開。alembic / psql / DataGrip 等から localhost:5432 で接続可能。
       - "5432:5432"
     volumes:
       - postgres_dev_data:/var/lib/postgresql
@@ -30,20 +28,16 @@ services:
       MALLOC_ARENA_MAX: "2"
       DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD:-dev_password}@db:5432/kikitoru
       DATABASE_SSL_MODE: ${DATABASE_SSL_MODE:-disable}
-      # AWS Transcribe / S3 (STT)。dev は IAM ロールが無いので開発者のローカルキーを使用する
       AWS_REGION: ${AWS_REGION:-ap-northeast-1}
       S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID in .env}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY in .env}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-      # OAuth (KKT/9 認証実装で使用)
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8000/auth/google/callback}
-      # Cookie / Session
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       SESSION_EXPIRY_DAYS: ${SESSION_EXPIRY_DAYS:-1}
-      # LLM / CORS
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-120}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-["http://localhost:5173","http://localhost:8000"]}
       ENABLE_DOCS: ${ENABLE_DOCS:-true}
@@ -68,8 +62,6 @@ services:
         - action: rebuild
           path: ./backend/Dockerfile
 
-  # STT ジョブを非同期処理する worker。backend と同じイメージ・env を共有し、
-  # HTTP は公開しない (ポーリングループのみ)。コード変更は sync+restart で拾う。
   worker:
     build:
       context: ./backend
@@ -80,7 +72,7 @@ services:
     environment:
       <<: *backend-env
       PYTHONPATH: /app
-    command: uv run --no-sync app/worker.py
+    command: uv run --no-sync procrastinate --app=app.queue.app.queue_app worker --queues=stt --concurrency=${WORKER_CONCURRENT_LIMIT:-4}
     restart: unless-stopped
     develop:
       watch:

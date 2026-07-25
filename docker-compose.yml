@@ -41,7 +41,6 @@ services:
     ports:
       - "8000:8000"
 
-  # STT ジョブを非同期処理する worker。backend と同じイメージ・env を共有し、HTTP は公開しない。
   worker:
     build:
       context: ./backend
@@ -51,7 +50,7 @@ services:
     environment:
       <<: *backend-env
       PYTHONPATH: /app
-    command: uv run --no-sync app/worker.py
+    command: uv run --no-sync procrastinate --app=app.queue.app.queue_app worker --queues=stt --concurrency=${WORKER_CONCURRENT_LIMIT:-4}
     restart: unless-stopped
 
 volumes:
