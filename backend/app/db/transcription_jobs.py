@@ -102,15 +102,11 @@ async def mark_completed(db_session: AsyncSession, job: TranscriptionJob, summar
 async def mark_failed(db_session: AsyncSession, job: TranscriptionJob, error: str, *, is_final: bool) -> None:
     """失敗を記録する. is_final=True の時のみ status=failed に確定する.
 
-    途中失敗 (is_final=False) は status を触らず error だけ更新する. procrastinate 側の
-    retry が再度 task を走らせるまでの間は status=processing のまま残る. retry 判断は
-    呼び出し側 (task) で procrastinate の context.job.attempts を見て決める.
-
     Args:
         db_session (AsyncSession): DBセッション
         job (TranscriptionJob): 失敗したジョブ.
         error (str): エラー内容
-        is_final (bool): 最終試行かどうか. True なら status=failed に確定
+        is_final (bool): True なら status=failed 確定. False なら error だけ更新 (retry 中は processing のまま)
     """
     job.error = error
     if is_final:

@@ -19,9 +19,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # retry 判定は procrastinate 側の attempts (procrastinate_jobs.attempts) に一本化するので
-    # 自前カラムは削除する. mark_failed は procrastinate の context.job.attempts を使って
-    # is_final を判定する.
+    # retry カウントは procrastinate 側 attempts に一本化.
     op.drop_column("transcription_jobs", "attempts")
 
 

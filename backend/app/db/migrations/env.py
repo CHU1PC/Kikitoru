@@ -28,12 +28,7 @@ def _include_object(
     reflected: bool,  # ruff:ignore[unused-function-argument, boolean-type-hint-positional-argument]
     compare_to: object | None,  # ruff:ignore[unused-function-argument]
 ) -> bool:
-    """Autogenerate から procrastinate 管理下のオブジェクトを除外する.
-
-    procrastinate schema は raw SQL migration (b45ad4f9f69c) で管理されるので Kikitoru
-    の Python model には現れない. これを除外しないと autogenerate が「model に無い =
-    削除対象」と誤検出して procrastinate_* テーブル (積まれた job / worker heartbeat /
-    履歴) を drop する migration を毎回吐く.
+    """Autogenerate から procrastinate_* を除外 (raw SQL 管理で Python model 外).
 
     Returns:
         bool: True で対象に含める, False で除外.
