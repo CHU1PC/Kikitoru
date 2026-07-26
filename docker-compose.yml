@@ -62,7 +62,7 @@ services:
     environment:
       <<: *backend-env
       PYTHONPATH: /app
-    command: uv run --no-sync procrastinate --app=app.queue.app.queue_app worker --queues=stt --concurrency=${WORKER_CONCURRENT_LIMIT:-4}
+    command: uv run --no-sync procrastinate --app=app.queue.app.queue_app worker --queues=stt --concurrency=${WORKER_CONCURRENT_LIMIT:-4} --delete-jobs=successful
     restart: unless-stopped
 
 volumes:
