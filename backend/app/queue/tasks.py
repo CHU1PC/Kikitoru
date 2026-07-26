@@ -17,7 +17,7 @@ from app.settings.config import llm_semaphore
 from app.stt.pipeline import transcribe_with_diarization
 
 _MEETING_TZ = ZoneInfo("Asia/Tokyo")
-_MAX_ATTEMPTS = 3
+_MAX_RETRIES = 3
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -70,7 +70,7 @@ async def _run_transcription_pipeline(db_session: AsyncSession, job: Transcripti
 @queue_app.task(
     name="process_transcription_job",
     queue="stt",
-    retry=RetryStrategy(max_attempts=_MAX_ATTEMPTS, exponential_wait=60),
+    retry=RetryStrategy(max_attempts=_MAX_RETRIES, exponential_wait=60),
     pass_context=True,
 )
 async def process_transcription_job(context: JobContext, job_id: UUID, user_id: UUID) -> None:
@@ -99,9 +99,9 @@ async def process_transcription_job(context: JobContext, job_id: UUID, user_id: 
         try:
             await _run_transcription_pipeline(db_session, job)
         except Exception as e:
-            logger.error(f"Failed job {job.id} (attempt {context.job.attempts + 1}/{_MAX_ATTEMPTS}): {e}")
+            logger.error(f"Failed job {job.id} (attempt {context.job.attempts + 1}/{_MAX_RETRIES + 1}): {e}")
             await db_session.rollback()
             await db_session.refresh(job)  # rollback 後の in-memory は使えないので DB から読み直す
-            is_final = context.job.attempts + 1 >= _MAX_ATTEMPTS
+            is_final = context.job.attempts >= _MAX_RETRIES
             await mark_failed(db_session, job, str(e), is_final=is_final)
             raise
