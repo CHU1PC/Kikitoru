@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.db.conninfo import sqlalchemy_url_with_sslmode
 from app.settings import settings
 
 if TYPE_CHECKING:
@@ -13,10 +14,11 @@ if TYPE_CHECKING:
 
 
 engine = create_async_engine(
-    settings.DATABASE_URL.get_secret_value(),
+    sqlalchemy_url_with_sslmode(
+        settings.DATABASE_URL.get_secret_value(), settings.DATABASE_SSL_MODE
+    ),
     echo=False,
     pool_pre_ping=True,
-    connect_args={"sslmode": settings.DATABASE_SSL_MODE},
 )
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
