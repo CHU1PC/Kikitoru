@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
+from uuid import UUID
 from zoneinfo import ZoneInfo
 
 from loguru import logger
@@ -20,7 +21,6 @@ _MEETING_TZ = ZoneInfo("Asia/Tokyo")
 _MAX_RETRIES = 3
 
 if TYPE_CHECKING:
-    from uuid import UUID
 
     from procrastinate import JobContext
     from sqlmodel.ext.asyncio.session import AsyncSession
@@ -73,16 +73,16 @@ async def _run_transcription_pipeline(db_session: AsyncSession, job: Transcripti
     retry=RetryStrategy(max_attempts=_MAX_RETRIES, linear_wait=60),
     pass_context=True,
 )
-async def process_transcription_job(context: JobContext, job_id: UUID, user_id: UUID) -> None:
+async def process_transcription_job(context: JobContext, job_id: str, user_id: str) -> None:
     """1件の TranscriptionJob を STT -> 要約 -> completed まで処理する task.
 
     Args:
         context (JobContext): procrastinate 実行時 context. attempts を retry 判定に使う
-        job_id (UUID): TranscriptionJob の ID
-        user_id (UUID): User の ID
+        job_id (str): TranscriptionJob の ID
+        user_id (str): User の ID
     """
     async with async_session() as db_session:
-        job = await get_owned_job(db_session, user_id, job_id)
+        job = await get_owned_job(db_session, UUID(user_id), UUID(job_id))
         if job is None:  # get_owned_job が Job を取得できなかった時
             logger.error(f"Task called for non-existent job {job_id}")
             return
