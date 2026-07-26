@@ -17,8 +17,8 @@ services:
     build:
       context: ./backend
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment: &backend-env
       # glibc malloc arena 数を制限して RSS 単調増加を抑える
       MALLOC_ARENA_MAX: "2"
@@ -41,12 +41,24 @@ services:
     ports:
       - "8000:8000"
 
-  worker:
+  migrate:
     build:
       context: ./backend
     depends_on:
       db:
         condition: service_healthy
+    environment:
+      <<: *backend-env
+      PYTHONPATH: /app
+    command: uv run --no-sync alembic upgrade head
+    restart: "no"
+
+  worker:
+    build:
+      context: ./backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     environment:
       <<: *backend-env
       PYTHONPATH: /app
