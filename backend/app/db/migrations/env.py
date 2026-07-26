@@ -31,7 +31,7 @@ target_metadata = SQLModel.metadata
 def _include_object(
     obj: object,  # ruff:ignore[unused-function-argument]
     name: str | None,
-    type_: str,  # ruff:ignore[unused-function-argument]
+    type_: str,
     reflected: bool,  # ruff:ignore[unused-function-argument, boolean-type-hint-positional-argument]
     compare_to: object | None,  # ruff:ignore[unused-function-argument]
 ) -> bool:
@@ -40,7 +40,7 @@ def _include_object(
     Returns:
         bool: True で対象に含める, False で除外.
     """
-    return not (name and "procrastinate_" in name)
+    return not (type_ == "table" and name and name.startswith("procrastinate_"))
 
 
 def _get_database_url() -> URL:
