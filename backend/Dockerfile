@@ -47,4 +47,4 @@ COPY --chown=appuser:appuser main.py alembic.ini ./
 USER appuser
 
 EXPOSE 8000
-CMD ["sh", "-c", "uv run --no-sync alembic upgrade head && uv run --no-sync fastapi run --host 0.0.0.0 --port 8000"]
+CMD ["uv", "run", "--no-sync", "fastapi", "run", "--host", "0.0.0.0", "--port", "8000"]
