@@ -54,8 +54,7 @@ async def summarize_audio_endpoint(
         HTTPException: 409 - 同一内容の要約が既にゴミ箱にある場合
         HTTPException: 413 - アップロードファイルが最大サイズを超えた場合
         HTTPException: 415 - サポートされていないファイルタイプの場合
-        AlreadyEnqueued: queueing_lock のジョブがすでに todo 状態にある時に
-        IntegrityError: unique_content_hash 制約違反時
+        HTTPException: 500 - Job 登録に失敗 (並行 race で敗北したが winner も見当たらない想定外)
     """
     if file.size is not None and file.size > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail=f"File exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit")
@@ -109,13 +108,13 @@ async def summarize_audio_endpoint(
 
             await db_session.commit()
             return TranscriptionJobResponse.model_validate(job)
-        except (IntegrityError, AlreadyEnqueued):
+        except (IntegrityError, AlreadyEnqueued) as e:
             await db_session.rollback()
-            await delete_object(media_key)
             existing = await find_active_job_by_hash(db_session, user.id, content_hash)
             if existing is not None:
+                await delete_object(media_key)  # 勝者が別 id → 今 upload した media は孤児
                 return TranscriptionJobResponse.model_validate(existing)
-            raise
+            raise HTTPException(status_code=500, detail="Failed to enqueue transcription job") from e
     finally:
         spooled.close()
 
