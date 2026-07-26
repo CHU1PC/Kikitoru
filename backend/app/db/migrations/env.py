@@ -1,14 +1,21 @@
+from __future__ import annotations
+
 import asyncio
 import os
 from logging.config import fileConfig
+from typing import TYPE_CHECKING
 
 from alembic import context
 from sqlalchemy import pool
-from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel
 
+from app.db.conninfo import sqlalchemy_url_with_sslmode
 from app.db.models import ActionItem, Decision, Summary, Topic, User, UserSession
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import Connection
+    from sqlalchemy.engine.url import URL
 
 _ALEMBIC_MODELS = (Summary, Topic, Decision, ActionItem, User, UserSession)
 
@@ -36,16 +43,11 @@ def _include_object(
     return not (name and "procrastinate_" in name)
 
 
-def _get_database_url() -> str:
-    """Read DATABASE_URL directly from the environment.
-
-    Reading from os.environ instead of app.settings.config keeps migrations
-    independent of LLM/STT env vars (GOOGLE_API_KEY, S3_BUCKET, etc.) so they
-    can run in DB-only CI jobs. Also avoids passing the URL through
-    configparser, which would interpolate '%' characters.
+def _get_database_url() -> URL:
+    """Read DATABASE_URL directly from the environment and merge sslmode.
 
     Returns:
-        str: The DATABASE_URL from the environment.
+        URL: sslmode をマージ済みの SQLAlchemy URL.
 
     Raises:
         RuntimeError: If DATABASE_URL is not set.
@@ -54,7 +56,8 @@ def _get_database_url() -> str:
     if not url:
         msg = "DATABASE_URL environment variable is required for migrations"
         raise RuntimeError(msg)
-    return url
+    sslmode = os.environ.get("DATABASE_SSL_MODE", "disable")
+    return sqlalchemy_url_with_sslmode(url, sslmode)
 
 
 def run_migrations_offline() -> None:
