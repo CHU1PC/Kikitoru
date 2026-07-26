@@ -70,7 +70,7 @@ async def _run_transcription_pipeline(db_session: AsyncSession, job: Transcripti
 @queue_app.task(
     name="process_transcription_job",
     queue="stt",
-    retry=RetryStrategy(max_attempts=_MAX_RETRIES, exponential_wait=60),
+    retry=RetryStrategy(max_attempts=_MAX_RETRIES, linear_wait=60),
     pass_context=True,
 )
 async def process_transcription_job(context: JobContext, job_id: UUID, user_id: UUID) -> None:
