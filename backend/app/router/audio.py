@@ -55,6 +55,7 @@ async def summarize_audio_endpoint(
         HTTPException: 413 - アップロードファイルが最大サイズを超えた場合
         HTTPException: 415 - サポートされていないファイルタイプの場合
         HTTPException: 500 - Job 登録に失敗 (並行 race で敗北したが winner も見当たらない想定外)
+        RuntimeError: SQLAlchemy raw connection が None (想定外の内部状態)
     """
     if file.size is not None and file.size > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail=f"File exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit")
@@ -88,7 +89,7 @@ async def summarize_audio_endpoint(
         # 3. 新規
         job_id = uuid4()
         media_key = await persist_upload(spooled, job_id)
-        try:
+        try:  # ruff: ignore[too-many-statements-in-try-clause] - INSERT + defer を atomic にするため
             job = await add_pending_job(  # flush() を行うため IntegrityError が起こりうる
                 db_session,
                 job_id=job_id,
@@ -100,6 +101,9 @@ async def summarize_audio_endpoint(
                 recorded_at=recorded_at,
             )
             psycopg_conn = (await (await db_session.connection()).get_raw_connection()).driver_connection
+            if psycopg_conn is None:
+                msg = "SQLAlchemy raw connection has no driver_connection"
+                raise RuntimeError(msg)
 
             await process_transcription_job.configure(
                 connection=psycopg_conn,
