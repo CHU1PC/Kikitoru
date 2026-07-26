@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
@@ -105,3 +105,29 @@ async def process_transcription_job(context: JobContext, job_id: UUID, user_id: 
             is_final = context.job.attempts >= _MAX_RETRIES
             await mark_failed(db_session, job, str(e), is_final=is_final)
             raise
+
+
+@queue_app.periodic(cron="*/5 * * * *", periodic_id="reclaim_stalled_stt_jobs")
+@queue_app.task(
+    name="reclaim_stalled_stt_jobs",
+    queue="stt",
+    pass_context=True,
+)
+async def reclaim_stalled_stt_jobs(
+    context: JobContext,
+    timestamp: int,  # ruff: ignore[unused-function-argument]
+) -> None:
+    """Stalled procrastinate job (worker が SIGKILL 等で消えた孤児) を retry queue に戻す.
+
+    Args:
+        context (JobContext): procrastinate 実行時 context.
+        timestamp (int): periodic scheduler が渡す実行予定時刻.
+    """
+    stalled = list(await context.app.job_manager.get_stalled_jobs(queue="stt"))
+    if not stalled:
+        return
+    now = datetime.now(UTC)
+    for job in stalled:
+        if job.id is not None:
+            await context.app.job_manager.retry_job_by_id_async(job.id, retry_at=now)
+    logger.info(f"Reclaimed {len(stalled)} stalled stt jobs")
