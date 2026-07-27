@@ -3,6 +3,9 @@
    <sequences>
       <sequence increment="1" name="action_items_id_seq" startValue="1"/>
       <sequence increment="1" name="decisions_id_seq" startValue="1"/>
+      <sequence increment="1" name="procrastinate_events_id_seq" startValue="1"/>
+      <sequence increment="1" name="procrastinate_jobs_id_seq" startValue="1"/>
+      <sequence increment="1" name="procrastinate_periodic_defers_id_seq" startValue="1"/>
       <sequence increment="1" name="topics_id_seq" startValue="1"/>
       <sequence increment="1" name="transcript_segments_id_seq" startValue="1"/>
    </sequences>
@@ -64,6 +67,99 @@
          <index name="uq_provider_subject" unique="true">
             <column ascending="true" name="provider"/>
             <column ascending="true" name="subject"/>
+         </index>
+      </table>
+      <table name="procrastinate_events" remarks="" schema="public" type="TABLE">
+         <column autoUpdated="true" defaultValue="nextval('procrastinate_events_id_seq'::regclass)" digits="0" id="0" name="id" nullable="false" remarks="" size="19" type="bigserial" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="job_id" nullable="false" remarks="" size="19" type="int8" typeCode="-5">
+            <parent column="id" foreignKey="procrastinate_events_job_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="procrastinate_jobs"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="type" nullable="true" remarks="" size="2147483647" type="procrastinate_job_event_type" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="3" name="at" nullable="true" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="procrastinate_events_pkey" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="procrastinate_events_job_id_fkey_v1" unique="false">
+            <column ascending="true" name="job_id"/>
+         </index>
+      </table>
+      <table name="procrastinate_jobs" remarks="" schema="public" type="TABLE">
+         <column autoUpdated="true" defaultValue="nextval('procrastinate_jobs_id_seq'::regclass)" digits="0" id="0" name="id" nullable="false" remarks="" size="19" type="bigserial" typeCode="-5">
+            <child column="job_id" foreignKey="procrastinate_events_job_id_fkey" implied="false" onDeleteCascade="true" schema="public" table="procrastinate_events"/>
+            <child column="job_id" foreignKey="procrastinate_periodic_defers_job_id_fkey" implied="false" onDeleteCascade="false" schema="public" table="procrastinate_periodic_defers"/>
+         </column>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="queue_name" nullable="false" remarks="" size="128" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="task_name" nullable="false" remarks="" size="128" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="0" digits="0" id="3" name="priority" nullable="false" remarks="" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="4" name="lock" nullable="true" remarks="" size="2147483647" type="text" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="5" name="queueing_lock" nullable="true" remarks="" size="2147483647" type="text" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="'{}'::jsonb" digits="0" id="6" name="args" nullable="false" remarks="" size="2147483647" type="jsonb" typeCode="1111"/>
+         <column autoUpdated="false" defaultValue="'todo'::procrastinate_job_status" digits="0" id="7" name="status" nullable="false" remarks="" size="2147483647" type="procrastinate_job_status" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="8" name="scheduled_at" nullable="true" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="0" digits="0" id="9" name="attempts" nullable="false" remarks="" size="10" type="int4" typeCode="4"/>
+         <column autoUpdated="false" defaultValue="false" digits="0" id="10" name="abort_requested" nullable="false" remarks="" size="1" type="bool" typeCode="-7"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="11" name="worker_id" nullable="true" remarks="" size="19" type="int8" typeCode="-5">
+            <parent column="id" foreignKey="procrastinate_jobs_worker_id_fkey" implied="false" onDeleteCascade="false" schema="public" table="procrastinate_workers"/>
+         </column>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="procrastinate_jobs_pkey" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="idx_procrastinate_jobs_worker_not_null" unique="false">
+            <column ascending="true" name="worker_id"/>
+         </index>
+         <index name="procrastinate_jobs_id_lock_idx_v1" unique="false">
+            <column ascending="true" name="id"/>
+            <column ascending="true" name="lock"/>
+         </index>
+         <index name="procrastinate_jobs_lock_idx_v1" unique="true">
+            <column ascending="true" name="lock"/>
+         </index>
+         <index name="procrastinate_jobs_priority_idx_v1" unique="false">
+            <column ascending="false" name="priority"/>
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="procrastinate_jobs_queue_name_idx_v1" unique="false">
+            <column ascending="true" name="queue_name"/>
+         </index>
+         <index name="procrastinate_jobs_queueing_lock_idx_v1" unique="true">
+            <column ascending="true" name="queueing_lock"/>
+         </index>
+         <checkConstraint constraint="((NOT ((status = 'todo'::procrastinate_job_status) AND (abort_requested = true))))" name="check_not_todo_abort_requested"/>
+      </table>
+      <table name="procrastinate_periodic_defers" remarks="" schema="public" type="TABLE">
+         <column autoUpdated="true" defaultValue="nextval('procrastinate_periodic_defers_id_seq'::regclass)" digits="0" id="0" name="id" nullable="false" remarks="" size="19" type="bigserial" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="1" name="task_name" nullable="false" remarks="" size="128" type="varchar" typeCode="12"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="2" name="defer_timestamp" nullable="true" remarks="" size="19" type="int8" typeCode="-5"/>
+         <column autoUpdated="false" defaultValue="null" digits="0" id="3" name="job_id" nullable="true" remarks="" size="19" type="int8" typeCode="-5">
+            <parent column="id" foreignKey="procrastinate_periodic_defers_job_id_fkey" implied="false" onDeleteCascade="false" schema="public" table="procrastinate_jobs"/>
+         </column>
+         <column autoUpdated="false" defaultValue="''::character varying" digits="0" id="4" name="periodic_id" nullable="false" remarks="" size="128" type="varchar" typeCode="12"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="procrastinate_periodic_defers_pkey" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="procrastinate_periodic_defers_job_id_fkey_v1" unique="false">
+            <column ascending="true" name="job_id"/>
+         </index>
+         <index name="procrastinate_periodic_defers_unique" unique="true">
+            <column ascending="true" name="task_name"/>
+            <column ascending="true" name="periodic_id"/>
+            <column ascending="true" name="defer_timestamp"/>
+         </index>
+      </table>
+      <table name="procrastinate_workers" remarks="" schema="public" type="TABLE">
+         <column autoUpdated="true" defaultValue="null" digits="0" id="0" name="id" nullable="false" remarks="" size="19" type="int8" typeCode="-5">
+            <child column="worker_id" foreignKey="procrastinate_jobs_worker_id_fkey" implied="false" onDeleteCascade="false" schema="public" table="procrastinate_jobs"/>
+         </column>
+         <column autoUpdated="false" defaultValue="now()" digits="6" id="1" name="last_heartbeat" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <primaryKey column="id" sequenceNumberInPK="1"/>
+         <index name="procrastinate_workers_pkey" unique="true">
+            <column ascending="true" name="id"/>
+         </index>
+         <index name="idx_procrastinate_workers_last_heartbeat" unique="false">
+            <column ascending="true" name="last_heartbeat"/>
          </index>
       </table>
       <table name="summaries" remarks="" schema="public" type="TABLE">
@@ -176,11 +272,10 @@
             <parent column="id" foreignKey="transcription_jobs_summary_id_fkey" implied="false" onDeleteCascade="false" schema="public" table="summaries"/>
          </column>
          <column autoUpdated="false" defaultValue="null" digits="0" id="9" name="error" nullable="true" remarks="" size="2147483647" type="varchar" typeCode="12"/>
-         <column autoUpdated="false" defaultValue="null" digits="0" id="10" name="attempts" nullable="false" remarks="" size="10" type="int4" typeCode="4"/>
-         <column autoUpdated="false" defaultValue="null" digits="6" id="11" name="created_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="null" digits="6" id="12" name="updated_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="null" digits="6" id="13" name="started_at" nullable="true" remarks="" size="35" type="timestamptz" typeCode="93"/>
-         <column autoUpdated="false" defaultValue="null" digits="6" id="14" name="completed_at" nullable="true" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="10" name="created_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="11" name="updated_at" nullable="false" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="12" name="started_at" nullable="true" remarks="" size="35" type="timestamptz" typeCode="93"/>
+         <column autoUpdated="false" defaultValue="null" digits="6" id="13" name="completed_at" nullable="true" remarks="" size="35" type="timestamptz" typeCode="93"/>
          <primaryKey column="id" sequenceNumberInPK="1"/>
          <index name="transcription_jobs_pkey" unique="true">
             <column ascending="true" name="id"/>
