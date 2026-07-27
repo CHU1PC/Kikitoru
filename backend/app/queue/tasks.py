@@ -100,10 +100,13 @@ async def process_transcription_job(context: JobContext, job_id: str, user_id: s
             await _run_transcription_pipeline(db_session, job)
         except Exception as e:
             logger.error(f"Failed job {job.id} (attempt {context.job.attempts + 1}/{_MAX_RETRIES + 1}): {e}")
-            await db_session.rollback()
-            await db_session.refresh(job)  # rollback 後の in-memory は使えないので DB から読み直す
-            is_final = context.job.attempts >= _MAX_RETRIES
-            await mark_failed(db_session, job, str(e), is_final=is_final)
+            try:
+                await db_session.rollback()
+                await db_session.refresh(job)  # rollback 後の in-memory は使えないので DB から読み直す
+                is_final = context.job.attempts >= _MAX_RETRIES
+                await mark_failed(db_session, job, str(e), is_final=is_final)
+            except Exception as inner:  # ruff:ignore[blind-except]
+                logger.error(f"Recovery failed for job {job.id}: {inner}")
             raise
 
 
