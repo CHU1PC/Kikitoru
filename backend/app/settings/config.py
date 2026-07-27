@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode
@@ -12,11 +12,9 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = Field(default="http://localhost:5173", description="フロントエンドの URL")
 
     DATABASE_URL: SecretStr = Field(default=..., description="データベース接続用の URL")
-    DATABASE_SSL_MODE: str = Field(
+    DATABASE_SSL_MODE: Literal["disable", "allow", "prefer", "require", "verify-ca", "verify-full"] = Field(
         default="disable",
-        description=(
-            "psycopg 用の PostgreSQL SSL モード. disable or verify-full"
-        ),
+        description="psycopg 用の PostgreSQL SSL モード",
     )
 
     # AWS Transcribe / S3 (STT)
