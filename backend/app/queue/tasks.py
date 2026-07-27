@@ -92,7 +92,7 @@ async def process_transcription_job(context: JobContext, job_id: str, user_id: s
 
         job.status = JobStatus.processing
         if context.job.attempts == 0:
-            job.started_at = datetime.now(_MEETING_TZ)
+            job.started_at = datetime.now(UTC)
         db_session.add(job)
         await db_session.commit()
 
