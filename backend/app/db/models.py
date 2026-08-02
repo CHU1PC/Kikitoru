@@ -325,6 +325,10 @@ class TranscriptionJob(SQLModel, table=True):
         description="このジョブが作成した要約のID (あれば)",
     )
     error: str | None = Field(default=None, description="ジョブのエラー内容 (あれば)")
+    owner_attempt: int | None = Field(
+        default=None,
+        description="所有権を持つ procrastinate attempt 番号. 楽観ロックの version として使う",
+    )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False),

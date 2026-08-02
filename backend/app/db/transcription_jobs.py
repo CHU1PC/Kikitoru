@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlmodel import col, select
+from sqlmodel import col, or_, select, update
 
 from app.db.models import JobStatus, TranscriptionJob
 
@@ -81,6 +81,53 @@ async def add_pending_job(
     db_session.add(job)
     await db_session.flush()
     return job
+
+
+async def claim_job_ownership(db_session: AsyncSession, job_id: UUID, attempt: int) -> bool:
+    """楽観的に実行所有権を取得する. より新しい attempt が常に勝つ.
+
+    Args:
+        db_session (AsyncSession): DBセッション
+        job_id (UUID): ジョブID
+        attempt (int): procrastinate の attempt 番号 (context.job.attempts)
+
+    Returns:
+        bool: 所有権を取得できたら True. 他の attempt に取られていたら False
+    """
+    result = await db_session.exec(
+        update(TranscriptionJob)
+        .where(
+            col(TranscriptionJob.id) == job_id,
+            or_(
+                col(TranscriptionJob.owner_attempt).is_(None),
+                col(TranscriptionJob.owner_attempt) < attempt,
+            ),
+        )
+        .values(owner_attempt=attempt)
+    )
+    await db_session.commit()
+    return result.rowcount == 1
+
+
+async def is_job_owner(db_session: AsyncSession, job_id: UUID, attempt: int) -> bool:
+    """自分の attempt がまだ所有権を持つか DB から読み直して確認する.
+
+    ORM オブジェクト経由だと identity map の古い値が返るため, 列を直接 select する.
+
+    Args:
+        db_session (AsyncSession): DBセッション
+        job_id (UUID): ジョブID
+        attempt (int): 確認する attempt 番号
+
+    Returns:
+        bool: まだ所有していれば True
+    """
+    owner = (
+        await db_session.exec(
+            select(TranscriptionJob.owner_attempt).where(col(TranscriptionJob.id) == job_id)
+        )
+    ).first()
+    return owner == attempt
 
 
 async def mark_completed(db_session: AsyncSession, job: TranscriptionJob, summary_id: UUID) -> None:
