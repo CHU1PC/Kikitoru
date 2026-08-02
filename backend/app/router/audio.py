@@ -108,6 +108,7 @@ async def summarize_audio_endpoint(
             await process_transcription_job.configure(
                 connection=psycopg_conn,
                 queueing_lock=f"stt:{user.id}:{content_hash}",
+                lock=f"stt:{job_id}",
             ).defer_async(job_id=str(job.id), user_id=str(user.id))
 
             await db_session.commit()
