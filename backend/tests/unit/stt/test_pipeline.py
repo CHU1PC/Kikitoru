@@ -1,11 +1,14 @@
 import asyncio
 from unittest.mock import AsyncMock, patch
+from uuid import uuid4
 
 import pytest
 
 from app.stt.pipeline import (
+    TranscribeJobFailedError,
     _to_segments,  # pyright: ignore[reportPrivateUsage]  # ruff:ignore[import-private-name]
     _wait_for_completion,  # pyright: ignore[reportPrivateUsage]  # ruff:ignore[import-private-name]
+    transcribe_with_diarization,
 )
 from app.stt.schema import Transcript
 from app.stt.types import Segment
@@ -163,13 +166,13 @@ def test_wait_for_completion_returns_when_completed() -> None:
 
 
 def test_wait_for_completion_raises_on_failed() -> None:
-    """ジョブが FAILED になったら理由付きの RuntimeError を送出する."""
+    """ジョブが FAILED になったら理由付きの TranscribeJobFailedError を送出する."""
     with (
         patch("app.stt.pipeline.asyncio.sleep", new=AsyncMock()),
         patch("app.stt.pipeline.transcribe") as mock_transcribe,
     ):
         mock_transcribe.get_transcription_job.return_value = _job_response("FAILED", reason="bad audio")
-        with pytest.raises(RuntimeError, match="bad audio"):
+        with pytest.raises(TranscribeJobFailedError, match="bad audio"):
             asyncio.run(_wait_for_completion("job-1"))
 
 
@@ -184,3 +187,90 @@ def test_wait_for_completion_times_out_after_max_attempts() -> None:
         with pytest.raises(TimeoutError, match="did not complete"):
             asyncio.run(_wait_for_completion("job-1", max_attempts=max_attempts))
         assert mock_transcribe.get_transcription_job.call_count == max_attempts
+
+
+class _ConflictError(Exception):
+    """boto3 client の ConflictException 相当 (patch した client に差し込む)."""
+
+
+def _completed_transcript_bytes() -> bytes:
+    """COMPLETED 時に S3 から読む結果 JSON のバイト列を返す.
+
+    Returns:
+        bytes: Transcript としてパースできる JSON のバイト列
+    """
+    return _make_transcript([_pron("0.0", "1.0", "はい")]).model_dump_json().encode()
+
+
+def test_transcribe_uses_deterministic_job_name() -> None:
+    """ジョブ名と結果キーが job_id から決定的に導出されることを確認するテスト."""
+    job_id = uuid4()
+    with (
+        patch("app.stt.pipeline.asyncio.sleep", new=AsyncMock()),
+        patch("app.stt.pipeline.transcribe") as mock_transcribe,
+        patch("app.stt.pipeline.get_object_bytes", new=AsyncMock(return_value=_completed_transcript_bytes())),
+        patch("app.stt.pipeline.cleanup_transcribe_job", new=AsyncMock()),
+    ):
+        mock_transcribe.exceptions.ConflictException = _ConflictError
+        mock_transcribe.get_transcription_job.return_value = _job_response("COMPLETED")
+
+        asyncio.run(transcribe_with_diarization("uploads/a", job_id=job_id))
+
+        kwargs = mock_transcribe.start_transcription_job.call_args.kwargs
+        assert kwargs["TranscriptionJobName"] == f"kikitoru-{job_id}"
+        assert kwargs["OutputKey"].endswith(f"kikitoru-{job_id}.json")
+
+
+def test_transcribe_joins_existing_job_on_conflict() -> None:
+    """同名ジョブが既にある場合は ConflictException を飲んで既存ジョブに合流することを確認するテスト."""
+    job_id = uuid4()
+    with (
+        patch("app.stt.pipeline.asyncio.sleep", new=AsyncMock()),
+        patch("app.stt.pipeline.transcribe") as mock_transcribe,
+        patch("app.stt.pipeline.get_object_bytes", new=AsyncMock(return_value=_completed_transcript_bytes())),
+        patch("app.stt.pipeline.cleanup_transcribe_job", new=AsyncMock()),
+    ):
+        mock_transcribe.exceptions.ConflictException = _ConflictError
+        mock_transcribe.start_transcription_job.side_effect = _ConflictError
+        mock_transcribe.get_transcription_job.return_value = _job_response("COMPLETED")
+
+        segments = asyncio.run(transcribe_with_diarization("uploads/a", job_id=job_id))
+
+        assert segments  # 既存ジョブのポーリングに進み結果が得られる
+        mock_transcribe.get_transcription_job.assert_called_once()
+
+
+def test_transcribe_cleans_up_when_job_failed() -> None:
+    """FAILED の場合は次 attempt が作り直せるようジョブを削除することを確認するテスト."""
+    job_id = uuid4()
+    cleanup = AsyncMock()
+    with (
+        patch("app.stt.pipeline.asyncio.sleep", new=AsyncMock()),
+        patch("app.stt.pipeline.transcribe") as mock_transcribe,
+        patch("app.stt.pipeline.cleanup_transcribe_job", new=cleanup),
+    ):
+        mock_transcribe.exceptions.ConflictException = _ConflictError
+        mock_transcribe.get_transcription_job.return_value = _job_response("FAILED", reason="bad audio")
+
+        with pytest.raises(TranscribeJobFailedError):
+            asyncio.run(transcribe_with_diarization("uploads/a", job_id=job_id))
+
+        cleanup.assert_awaited_once_with(job_id)
+
+
+def test_transcribe_keeps_job_on_timeout() -> None:
+    """TIMEOUT の場合はジョブを残し, 次 attempt が実行中ジョブに合流できることを確認するテスト."""
+    job_id = uuid4()
+    cleanup = AsyncMock()
+    with (
+        patch("app.stt.pipeline.asyncio.sleep", new=AsyncMock()),
+        patch("app.stt.pipeline.transcribe") as mock_transcribe,
+        patch("app.stt.pipeline.cleanup_transcribe_job", new=cleanup),
+    ):
+        mock_transcribe.exceptions.ConflictException = _ConflictError
+        mock_transcribe.get_transcription_job.return_value = _job_response("IN_PROGRESS")
+
+        with pytest.raises(TimeoutError):
+            asyncio.run(transcribe_with_diarization("uploads/a", job_id=job_id))
+
+        cleanup.assert_not_awaited()
