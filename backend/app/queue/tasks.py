@@ -11,11 +11,17 @@ from procrastinate import RetryStrategy
 from app.db.engine import async_session
 from app.db.models import JobStatus
 from app.db.summaries import create_summary
-from app.db.transcription_jobs import get_owned_job, mark_completed, mark_failed
+from app.db.transcription_jobs import (
+    claim_job_ownership,
+    get_owned_job,
+    is_job_owner,
+    mark_completed,
+    mark_failed,
+)
 from app.llm.summarize import summarize_chain
 from app.queue.app import queue_app
 from app.settings.config import llm_semaphore
-from app.stt.pipeline import transcribe_with_diarization
+from app.stt.pipeline import cleanup_transcribe_job, transcribe_with_diarization
 
 _MEETING_TZ = ZoneInfo("Asia/Tokyo")
 _MAX_RETRIES = 3
@@ -43,17 +49,23 @@ def _ensure_segments(segments: list[Segment]) -> None:
         raise ValueError(msg)
 
 
-async def _run_transcription_pipeline(db_session: AsyncSession, job: TranscriptionJob) -> None:
+async def _run_transcription_pipeline(db_session: AsyncSession, job: TranscriptionJob, attempt: int) -> None:
     """STT -> 要約 -> summary 保存 -> completed の一連の処理を実行する.
+
+    LLM 呼び出し直前に所有権を再検査し, 失っていれば何もせず戻る (勝者の状態を壊さない).
 
     Args:
         db_session (AsyncSession): DBのセッション
         job (TranscriptionJob): 処理対象のジョブ
+        attempt (int): このタスクが所有権を取った attempt 番号
     """
-    segments = await transcribe_with_diarization(job.media_key, job.num_speakers)
+    segments = await transcribe_with_diarization(job.media_key, job.num_speakers, job_id=job.id)
     _ensure_segments(segments)
     reference_date = job.recorded_at or datetime.now(_MEETING_TZ).date()
     async with llm_semaphore:
+        if not await is_job_owner(db_session, job.id, attempt):
+            logger.warning(f"Job {job.id} was reclaimed by a newer attempt, aborting before LLM")
+            return
         llm_result = await summarize_chain.ainvoke((segments, reference_date))
     summary = await create_summary(
         db_session,
@@ -65,6 +77,7 @@ async def _run_transcription_pipeline(db_session: AsyncSession, job: Transcripti
         job.media_key
     )
     await mark_completed(db_session, job, summary.id)
+    await cleanup_transcribe_job(job.id)
 
 
 @queue_app.task(
@@ -90,14 +103,19 @@ async def process_transcription_job(context: JobContext, job_id: str, user_id: s
             logger.warning(f"Task called for job {job_id} with status {job.status}")
             return
 
+        attempt = context.job.attempts
+        if not await claim_job_ownership(db_session, job.id, attempt):
+            logger.warning(f"Job {job_id} is owned by a newer attempt, skipping")
+            return
+
         job.status = JobStatus.processing
-        if context.job.attempts == 0:
+        if attempt == 0:
             job.started_at = datetime.now(UTC)
         db_session.add(job)
         await db_session.commit()
 
         try:
-            await _run_transcription_pipeline(db_session, job)
+            await _run_transcription_pipeline(db_session, job, attempt)
         except Exception as e:
             logger.exception(f"Failed job {job.id} (attempt {context.job.attempts + 1}/{_MAX_RETRIES + 1})")
             try:
