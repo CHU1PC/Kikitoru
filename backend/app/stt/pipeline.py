@@ -1,5 +1,5 @@
 import asyncio
-import uuid
+from uuid import UUID
 
 import boto3
 from loguru import logger
@@ -13,21 +13,37 @@ transcribe = boto3.client("transcribe", region_name=settings.AWS_REGION)  # pyri
 
 _STT_MAX_ATTEMPTS = 360
 _STT_POLL_INTERVAL_SECONDS = 5
+_JOB_NAME_PREFIX = "kikitoru"
 
 
-async def transcribe_with_diarization(media_key: str, num_speakers: int | None = None) -> list[Segment]:
+class TranscribeJobFailedError(RuntimeError):
+    """AWS Transcribe のジョブが FAILED で終了したことを表す."""
+
+
+async def transcribe_with_diarization(
+    media_key: str,
+    num_speakers: int | None = None,
+    *,
+    job_id: UUID,
+) -> list[Segment]:
     """S3 上の音声/動画 (media_key) を AWS Transcribe で文字起こしし, 話者分離する.
 
-    音声は既に S3 (uploads/{job_id}) に永続化されている前提で, MediaFileUri から直接読む
+    音声は既に S3 (uploads/{job_id}) に永続化されている前提で, MediaFileUri から直接読む.
+    ジョブ名は job_id から決定的に導出するので, 再実行は AWS 側の同一ジョブに合流する.
+    後片付けは呼び出し側が cleanup_transcribe_job で行う.
 
     Args:
         media_key (str): S3 上の音声/動画のキー
         num_speakers (int | None, optional): 話者数. Defaults to None.
+        job_id (UUID): TranscriptionJob の ID. ジョブ名の導出に使う
 
     Returns:
         list[Segment]: 話者分離されたセグメントのリスト
+
+    Raises:
+        TranscribeJobFailedError: ジョブが FAILED で終了した場合 (ジョブは削除済み)
     """
-    job_name = f"transcription-job-{uuid.uuid4()}"
+    job_name = f"{_JOB_NAME_PREFIX}-{job_id}"
     transcript_key = f"{TRANSCRIPT_PREFIX}/{job_name}.json"
 
     try:
@@ -43,14 +59,18 @@ async def transcribe_with_diarization(media_key: str, num_speakers: int | None =
                 "MaxSpeakerLabels": min(max(2, num_speakers or 10), 10)
             } if num_speakers != 1 else {},
         )
+    except transcribe.exceptions.ConflictException:
+        logger.info(f"Transcription job {job_name} already exists, joining it")
 
+    try:
         await _wait_for_completion(job_name)
+    except TranscribeJobFailedError:
+        await cleanup_transcribe_job(job_id)
+        raise
 
-        body = await get_object_bytes(transcript_key)
-        transcript = Transcript.model_validate_json(body)
-        return _to_segments(transcript)
-    finally:
-        await _cleanup(job_name, transcript_key)
+    body = await get_object_bytes(transcript_key)
+    transcript = Transcript.model_validate_json(body)
+    return _to_segments(transcript)
 
 
 async def _wait_for_completion(
@@ -67,7 +87,7 @@ async def _wait_for_completion(
         poll_interval (int, optional): ポーリング間隔(秒). Defaults to _STT_POLL_INTERVAL_SECONDS (5).
 
     Raises:
-        RuntimeError: ジョブが失敗した場合に送出される
+        TranscribeJobFailedError: ジョブが FAILED で終了した場合に送出される
         TimeoutError: ジョブが完了する前に最大ポーリング回数に達した場合に送出される
     """
     for _ in range(max_attempts):
@@ -80,18 +100,21 @@ async def _wait_for_completion(
             reason = response["TranscriptionJob"].get("FailureReason", "Unknown reason")
             msg = f"Transcription job {job_name} failed: {reason}"
             logger.error(msg)
-            raise RuntimeError(msg)
+            raise TranscribeJobFailedError(msg)
     msg = f"Transcription job {job_name} did not complete within {max_attempts * poll_interval} seconds."
     raise TimeoutError(msg)
 
 
-async def _cleanup(job_name: str, transcript_key: str) -> None:
+async def cleanup_transcribe_job(job_id: UUID) -> None:
     """Transcribe の結果 JSON とジョブを削除する.
 
+    共有リソースなので, 呼び出し側が「もう誰も使わない」と判断したときだけ呼ぶ.
+
     Args:
-        job_name (str): AWS Transcribe のジョブ名
-        transcript_key (str): S3上のトランスクリプト JSON のキー
+        job_id (UUID): TranscriptionJob の ID
     """
+    job_name = f"{_JOB_NAME_PREFIX}-{job_id}"
+    transcript_key = f"{TRANSCRIPT_PREFIX}/{job_name}.json"
     try:
         await delete_object(transcript_key)
     except Exception as e:  # ruff:ignore[blind-except] - どのような例外でも処理を続けたい
