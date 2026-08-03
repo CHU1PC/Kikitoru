@@ -13,6 +13,8 @@ from app.db.models import JobStatus
 from app.db.summaries import create_summary
 from app.db.transcription_jobs import (
     claim_job_ownership,
+    clear_job_ownership,
+    find_orphaned_processing_jobs,
     get_owned_job,
     is_job_owner,
     mark_completed,
@@ -20,11 +22,17 @@ from app.db.transcription_jobs import (
 )
 from app.llm.summarize import summarize_chain
 from app.queue.app import queue_app
+from app.settings import settings
 from app.settings.config import llm_semaphore
-from app.stt.pipeline import cleanup_transcribe_job, transcribe_with_diarization
+from app.stt.pipeline import STT_MAX_WAIT_SECONDS, cleanup_transcribe_job, transcribe_with_diarization
 
 _MEETING_TZ = ZoneInfo("Asia/Tokyo")
 _MAX_RETRIES = 3
+_ORPHAN_MARGIN_SECONDS = 10 * 60
+
+# キュー行が消えて回収されなくなったジョブの検出閾値.
+# 正常な最大実行時間を下回ると実行中のジョブを再投入して二重実行を作るため, 余裕を持たせる
+_ORPHAN_THRESHOLD_SECONDS = STT_MAX_WAIT_SECONDS + settings.LLM_TIMEOUT_SECONDS + _ORPHAN_MARGIN_SECONDS
 
 if TYPE_CHECKING:
 
@@ -152,3 +160,37 @@ async def reclaim_stalled_stt_jobs(
         if job.id is not None:
             await context.app.job_manager.retry_job_by_id_async(job.id, retry_at=now)
     logger.info(f"Reclaimed {len(stalled)} stalled stt jobs")
+
+
+@queue_app.periodic(cron="*/10 * * * *", periodic_id="requeue_orphaned_jobs")
+@queue_app.task(
+    name="requeue_orphaned_jobs",
+    queue="stt",
+    pass_context=True,
+)
+async def requeue_orphaned_jobs(
+    context: JobContext,  # ruff: ignore[unused-function-argument]
+    timestamp: int,  # ruff: ignore[unused-function-argument]
+) -> None:
+    """キュー行が消えて回収されなくなったジョブを再投入する.
+
+    reclaim_stalled_stt_jobs は procrastinate 側を見るため, ジョブ行自体が削除されると
+    検出できない. 自前の transcription_jobs を正として時間で検出する最終手段.
+
+    Args:
+        context (JobContext): procrastinate 実行時 context.
+        timestamp (int): periodic scheduler が渡す実行予定時刻.
+    """
+    async with async_session() as db_session:
+        orphaned = await find_orphaned_processing_jobs(
+            db_session, older_than_seconds=_ORPHAN_THRESHOLD_SECONDS
+        )
+        if not orphaned:
+            return
+        for job in orphaned:
+            await clear_job_ownership(db_session, job.id)
+            await process_transcription_job.configure(
+                queueing_lock=f"stt:{job.user_id}:{job.content_hash}",
+                lock=f"stt:{job.id}",
+            ).defer_async(job_id=str(job.id), user_id=str(job.user_id))
+        logger.warning(f"Requeued {len(orphaned)} orphaned jobs")
