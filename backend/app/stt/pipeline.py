@@ -11,9 +11,12 @@ from app.stt.types import Segment
 
 transcribe = boto3.client("transcribe", region_name=settings.AWS_REGION)  # pyright: ignore[reportUnknownMemberType]
 
-_STT_MAX_ATTEMPTS = 360
+_STT_MAX_POLLS = 480
 _STT_POLL_INTERVAL_SECONDS = 5
 _JOB_NAME_PREFIX = "kikitoru"
+
+# STT の最大待機時間 (40 分). 想定する最大会議長 120 分に対応する
+STT_MAX_WAIT_SECONDS = _STT_MAX_POLLS * _STT_POLL_INTERVAL_SECONDS
 
 
 class TranscribeJobFailedError(RuntimeError):
@@ -76,21 +79,21 @@ async def transcribe_with_diarization(
 async def _wait_for_completion(
     job_name: str,
     *,
-    max_attempts: int = _STT_MAX_ATTEMPTS,
+    max_polls: int = _STT_MAX_POLLS,
     poll_interval: int = _STT_POLL_INTERVAL_SECONDS,
 ) -> None:
     """AWS Transcribe のジョブが完了するまで待機する.
 
     Args:
         job_name (str): AWS Transcribe のジョブ名
-        max_attempts (int, optional): 最大ポーリング回数. Defaults to _STT_MAX_ATTEMPTS (360).
+        max_polls (int, optional): 最大ポーリング回数. Defaults to _STT_MAX_POLLS (480).
         poll_interval (int, optional): ポーリング間隔(秒). Defaults to _STT_POLL_INTERVAL_SECONDS (5).
 
     Raises:
         TranscribeJobFailedError: ジョブが FAILED で終了した場合に送出される
         TimeoutError: ジョブが完了する前に最大ポーリング回数に達した場合に送出される
     """
-    for _ in range(max_attempts):
+    for _ in range(max_polls):
         await asyncio.sleep(poll_interval)  # Wait for the specified interval before checking again
         response = await asyncio.to_thread(transcribe.get_transcription_job, TranscriptionJobName=job_name)
         status = response["TranscriptionJob"].get("TranscriptionJobStatus")
@@ -101,7 +104,7 @@ async def _wait_for_completion(
             msg = f"Transcription job {job_name} failed: {reason}"
             logger.error(msg)
             raise TranscribeJobFailedError(msg)
-    msg = f"Transcription job {job_name} did not complete within {max_attempts * poll_interval} seconds."
+    msg = f"Transcription job {job_name} did not complete within {max_polls * poll_interval} seconds."
     raise TimeoutError(msg)
 
 
