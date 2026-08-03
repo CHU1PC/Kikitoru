@@ -176,17 +176,17 @@ def test_wait_for_completion_raises_on_failed() -> None:
             asyncio.run(_wait_for_completion("job-1"))
 
 
-def test_wait_for_completion_times_out_after_max_attempts() -> None:
-    """ずっと IN_PROGRESS なら max_attempts 回で TimeoutError を送出する."""
-    max_attempts = 3
+def test_wait_for_completion_times_out_after_max_polls() -> None:
+    """ずっと IN_PROGRESS なら max_polls 回で TimeoutError を送出する."""
+    max_polls = 3
     with (
         patch("app.stt.pipeline.asyncio.sleep", new=AsyncMock()),
         patch("app.stt.pipeline.transcribe") as mock_transcribe,
     ):
         mock_transcribe.get_transcription_job.return_value = _job_response("IN_PROGRESS")
         with pytest.raises(TimeoutError, match="did not complete"):
-            asyncio.run(_wait_for_completion("job-1", max_attempts=max_attempts))
-        assert mock_transcribe.get_transcription_job.call_count == max_attempts
+            asyncio.run(_wait_for_completion("job-1", max_polls=max_polls))
+        assert mock_transcribe.get_transcription_job.call_count == max_polls
 
 
 class _ConflictError(Exception):
