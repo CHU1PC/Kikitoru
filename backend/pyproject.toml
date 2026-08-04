@@ -74,28 +74,28 @@ extend-include = ["*.ipynb"]
 preview = true
 select = ["ALL"]
 ignore = [
-    "COM812",  # missing-trailing-comma (conflicts with formatter)
-    "ISC001",  # single-line-implicit-string-concatenation (conflicts with formatter)
-    "D100",    # undocumented-public-module
-    "D104",    # undocumented-public-package
-    "D203",    # incorrect-blank-line-before-class (conflicts with D211)
-    "D213",    # multi-line-summary-second-line (conflicts with D212)
-    "CPY001",  # missing-copyright-notice (社内プロダクトのため不要)
-    "ERA001",  # commented-out-code (日本語のセクションコメントが誤検知される)
-    "PLR0913", # too-many-arguments (プロンプト構築関数等で自然に多引数になる)
-    "PLR0917", # too-many-positional-arguments (同上)
-    "PLR6301", # no-self-use (framework override メソッドで誤検知される)
-    "TD003",   # missing-todo-link (Issue リンク強制は不要)
+    "missing-trailing-comma",                     # conflicts with formatter
+    "single-line-implicit-string-concatenation",  # conflicts with formatter
+    "undocumented-public-module",
+    "undocumented-public-package",
+    "incorrect-blank-line-before-class",          # conflicts with blank-line-before-class
+    "multi-line-summary-second-line",             # conflicts with multi-line-summary-first-line
+    "missing-copyright-notice",                   # 社内プロダクトのため不要
+    "commented-out-code",                         # 日本語のセクションコメントが誤検知される
+    "too-many-arguments",                         # プロンプト構築関数等で自然に多引数になる
+    "too-many-positional-arguments",              # 同上
+    "no-self-use",                                # framework override メソッドで誤検知される
+    "missing-todo-link",                          # Issue リンク強制は不要
 ]
 fixable = ["ALL"]
 unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]  # S101: pytest は assert が前提のため許容
-# INP001: Alembic の migration ファイルは, SQLAlchemy のモデル定義に依存するため, 型チェックを無効化する.
-# E501: 外部ライブラリ由来の SQL (procrastinate schema.sql 等) を op.execute に raw string で埋め込むため, 行長を自主管理できない.
-"app/db/migrations/**" = ["INP001", "E501"]
+"tests/**" = ["assert"]  # pytest は assert が前提のため許容
+# implicit-namespace-package: Alembic の migration ファイルは, SQLAlchemy のモデル定義に依存するため, 型チェックを無効化する.
+# line-too-long: 外部ライブラリ由来の SQL (procrastinate schema.sql 等) を op.execute に raw string で埋め込むため, 行長を自主管理できない.
+"app/db/migrations/**" = ["implicit-namespace-package", "line-too-long"]
 
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel", "sqlmodel.SQLModel"]
