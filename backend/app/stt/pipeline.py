@@ -11,12 +11,10 @@ from app.stt.types import Segment
 
 transcribe = boto3.client("transcribe", region_name=settings.AWS_REGION)  # pyright: ignore[reportUnknownMemberType]
 
+# 480 x 5 秒 = 40 分待つ. 想定する最大会議長 120 分に対応する
 _STT_MAX_POLLS = 480
 _STT_POLL_INTERVAL_SECONDS = 5
 _JOB_NAME_PREFIX = "kikitoru"
-
-# STT の最大待機時間 (40 分). 想定する最大会議長 120 分に対応する
-STT_MAX_WAIT_SECONDS = _STT_MAX_POLLS * _STT_POLL_INTERVAL_SECONDS
 
 
 class TranscribeJobFailedError(RuntimeError):
