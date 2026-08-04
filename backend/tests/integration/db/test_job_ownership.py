@@ -10,6 +10,7 @@ from app.db.transcription_jobs import (
     clear_job_ownership,
     find_orphaned_processing_jobs,
     is_job_owner,
+    touch_job_heartbeat,
 )
 
 if TYPE_CHECKING:
@@ -98,13 +99,20 @@ def test_clear_ownership_allows_fresh_attempt_to_claim(
     assert db_call(lambda s: claim_job_ownership(s, job.id, 0)) is True
 
 
-def _job_for(user_id: UUID, *, status: JobStatus, started_at: datetime) -> TranscriptionJob:
-    """指定の状態と開始時刻を持つジョブを組み立てる (保存はしない).
+def _job_for(
+    user_id: UUID,
+    *,
+    status: JobStatus,
+    started_at: datetime,
+    heartbeat_at: datetime | None = None,
+) -> TranscriptionJob:
+    """指定の状態・開始時刻・生存報告時刻を持つジョブを組み立てる (保存はしない).
 
     Args:
         user_id (UUID): 所有者のユーザー ID.
         status (JobStatus): ジョブの状態.
         started_at (datetime): 処理開始時刻.
+        heartbeat_at (datetime | None): 最後の生存報告時刻. None なら未報告.
 
     Returns:
         TranscriptionJob: 組み立てたジョブ.
@@ -116,20 +124,61 @@ def _job_for(user_id: UUID, *, status: JobStatus, started_at: datetime) -> Trans
         media_key="uploads/a",
         status=status,
         started_at=started_at,
+        heartbeat_at=heartbeat_at,
     )
 
 
-def test_find_orphaned_returns_only_stale_processing_jobs(
+def test_find_orphaned_uses_heartbeat_over_started_at(
     seed: Callable[..., None], db_call: Callable[..., list[TranscriptionJob]]
 ) -> None:
-    """閾値を超えた processing のジョブだけが孤児として検出されることを確認するテスト."""
+    """長時間走っていても生存報告が新しければ孤児とみなさないことを確認するテスト."""
     user = User(email="owner@example.com", name="Owner", status=UserStatus.approved)
     now = datetime.now(UTC)
-    stale = _job_for(user.id, status=JobStatus.processing, started_at=now - timedelta(minutes=60))
-    fresh = _job_for(user.id, status=JobStatus.processing, started_at=now - timedelta(minutes=10))
-    completed = _job_for(user.id, status=JobStatus.completed, started_at=now - timedelta(minutes=60))
+    alive = _job_for(
+        user.id,
+        status=JobStatus.processing,
+        started_at=now - timedelta(minutes=40),  # STT を上限まで使っている健全なジョブ
+        heartbeat_at=now - timedelta(seconds=30),
+    )
+    dead = _job_for(
+        user.id,
+        status=JobStatus.processing,
+        started_at=now - timedelta(minutes=40),
+        heartbeat_at=now - timedelta(minutes=20),
+    )
+    seed(user, alive, dead)
+
+    found = db_call(lambda s: find_orphaned_processing_jobs(s, older_than_seconds=10 * 60))
+
+    assert [job.id for job in found] == [dead.id]
+
+
+def test_find_orphaned_falls_back_to_started_at_without_heartbeat(
+    seed: Callable[..., None], db_call: Callable[..., list[TranscriptionJob]]
+) -> None:
+    """生存報告が無いジョブは started_at で判定されることを確認するテスト (移行期の互換)."""
+    user = User(email="owner@example.com", name="Owner", status=UserStatus.approved)
+    now = datetime.now(UTC)
+    stale = _job_for(user.id, status=JobStatus.processing, started_at=now - timedelta(minutes=20))
+    fresh = _job_for(user.id, status=JobStatus.processing, started_at=now - timedelta(minutes=2))
+    completed = _job_for(user.id, status=JobStatus.completed, started_at=now - timedelta(minutes=20))
     seed(user, stale, fresh, completed)
 
-    found = db_call(lambda s: find_orphaned_processing_jobs(s, older_than_seconds=30 * 60))
+    found = db_call(lambda s: find_orphaned_processing_jobs(s, older_than_seconds=10 * 60))
 
     assert [job.id for job in found] == [stale.id]
+
+
+def test_touch_heartbeat_removes_job_from_orphans(
+    seed: Callable[..., None], db_call: Callable[..., object]
+) -> None:
+    """生存報告を打つと孤児判定から外れることを確認するテスト."""
+    user = User(email="owner@example.com", name="Owner", status=UserStatus.approved)
+    now = datetime.now(UTC)
+    job = _job_for(user.id, status=JobStatus.processing, started_at=now - timedelta(minutes=20))
+    seed(user, job)
+    assert db_call(lambda s: find_orphaned_processing_jobs(s, older_than_seconds=10 * 60))
+
+    db_call(lambda s: touch_job_heartbeat(s, job.id))
+
+    assert db_call(lambda s: find_orphaned_processing_jobs(s, older_than_seconds=10 * 60)) == []
