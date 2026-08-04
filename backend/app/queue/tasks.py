@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -19,20 +20,19 @@ from app.db.transcription_jobs import (
     is_job_owner,
     mark_completed,
     mark_failed,
+    touch_job_heartbeat,
 )
 from app.llm.summarize import summarize_chain
 from app.queue.app import queue_app
-from app.settings import settings
 from app.settings.config import llm_semaphore
-from app.stt.pipeline import STT_MAX_WAIT_SECONDS, cleanup_transcribe_job, transcribe_with_diarization
+from app.stt.pipeline import cleanup_transcribe_job, transcribe_with_diarization
 
 _MEETING_TZ = ZoneInfo("Asia/Tokyo")
 _MAX_RETRIES = 3
-_ORPHAN_MARGIN_SECONDS = 10 * 60
+_HEARTBEAT_INTERVAL_SECONDS = 60
 
-# キュー行が消えて回収されなくなったジョブの検出閾値.
-# 正常な最大実行時間を下回ると実行中のジョブを再投入して二重実行を作るため, 余裕を持たせる
-_ORPHAN_THRESHOLD_SECONDS = STT_MAX_WAIT_SECONDS + settings.LLM_TIMEOUT_SECONDS + _ORPHAN_MARGIN_SECONDS
+# 生存報告がこの秒数途絶えたら孤児とみなす. retry の backoff (最大 180 秒) を上回る必要がある
+_ORPHAN_THRESHOLD_SECONDS = 10 * 60
 
 if TYPE_CHECKING:
 
@@ -41,6 +41,24 @@ if TYPE_CHECKING:
 
     from app.db.models import TranscriptionJob
     from app.stt.types import Segment
+
+
+async def _heartbeat_loop(job_id: UUID, interval: int = _HEARTBEAT_INTERVAL_SECONDS) -> None:
+    """処理中の間, 定期的に生存を報告し続ける.
+
+    一時的な DB エラーでループが止まると健全なジョブが孤児判定されるため, 例外は握って継続する.
+
+    Args:
+        job_id (UUID): ジョブID
+        interval (int, optional): 報告間隔(秒). Defaults to _HEARTBEAT_INTERVAL_SECONDS (60).
+    """
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            async with async_session() as hb_session:
+                await touch_job_heartbeat(hb_session, job_id)
+        except Exception as e:  # ruff:ignore[blind-except] - 一度の失敗でループを止めない
+            logger.warning(f"Heartbeat failed for job {job_id}: {e}")
 
 
 def _ensure_segments(segments: list[Segment]) -> None:
@@ -117,11 +135,13 @@ async def process_transcription_job(context: JobContext, job_id: str, user_id: s
             return
 
         job.status = JobStatus.processing
+        job.heartbeat_at = datetime.now(UTC)
         if attempt == 0:
             job.started_at = datetime.now(UTC)
         db_session.add(job)
         await db_session.commit()
 
+        heartbeat = asyncio.create_task(_heartbeat_loop(job.id))
         try:
             await _run_transcription_pipeline(db_session, job, attempt)
         except Exception as e:
@@ -134,6 +154,8 @@ async def process_transcription_job(context: JobContext, job_id: str, user_id: s
             except Exception as inner:  # ruff:ignore[blind-except]
                 logger.error(f"Recovery failed for job {job.id}: {inner}")
             raise
+        finally:
+            heartbeat.cancel()
 
 
 @queue_app.periodic(cron="*/5 * * * *", periodic_id="reclaim_stalled_stt_jobs")
