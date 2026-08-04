@@ -344,6 +344,11 @@ class TranscriptionJob(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=True),
         description="ジョブが開始された日時 (UTC). 未開始なら None",
     )
+    heartbeat_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+        description="worker が最後に生存を報告した日時 (UTC). 孤児検出の起点",
+    )
     completed_at: datetime | None = Field(
         default=None,
         sa_column=Column(DateTime(timezone=True), nullable=True),

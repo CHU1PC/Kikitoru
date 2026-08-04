@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+from sqlalchemy import func
 from sqlmodel import col, or_, select, update
 
 from app.db.models import JobStatus, TranscriptionJob
@@ -145,28 +146,47 @@ async def clear_job_ownership(db_session: AsyncSession, job_id: UUID) -> None:
     await db_session.commit()
 
 
-async def find_orphaned_processing_jobs(
-    db_session: AsyncSession, *, older_than_seconds: int
-) -> list[TranscriptionJob]:
-    """閾値を超えて processing のままのジョブを返す.
-
-    キュー側の行が消えて誰にも回収されなくなったジョブを, 自前のテーブルから検出する.
-    閾値は正常な最大実行時間 (STT + LLM + 余裕) を上回っている必要がある.
+async def touch_job_heartbeat(db_session: AsyncSession, job_id: UUID) -> None:
+    """生存報告として heartbeat_at を現在時刻に更新する.
 
     Args:
         db_session (AsyncSession): DBセッション
-        older_than_seconds (int): この秒数より前に開始したジョブを対象にする
+        job_id (UUID): ジョブID
+    """
+    await db_session.exec(
+        update(TranscriptionJob)
+        .where(col(TranscriptionJob.id) == job_id)
+        .values(heartbeat_at=datetime.now(UTC))
+    )
+    await db_session.commit()
+
+
+async def find_orphaned_processing_jobs(
+    db_session: AsyncSession, *, older_than_seconds: int
+) -> list[TranscriptionJob]:
+    """生存報告が途絶えた processing のジョブを返す.
+
+    キュー側の行が消えて誰にも回収されなくなったジョブを, 自前のテーブルから検出する.
+    heartbeat_at が NULL のジョブ (この機能より前に開始されたもの) は started_at で代替する.
+
+    Args:
+        db_session (AsyncSession): DBセッション
+        older_than_seconds (int): この秒数より前が最後の生存報告なら孤児とみなす
 
     Returns:
         list[TranscriptionJob]: 孤児化した可能性のあるジョブ
     """
     threshold = datetime.now(UTC) - timedelta(seconds=older_than_seconds)
+    last_alive = func.coalesce(
+        col(TranscriptionJob.heartbeat_at),
+        col(TranscriptionJob.started_at),
+    )
     return list(
         (
             await db_session.exec(
                 select(TranscriptionJob).where(
                     col(TranscriptionJob.status) == JobStatus.processing,
-                    col(TranscriptionJob.started_at) < threshold,
+                    last_alive < threshold,
                 )
             )
         ).all()
