@@ -6,7 +6,7 @@ from fractional_indexing import generate_key_between
 from sqlmodel import col, select, update
 
 from app.db.models import TranscriptSegment
-from app.db.summaries import get_owned_summary
+from app.summaries.core import get_owned_summary
 
 if TYPE_CHECKING:
     from uuid import UUID

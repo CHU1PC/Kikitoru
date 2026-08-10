@@ -3,8 +3,6 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException
 
 from app.db.models import ActionItem, Decision, Topic
-from app.db.summaries import get_owned_summary
-from app.db.summary_edits import add_child, delete_child, load_owned_child, update_child
 from app.dependencies import ApprovedUser, DbSessionDep
 from app.schema.summaries import (
     ActionItemCreate,
@@ -17,6 +15,8 @@ from app.schema.summaries import (
     TopicEdit,
     TopicResponse,
 )
+from app.summaries.children import add_child, delete_child, load_owned_child, update_child
+from app.summaries.core import get_owned_summary
 
 router = APIRouter(tags=["summaries"])
 

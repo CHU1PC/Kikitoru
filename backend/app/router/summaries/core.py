@@ -5,8 +5,6 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 from loguru import logger
 
-from app.db.summaries import build_summary_read, get_owned_summary, get_transcript_segments, list_summaries_page
-from app.db.summary_group import get_owned_group
 from app.dependencies import ApprovedUser, DbSessionDep
 from app.schema.summaries import (
     SummaryEdit,
@@ -16,6 +14,8 @@ from app.schema.summaries import (
     TranscriptSegmentResponse,
 )
 from app.storage import delete_object
+from app.summaries.core import build_summary_read, get_owned_summary, get_transcript_segments, list_summaries_page
+from app.summaries.groups import get_owned_group
 
 router = APIRouter(tags=["summaries"])
 

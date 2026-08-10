@@ -2,16 +2,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
 
-from app.db.summaries import get_owned_summary
-from app.db.transcript_edits import (
-    delete_segment,
-    insert_segment,
-    load_owned_segment,
-    merge_segments,
-    rename_speaker,
-    split_segment,
-    update_segment,
-)
 from app.dependencies import ApprovedUser, DbSessionDep
 from app.schema.summaries import (
     SpeakerRename,
@@ -21,6 +11,16 @@ from app.schema.summaries import (
     TranscriptSegmentMerge,
     TranscriptSegmentResponse,
     TranscriptSegmentSplit,
+)
+from app.summaries.core import get_owned_summary
+from app.summaries.transcript import (
+    delete_segment,
+    insert_segment,
+    load_owned_segment,
+    merge_segments,
+    rename_speaker,
+    split_segment,
+    update_segment,
 )
 
 router = APIRouter(tags=["summaries"])
