@@ -28,21 +28,6 @@ if config.config_file_name is not None:
 target_metadata = SQLModel.metadata
 
 
-def _include_object(
-    obj: object,  # ruff:ignore[unused-function-argument]
-    name: str | None,
-    type_: str,
-    reflected: bool,  # ruff:ignore[unused-function-argument, boolean-type-hint-positional-argument]
-    compare_to: object | None,  # ruff:ignore[unused-function-argument]
-) -> bool:
-    """Autogenerate から procrastinate_* を除外 (raw SQL 管理で Python model 外).
-
-    Returns:
-        bool: True で対象に含める, False で除外.
-    """
-    return not (type_ == "table" and name and name.startswith("procrastinate_"))
-
-
 def _get_database_url() -> URL:
     """Read DATABASE_URL directly from the environment and merge sslmode.
 
@@ -67,7 +52,6 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        include_object=_include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -78,7 +62,6 @@ def do_run_migrations(connection: Connection) -> None:
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
-        include_object=_include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
