@@ -2,8 +2,7 @@ from langchain_core.rate_limiters import InMemoryRateLimiter
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.settings import settings
-
-MAX_RETRY = 3
+from app.settings.timeouts import LLM_MAX_RETRY
 
 rate_limiter = InMemoryRateLimiter(
     requests_per_second=40,
@@ -18,7 +17,7 @@ gemini_2_5_flash = ChatGoogleGenerativeAI(
     temperature=0,
     max_output_tokens=4096,
     timeout=settings.LLM_TIMEOUT_SECONDS,
-    max_retries=MAX_RETRY,
+    max_retries=LLM_MAX_RETRY,
     rate_limiter=rate_limiter,
 )
 

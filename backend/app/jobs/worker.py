@@ -12,24 +12,21 @@ from app.db.models import JobStatus
 from app.jobs.core import fetch_one, purge_old, reclaim_orphans, release_claims
 from app.jobs.tasks import process_one_job
 from app.settings import settings
+from app.settings.job_queue import (
+    COMPLETED_RETENTION_DAYS,
+    FAILED_RETENTION_DAYS,
+    ORPHAN_THRESHOLD_SECONDS,
+    POLL_INTERVAL_SECONDS,
+    PURGE_INTERVAL_SECONDS,
+    RECLAIM_INTERVAL_SECONDS,
+    SHUTDOWN_GRACE_SECONDS,
+)
 from app.storage import delete_object
 
 if TYPE_CHECKING:
     from uuid import UUID
 
     from app.db.models import TranscriptionJob
-
-_POLL_INTERVAL_SECONDS = 2
-_RECLAIM_INTERVAL_SECONDS = 60
-_PURGE_INTERVAL_SECONDS = 60 * 60
-
-# 生存報告がこの秒数途絶えたら孤児とみなす. heartbeat (60 秒) の 10 回分の余裕を取る
-_ORPHAN_THRESHOLD_SECONDS = 10 * 60
-_COMPLETED_RETENTION_DAYS = 7
-_FAILED_RETENTION_DAYS = 30
-
-# 停止要求から in-flight を強制的に手放すまでの猶予
-_SHUTDOWN_GRACE_SECONDS = 20
 
 # 実行中のジョブ (job_id -> owner_token). 停止時にまとめて pending へ戻す
 _in_flight: dict[UUID, UUID] = {}
@@ -68,12 +65,12 @@ async def _lane(lane_id: int, shutdown: asyncio.Event) -> None:
         shutdown (asyncio.Event): 停止要求のイベント
     """
     await _sleep_or_stop(
-        shutdown, _POLL_INTERVAL_SECONDS * lane_id / settings.WORKER_CONCURRENT_LIMIT
+        shutdown, POLL_INTERVAL_SECONDS * lane_id / settings.WORKER_CONCURRENT_LIMIT
     )
     while not shutdown.is_set():
         job = await _claim_next()
         if job is None:
-            await _sleep_or_stop(shutdown, _POLL_INTERVAL_SECONDS)
+            await _sleep_or_stop(shutdown, POLL_INTERVAL_SECONDS)
             continue
         token = job.owner_token
         if token is None:
@@ -98,13 +95,13 @@ async def _reclaim_loop(shutdown: asyncio.Event) -> None:
         try:
             async with async_session() as db_session:
                 reclaimed = await reclaim_orphans(
-                    db_session, older_than_seconds=_ORPHAN_THRESHOLD_SECONDS
+                    db_session, older_than_seconds=ORPHAN_THRESHOLD_SECONDS
                 )
             if reclaimed:
                 logger.warning(f"Reclaimed {reclaimed} orphaned jobs")
         except Exception as e:  # ruff:ignore[blind-except] - 次の周期で再試行する
             logger.warning(f"reclaim_orphans failed: {e}")
-        await _sleep_or_stop(shutdown, _RECLAIM_INTERVAL_SECONDS)
+        await _sleep_or_stop(shutdown, RECLAIM_INTERVAL_SECONDS)
 
 
 async def _delete_orphaned_media(purged: list[tuple[JobStatus, str]]) -> None:
@@ -135,15 +132,15 @@ async def _purge_loop(shutdown: asyncio.Event) -> None:
             async with async_session() as db_session:
                 purged = await purge_old(
                     db_session,
-                    completed_days=_COMPLETED_RETENTION_DAYS,
-                    failed_days=_FAILED_RETENTION_DAYS,
+                    completed_days=COMPLETED_RETENTION_DAYS,
+                    failed_days=FAILED_RETENTION_DAYS,
                 )
             await _delete_orphaned_media(purged)
             if purged:
                 logger.info(f"Purged {len(purged)} finished jobs")
         except Exception as e:  # ruff:ignore[blind-except] - 次の周期で再試行する
             logger.warning(f"purge_old failed: {e}")
-        await _sleep_or_stop(shutdown, _PURGE_INTERVAL_SECONDS)
+        await _sleep_or_stop(shutdown, PURGE_INTERVAL_SECONDS)
 
 
 async def _release_in_flight() -> None:
@@ -168,7 +165,7 @@ async def main() -> None:
         loop.add_signal_handler(sig, shutdown.set)
 
     lanes = settings.WORKER_CONCURRENT_LIMIT
-    logger.info(f"Worker started: {lanes} lanes, poll {_POLL_INTERVAL_SECONDS}s")
+    logger.info(f"Worker started: {lanes} lanes, poll {POLL_INTERVAL_SECONDS}s")
     tasks = [asyncio.create_task(_lane(i, shutdown), name=f"lane-{i}") for i in range(lanes)]
     tasks += [
         asyncio.create_task(_reclaim_loop(shutdown), name="reclaim"),
@@ -177,7 +174,7 @@ async def main() -> None:
 
     await shutdown.wait()
     logger.info("Shutdown requested, waiting for in-flight jobs")
-    _, pending = await asyncio.wait(tasks, timeout=_SHUTDOWN_GRACE_SECONDS)
+    _, pending = await asyncio.wait(tasks, timeout=SHUTDOWN_GRACE_SECONDS)
     if pending:
         # cancel 後の finally は完走が保証できないので, 生きているうちに所有権を返す
         await _release_in_flight()

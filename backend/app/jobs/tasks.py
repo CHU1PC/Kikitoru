@@ -17,6 +17,7 @@ from app.jobs.core import (
 )
 from app.llm.summarize import summarize_chain
 from app.settings.config import llm_semaphore
+from app.settings.job_queue import HEARTBEAT_INTERVAL_SECONDS
 from app.stt.pipeline import cleanup_transcribe_job, transcribe_with_diarization
 from app.summaries.core import create_summary
 
@@ -30,18 +31,17 @@ if TYPE_CHECKING:
 
 
 _MEETING_TZ = ZoneInfo("Asia/Tokyo")
-_HEARTBEAT_INTERVAL_SECONDS = 60
 
 
 async def _heartbeat_loop(
-    job_id: UUID, token: UUID, interval: int = _HEARTBEAT_INTERVAL_SECONDS
+    job_id: UUID, token: UUID, interval: int = HEARTBEAT_INTERVAL_SECONDS
 ) -> None:
     """処理中の間, 定期的に生存を報告し続ける.
 
     Args:
         job_id (UUID): ジョブID
         token (UUID): このジョブを取得したときの owner_token
-        interval (int, optional): 報告間隔(秒). Defaults to _HEARTBEAT_INTERVAL_SECONDS (60).
+        interval (int, optional): 報告間隔(秒). Defaults to HEARTBEAT_INTERVAL_SECONDS (60).
     """
     while True:
         await asyncio.sleep(interval)
