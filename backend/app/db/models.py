@@ -289,6 +289,12 @@ class TranscriptionJob(SQLModel, table=True):
 
     __tablename__ = "transcription_jobs"  # pyright: ignore[reportAssignmentType]
     __table_args__ = (
+        Index(
+            "ix_transcription_jobs_ready",
+            "scheduled_at",
+            "created_at",
+            postgresql_where=text("status = 'pending'"),
+        ),
         Index("ix_transcription_jobs_status_created_at", "status", "created_at"),
         Index(
             "uq_transcription_jobs_active_hash",
@@ -325,9 +331,13 @@ class TranscriptionJob(SQLModel, table=True):
         description="このジョブが作成した要約のID (あれば)",
     )
     error: str | None = Field(default=None, description="ジョブのエラー内容 (あれば)")
-    owner_attempt: int | None = Field(
+    attempts: int = Field(
+        default=0,
+        description="開始した実行回数. 取得時に加算し, 上限に達した失敗で failed に確定する",
+    )
+    owner_token: UUID | None = Field(
         default=None,
-        description="所有権を持つ procrastinate attempt 番号. 楽観ロックの version として使う",
+        description="実行権を持つ worker の fencing token. 取得ごとに再発行し, 全更新の条件に入れる",
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
@@ -338,6 +348,11 @@ class TranscriptionJob(SQLModel, table=True):
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False, onupdate=lambda: datetime.now(UTC)),
         description="ジョブが最後に更新された日時 (UTC)",
+    )
+    scheduled_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+        description="この時刻以降に取得可能になる (UTC). retry の待ち時間に使う",
     )
     started_at: datetime | None = Field(
         default=None,
