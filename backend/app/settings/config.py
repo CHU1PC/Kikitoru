@@ -98,6 +98,13 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Trash
+    TRASH_RETENTION_DAYS: int = Field(
+        default=30,
+        ge=1,
+        description="ゴミ箱に入れた要約を完全削除するまでの日数.",
+    )
+
     # Deployment
     ENABLE_DOCS: bool = Field(
         default=False,
