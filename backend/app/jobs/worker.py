@@ -9,7 +9,13 @@ from loguru import logger
 
 from app.db.engine import async_session, engine
 from app.db.models import JobStatus
-from app.jobs.core import fetch_one, purge_old, reclaim_orphans, release_claims
+from app.jobs.core import (
+    fail_expired_jobs,
+    fetch_one,
+    purge_old,
+    reclaim_orphans,
+    release_claims,
+)
 from app.jobs.tasks import process_one_job
 from app.settings import settings
 from app.settings.job_queue import (
@@ -21,6 +27,7 @@ from app.settings.job_queue import (
     RECLAIM_INTERVAL_SECONDS,
     SHUTDOWN_GRACE_SECONDS,
 )
+from app.settings.timeouts import MAX_RUNTIME_SECONDS
 from app.storage import delete_object
 
 if TYPE_CHECKING:
@@ -86,21 +93,28 @@ async def _lane(lane_id: int, shutdown: asyncio.Event) -> None:
 
 
 async def _reclaim_loop(shutdown: asyncio.Event) -> None:
-    """生存報告が途絶えたジョブを定期的に回収する.
+    """詰まったジョブを定期的に直す. 時間切れの打ち切りと, 生存報告が途絶えた分の回収.
 
     Args:
         shutdown (asyncio.Event): 停止要求のイベント
     """
     while not shutdown.is_set():
+        expired = reclaimed = 0
         try:
             async with async_session() as db_session:
+                # 先に `fail_expired_jobs` を呼び出す. 逆順だと時間切れが pending に戻り, 次の周期まで生き延びる
+                expired = await fail_expired_jobs(
+                    db_session, max_runtime_seconds=MAX_RUNTIME_SECONDS
+                )
                 reclaimed = await reclaim_orphans(
                     db_session, older_than_seconds=ORPHAN_THRESHOLD_SECONDS
                 )
-            if reclaimed:
-                logger.warning(f"Reclaimed {reclaimed} orphaned jobs")
         except Exception as e:  # ruff:ignore[blind-except] - 次の周期で再試行する
-            logger.warning(f"reclaim_orphans failed: {e}")
+            logger.warning(f"reclaim loop failed: {e}")
+        if expired:
+            logger.warning(f"Timed out {expired} jobs over the runtime budget")
+        if reclaimed:
+            logger.warning(f"Reclaimed {reclaimed} orphaned jobs")
         await _sleep_or_stop(shutdown, RECLAIM_INTERVAL_SECONDS)
 
 
