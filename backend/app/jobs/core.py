@@ -254,6 +254,37 @@ async def reclaim_orphans(db_session: AsyncSession, *, older_than_seconds: int) 
     return exhausted.rowcount + requeued.rowcount
 
 
+async def fail_expired_jobs(db_session: AsyncSession, *, max_runtime_seconds: int) -> int:
+    """初回開始から時間内に終わらなかったジョブを, 試行回数に関係なく failed で確定する.
+
+    未着手のジョブは started_at が NULL なので比較が偽になり対象外になる.
+
+    Args:
+        db_session (AsyncSession): DBセッション. この関数が commit する
+        max_runtime_seconds (int): 初回開始からこの秒数を超えたら打ち切る
+
+    Returns:
+        int: 打ち切った行数
+    """
+    result = await db_session.exec(
+        update(TranscriptionJob)
+        .where(
+            col(TranscriptionJob.status).in_(_ACTIVE_STATUS),
+            col(TranscriptionJob.started_at)
+            < func.now() - timedelta(seconds=max_runtime_seconds),
+        )
+        .values(
+            status=JobStatus.failed,
+            error="Timeout",
+            owner_token=None,
+            heartbeat_at=None,
+            completed_at=func.now(),
+        )
+    )
+    await db_session.commit()
+    return result.rowcount
+
+
 async def release_claims(db_session: AsyncSession, tokens: Sequence[UUID]) -> int:
     """停止時に抱えているジョブを, 試行を消費せず pending に戻す.
 
