@@ -33,6 +33,16 @@ TEST_DATABASE_URL = os.environ.get(
 
 _engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
 
+_CONCURRENCY_TIMEOUT_SECONDS = 30.0
+
+# 並行テスト専用。SKIP LOCKED が効いていないとロック待ちで CI がハングするので、
+# サーバ側で打ち切る。NullPool は commit ごとに接続を捨てるため接続時パラメータで渡す。
+_concurrent_engine = create_async_engine(
+    TEST_DATABASE_URL,
+    poolclass=NullPool,
+    connect_args={"options": "-c statement_timeout=5000 -c lock_timeout=5000"},
+)
+
 
 def _db_reachable() -> bool:
     """テスト DB に接続できるかを確認する関数.
@@ -187,3 +197,54 @@ def db_call() -> Callable[..., object]:
         Callable: coroutine 関数を受け取り、テスト DB セッションで実行して結果を返す関数.
     """
     return _call_in_test_session
+
+
+async def _run_in_parallel_sessions[T](
+    fns: Sequence[Callable[[AsyncSession], Awaitable[T]]],
+) -> list[T]:
+    """各 fn を別コネクションのセッションで同時に実行する.
+
+    先に全員コネクションを張り、Barrier で待ち合わせてから一斉に発射する。これをしないと
+    最初のタスクが全件さらってしまい、競合していないのにテストが通る。
+
+    Args:
+        fns (Sequence[Callable[[AsyncSession], Awaitable[T]]]): 同時実行する async 関数列.
+
+    Returns:
+        list[T]: 各 fn の戻り値 (渡した順).
+    """
+    barrier = asyncio.Barrier(len(fns))
+
+    async def _one(fn: Callable[[AsyncSession], Awaitable[T]]) -> T:
+        async with AsyncSession(_concurrent_engine, expire_on_commit=False) as session:
+            await session.connection()
+            await barrier.wait()
+            return await fn(session)
+
+    async with asyncio.timeout(_CONCURRENCY_TIMEOUT_SECONDS):
+        return list(await asyncio.gather(*(_one(fn) for fn in fns)))
+
+
+def _call_in_parallel_sessions[T](*fns: Callable[[AsyncSession], Awaitable[T]]) -> list[T]:
+    """複数の async 関数を別コネクションで同時に実行し、結果を同期的に返す.
+
+    Args:
+        *fns (Callable[[AsyncSession], Awaitable[T]]): 同時実行する async 関数 (可変個).
+
+    Returns:
+        list[T]: 各 fn の戻り値 (渡した順).
+    """
+    return asyncio.run(_run_in_parallel_sessions(fns))
+
+
+@pytest.fixture
+def db_gather() -> Callable[..., list[object]]:
+    """複数の async 関数を実 DB に対して同時実行するヘルパーを返すフィクスチャ.
+
+    db_call が逐次なのに対し、こちらは 1 つのイベントループで N 本のコネクションを同時に
+    走らせる。claim / reclaim の並行安全性の検証に使う。
+
+    Returns:
+        Callable: 可変個の coroutine 関数を受け取り、同時実行して結果リストを返す関数.
+    """
+    return _call_in_parallel_sessions
