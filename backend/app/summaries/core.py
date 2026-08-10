@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from fractional_indexing import generate_n_keys_between
 from sqlalchemy import ColumnElement, func
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import col, select
+from sqlmodel import col, delete, select
 
 from app.db.models import ActionItem, Decision, Summary, Topic, TranscriptSegment
 from app.schema.summaries import ActionItemResponse, DecisionResponse, SummaryResponse, TopicResponse
@@ -294,3 +295,29 @@ async def get_transcript_segments(db_session: AsyncSession, summary_id: UUID) ->
             )
         )).all()
     )
+
+
+async def purge_expired_summaries(
+    db_session: AsyncSession, *, retention_days: int
+) -> list[str | None]:
+    """保持期間を過ぎたゴミ箱の要約を削除し, 消した行の media_key を返す.
+
+    Args:
+        db_session (AsyncSession): DBセッション. この関数が commit する
+        retention_days (int): ゴミ箱に置く日数
+
+    Returns:
+        list[str | None]: 削除した行の media_key. 音声が無い行は None
+    """
+    expired = (
+        await db_session.exec(
+            delete(Summary)
+            .where(
+                col(Summary.deleted_at).is_not(None),
+                col(Summary.deleted_at) < func.now() - timedelta(days=retention_days),
+            )
+            .returning(col(Summary.media_key))
+        )
+    ).all()
+    await db_session.commit()
+    return [media_key for (media_key,) in expired]
