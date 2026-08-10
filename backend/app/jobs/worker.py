@@ -192,7 +192,7 @@ async def _trash_purge_loop(shutdown: asyncio.Event) -> None:
                 logger.info(f"Purged {len(purged)} trashed summaries")
         except Exception as e:  # ruff:ignore[blind-except] - 次の周期で再試行する
             logger.warning(f"purge_expired_summaries failed: {e}")
-        await _sleep_or_stop(shutdown, _PURGE_INTERVAL_SECONDS)
+        await _sleep_or_stop(shutdown, PURGE_INTERVAL_SECONDS)
 
 
 async def _release_in_flight() -> None:
