@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import func
 from sqlmodel import and_, col, delete, or_, select, update
 
 from app.db.models import JobStatus, TranscriptionJob
+from app.settings.job_queue import LINEAR_WAIT_SECONDS, MAX_ATTEMPTS
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -15,9 +16,6 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from sqlmodel.ext.asyncio.session import AsyncSession
-
-MAX_ATTEMPTS: Final = 4
-LINEAR_WAIT_SECONDS: Final = 60
 
 _ACTIVE_STATUS = (JobStatus.pending, JobStatus.processing)
 

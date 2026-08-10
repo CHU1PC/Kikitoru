@@ -5,15 +5,13 @@ import boto3
 from loguru import logger
 
 from app.settings import settings
+from app.settings.timeouts import STT_MAX_POLLS, STT_POLL_INTERVAL_SECONDS
 from app.storage import TRANSCRIPT_PREFIX, delete_object, get_object_bytes, media_uri
 from app.stt.schema import Transcript
 from app.stt.types import Segment
 
 transcribe = boto3.client("transcribe", region_name=settings.AWS_REGION)  # pyright: ignore[reportUnknownMemberType]
 
-# 480 x 5 秒 = 40 分待つ. 想定する最大会議長 120 分に対応する
-_STT_MAX_POLLS = 480
-_STT_POLL_INTERVAL_SECONDS = 5
 _JOB_NAME_PREFIX = "kikitoru"
 
 
@@ -77,15 +75,15 @@ async def transcribe_with_diarization(
 async def _wait_for_completion(
     job_name: str,
     *,
-    max_polls: int = _STT_MAX_POLLS,
-    poll_interval: int = _STT_POLL_INTERVAL_SECONDS,
+    max_polls: int = STT_MAX_POLLS,
+    poll_interval: int = STT_POLL_INTERVAL_SECONDS,
 ) -> None:
     """AWS Transcribe のジョブが完了するまで待機する.
 
     Args:
         job_name (str): AWS Transcribe のジョブ名
-        max_polls (int, optional): 最大ポーリング回数. Defaults to _STT_MAX_POLLS (480).
-        poll_interval (int, optional): ポーリング間隔(秒). Defaults to _STT_POLL_INTERVAL_SECONDS (5).
+        max_polls (int, optional): 最大ポーリング回数. Defaults to STT_MAX_POLLS (480).
+        poll_interval (int, optional): ポーリング間隔(秒). Defaults to STT_POLL_INTERVAL_SECONDS (5).
 
     Raises:
         TranscribeJobFailedError: ジョブが FAILED で終了した場合に送出される
