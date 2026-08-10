@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     AWS_REGION: str = Field(default="ap-northeast-1", description="S3 と Transcribe の AWS リージョン")
     S3_BUCKET: str = Field(default=..., description="音声ファイルを保存する S3 バケット名")
 
+    # Worker
+    WORKER_CONCURRENT_LIMIT: int = Field(
+        default=4, ge=1, description="worker が同時に処理するジョブ数 (実行レーン数)"
+    )
+
     # LLM Settings
     GOOGLE_API_KEY: SecretStr = Field(default=..., description="Google サービス用の API キー")
     LLM_CONCURRENT_LIMIT: int = Field(default=80, description="LLM への最大同時リクエスト数")
