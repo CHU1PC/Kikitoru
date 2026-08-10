@@ -15,7 +15,7 @@
 | Component | 現状の実装 | AWS 化予定? |
 |---|---|---|
 | Backend API | FastAPI (docker-compose) | ⏳ 検討 |
-| Worker | procrastinate CLI (docker-compose) | ⏳ 検討 |
+| Worker | 自作 polling worker (docker-compose) | ⏳ 検討 |
 | DB | PostgreSQL 18 (docker-compose) | ⏳ 検討 |
 | Storage (音声/結果) | AWS S3 | ✅ 既に AWS |
 | STT | AWS Transcribe | ✅ 既に AWS |
@@ -23,7 +23,7 @@
 | Frontend | Vite React (dev server) | ⏳ 検討 |
 | Auth (OAuth) | Google OAuth (自前 callback) | ⏳ 検討 (Cognito 候補) |
 | Session | Postgres の user_sessions table | ⏳ 検討 |
-| Queue | procrastinate on Postgres | ⏳ 検討 (SQS 候補) |
+| Queue | transcription_jobs 単一テーブル (自作 DB キュー) | ⏳ 検討 (SQS 候補) |
 | CDN | 無 | ⏳ 検討 |
 | Load balancer | 無 | ⏳ 検討 |
 | Secrets | .env file | ⏳ 検討 (Secrets Manager) |
@@ -47,7 +47,7 @@
 | service | Copilot type | 役割 |
 |---|---|---|
 | backend | Load Balanced Web Service | FastAPI HTTP (ALB 自動) |
-| worker | Worker Service | procrastinate CLI (background 常駐) |
+| worker | Worker Service | 自作 polling worker (background 常駐) |
 | migrate | Job | alembic upgrade head (deploy 時 one-shot) |
 
 **理由**:
@@ -84,7 +84,7 @@
 - Backup: 7 日 (RDS 標準)
 
 **理由**:
-- 現行 docker Postgres と挙動一致 (pgvector / procrastinate schema そのまま migration 可能)
+- 現行 docker Postgres と挙動一致 (pgvector / 部分 UNIQUE index / SKIP LOCKED をそのまま使える)
 - cost 最小 (概算 月 15-30 USD)
 - Aurora への将来移行パス残す (Postgres protocol 互換)
 
@@ -141,26 +141,41 @@
 
 ### 2.6 Queue
 
-**選択**: **procrastinate on RDS 継続** (Phase 1). issue #67 実装時に EventBridge/SQS を hybrid で一部導入.
+**選択**: **`transcription_jobs` 単一テーブルの自作 DB キュー on RDS** (KKT-77). polling 2 秒固定, fencing は `owner_token` (UUID).
 
 **Phase**:
-- **Phase 1 (Deploy 直後)**: procrastinate 単独. RDS 1 個で完結.
-- **Phase 2 (issue #67 実装時)**: hybrid. Transcribe 完了通知だけ EventBridge → SQS → procrastinate task にトリガ. Task 実行本体は procrastinate 維持.
+- **Phase 1 (Deploy 直後)**: 自作キュー単独. RDS 1 個で完結.
+- **Phase 2 (issue #67 実装時)**: hybrid. Transcribe 完了通知だけ EventBridge → SQS で受け, 行を `pending` に戻す小さな consumer を足す. 実行本体は自作キュー維持.
 - **Phase 3 (MAU 100+ or RDS が queue で圧迫)**: SQS 完全移行検討.
 
-**Phase 1 理由**:
-- KKT-66 で実装済み + 動作 verified
-- Transactional defer (INSERT + defer を 1 tx で atomic) が SQS では不可
-- Kikitoru 規模で procrastinate 破綻要因なし (`design/SCALING_ESTIMATES.md` 参照)
+**KKT-66 (procrastinate) から差し戻した理由**:
+- procrastinate の `finish_job` は `WHERE id = job_id` だけで行を確定させ, 自分がまだ所有者かを検証しない. 心拍の誤検出で 2 人が同じジョブを持つと, 先に抜けた側が実行中の相手のキュー行を消せる (孤児化)
+- ライブラリの SQL 関数なので `AND worker_id = <自分>` を足せず, **検出して復帰させることしかできなかった** (KKT-73 / KKT-75)
+- キュー行と台帳を 1 行に統合すると自分たちの SQL になり, 全更新に `AND owner_token = :token` を書ける → **孤児化というクラスごと消える**
+- 副次効果: INSERT と defer を 1 tx にするための raw psycopg 取り出しが不要になり, キュー投入が INSERT 1 本になった
+
+**構成** (`app/jobs/`):
+
+| ファイル | 役割 |
+|---|---|
+| `worker.py` | N レーンの実行ループ + reclaim (60 秒) + purge (1 時間) + SIGTERM 処理 |
+| `tasks.py` | 1 件の処理 (heartbeat 起動 → STT → LLM → 保存) |
+| `core.py` | `transcription_jobs` への全 DB アクセス (投入・取得・完了・回収・削除) |
+
+- 同時実行数 = レーン数 (`WORKER_CONCURRENT_LIMIT`, 既定 4). 各レーンが高々 1 件しか持たないので構造的に上限が決まる
+- 取得は `FOR UPDATE SKIP LOCKED`. 複数レプリカでも二重取得しない (統合テストで検証済み)
+- reclaim / purge は単文 UPDATE / DELETE なので全レプリカで同時に走らせて安全
+- 停止時は `release_claims` で自分の分だけ `pending` に戻す (試行を消費しない). `stop_grace_period: 30s` が必要
 
 **Multi-region 対応**:
-- procrastinate は RDS に依存 → **queue は region-local**
+- キューは RDS に依存 → **region-local**
 - Multi-region 化時は region ごとに queue + worker cluster
 - Cross-region job dispatch は避ける (SQS も基本 region-local)
 
 **Defer 事項**:
-- SQS 完全移行 timing (RDS 負荷監視して判断)
-- Dead letter queue 相当の実装 (procrastinate の `status='failed'` を activity 監視)
+- SQS 完全移行 timing (RDS 負荷監視して判断). receipt handle が fencing を構造的に与えるが, `send_message` が Postgres tx に入れないため transactional outbox が要る
+- Dead letter queue 相当の実装 (`transcription_jobs.status='failed'` を監視)
+- `llm_semaphore` はプロセス内カウンタなので, レプリカを増やすと実効上限が掛け算になる. 効かせたくなったら DB か Redis へ出す
 
 ### 2.7 Frontend
 
@@ -288,7 +303,7 @@ Copilot が Task Role に読み取り権限を自動付与.
 **主要 alarm (Phase 1)**:
 
 1. Backend 500 rate > 5% (5 分 window)
-2. Worker task failure rate > 10% (procrastinate_jobs.status='failed' の割合)
+2. Worker task failure rate > 10% (transcription_jobs.status='failed' の割合)
 3. RDS CPU > 80% (5 分 window)
 
 **Phase 2 以降**:
@@ -324,7 +339,7 @@ CloudFront (kikitoru.jp)
                   ├── (auth)    → Google OAuth callback
                   ├── (session) → RDS Postgres (user_sessions)
                   ├── (upload)  → S3 (uploads/)
-                  └── (defer)   → RDS (procrastinate_jobs, transactional)
+                  └── (enqueue) → RDS (transcription_jobs に INSERT)
                                        │
                                        ▼ pull
                                 ECS Fargate: worker (Copilot)
@@ -339,8 +354,9 @@ On deploy:
 migrate (Copilot Job):
   RDS ← alembic upgrade head (deploy 時 one-shot)
 
-Periodic (procrastinate @periodic):
-  worker → RDS: stalled job reclaim (5 分間隔)
+Periodic (worker プロセス内のループ):
+  worker → RDS: 孤児ジョブの回収 (60 秒間隔)
+  worker → RDS + S3: 保持期間切れの削除 (1 時間間隔)
 ```
 
 ## 4. 実装時の指針 (今のコードに効く事項)
@@ -351,7 +367,7 @@ Periodic (procrastinate @periodic):
 - **auth dependency 隔離を維持** (Cognito 移行時に `get_current_user` / `ApprovedUser` だけ書き換え可能に)
 - **`oauth_identities.provider + sub` 汎用構造を維持** (Cognito sub 対応可)
 - **S3 access は IAM Role 前提** (アクセスキーへの依存を増やさない)
-- **procrastinate task の `queue="stt"` 指定を忘れない** (worker の `--queues=stt` に合わせる)
+- **`transcription_jobs` の全更新に `AND owner_token = :token` を付ける** (これを外すと fencing が破れる)
 - **`DATABASE_SSL_MODE` を明示** (settings.py で `Literal` 定義済み. 本番 compose にも env で渡す予定)
 - **cross-region 依存を避ける** (multi-region 化準備. 現状 Tokyo 単一)
 - **image 内に S3 credential を焼き込まない** (Dockerfile / secrets を清潔に)

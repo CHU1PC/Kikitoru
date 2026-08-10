@@ -78,15 +78,16 @@ services:
   worker:
     build:
       context: ./backend
-    container_name: kikitoru-dev-worker
     depends_on:
       migrate:
         condition: service_completed_successfully
     environment:
       <<: *backend-env
       PYTHONPATH: /app
-    command: uv run --no-sync procrastinate --app=app.queue.app.queue_app worker --queues=stt --concurrency=${WORKER_CONCURRENT_LIMIT:-4} --delete-jobs=successful
+      WORKER_CONCURRENT_LIMIT: ${WORKER_CONCURRENT_LIMIT:-4}
+    command: uv run --no-sync app/jobs/worker.py
     restart: unless-stopped
+    stop_grace_period: 30s
     develop:
       watch:
         - action: sync+restart
