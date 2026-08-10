@@ -8,7 +8,7 @@ Kikitoru は会議音声を文字起こし、話者分離、LLM 要約を経て�
 
 ## 開発状況
 
-開発中。詳細な計画は [docs/PLAN.md](docs/PLAN.md) を参照。
+開発中。設計判断とセットアップ手順は [docs/](docs/README.md) にまとめてある。当初の計画は [docs/archive/PLAN.md](docs/archive/PLAN.md) に残しているが、STT をローカル ML から AWS Transcribe へ移行済みのため現行の構成ではない。
 
 ## 主要技術
 
@@ -27,8 +27,11 @@ Kikitoru は会議音声を文字起こし、話者分離、LLM 要約を経て�
 ├── LICENSE
 ├── docker-compose.yml
 ├── docker-compose.dev.yml
-├── docs/
-│   └── PLAN.md
+├── docs/             # 設計判断と操作手順（置き場のルールは docs/README.md）
+│   ├── aws-architecture.md
+│   ├── aws-setup.md
+│   └── archive/      # 現行でなくなった文書
+├── frontend/         # SvelteKit アプリケーション
 └── backend/          # Python アプリケーション
     ├── pyproject.toml
     ├── .python-version

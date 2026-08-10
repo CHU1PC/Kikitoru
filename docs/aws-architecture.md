@@ -8,7 +8,7 @@
 - **対象**: prod deploy 時の component 配置決定
 - **対象外**: IaC (Terraform/CDK) 詳細、VPC subnet 設計、cost 計算 (別 doc)
 - **想定 region**: Tokyo (ap-northeast-1) を初期 region、**将来 multi-region 化可能な設計を保つ**
-- **想定規模 (初期)**: MAU 10 以下 (`design/SCALING_ESTIMATES.md` の 1x)
+- **想定規模 (初期)**: MAU 10 以下
 
 ## 1. 現状 component 棚卸し
 
