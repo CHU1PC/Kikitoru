@@ -82,7 +82,7 @@ async def _wait_for_completion(
 
     Args:
         job_name (str): AWS Transcribe のジョブ名
-        max_polls (int, optional): 最大ポーリング回数. Defaults to STT_MAX_POLLS (480).
+        max_polls (int, optional): 最大ポーリング回数. Defaults to STT_MAX_POLLS (240).
         poll_interval (int, optional): ポーリング間隔(秒). Defaults to STT_POLL_INTERVAL_SECONDS (5).
 
     Raises:
