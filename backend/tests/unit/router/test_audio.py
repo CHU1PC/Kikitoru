@@ -12,7 +12,6 @@ from uuid import uuid4
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
-from procrastinate.exceptions import AlreadyEnqueued
 from sqlalchemy.exc import IntegrityError
 
 from app.audio.intake import (
@@ -97,13 +96,13 @@ def override_session() -> None:
 
 @pytest.fixture
 def enqueue_mocks() -> Generator[SimpleNamespace]:
-    """Enqueue エンドポイントの依存 (dedup / S3保存 / job追加 / procrastinate defer / MIME) を一括モックする.
+    """Enqueue エンドポイントの依存 (dedup / S3保存 / job追加 / MIME) を一括モックする.
 
-    既定は「新規アップロード」の happy path (既存要約なし・進行中ジョブなし・pending 追加・defer 成功).
+    既定は「新規アップロード」の happy path (既存要約なし・進行中ジョブなし・pending 追加).
     各テストは返す namespace 経由で必要なモックだけ上書きする.
 
     Yields:
-        SimpleNamespace: find_summary / find_job / persist / add_pending / defer_async / delete / magic のモック.
+        SimpleNamespace: find_summary / find_job / persist / add_pending / delete / magic のモック.
     """
     with (
         patch("app.router.audio.find_by_content_hash", new_callable=AsyncMock) as find_summary,
@@ -111,23 +110,18 @@ def enqueue_mocks() -> Generator[SimpleNamespace]:
         patch("app.router.audio.persist_upload", new_callable=AsyncMock) as persist,
         patch("app.router.audio.add_pending_job", new_callable=AsyncMock) as add_pending,
         patch("app.router.audio.delete_object", new_callable=AsyncMock) as delete,
-        patch("app.router.audio.process_transcription_job") as task,
         patch("app.audio.intake._magic_mime") as magic,
     ):
         find_summary.return_value = None
         find_job.return_value = None
         persist.return_value = "uploads/test"
         add_pending.side_effect = _add_pending_job_echo
-        defer_async = AsyncMock()
-        task.configure.return_value.defer_async = defer_async
         magic.from_buffer.return_value = _VALID_CONTENT_TYPE
         yield SimpleNamespace(
             find_summary=find_summary,
             find_job=find_job,
             persist=persist,
             add_pending=add_pending,
-            defer_async=defer_async,
-            task=task,
             delete=delete,
             magic=magic,
         )
@@ -156,7 +150,6 @@ def test_summarize_cache_hit_returns_completed(enqueue_mocks: SimpleNamespace) -
     assert body["status"] == "completed"
     assert body["summary_id"] == str(existing.id)
     enqueue_mocks.add_pending.assert_not_called()
-    enqueue_mocks.defer_async.assert_not_called()
     enqueue_mocks.persist.assert_not_called()
 
 
@@ -172,7 +165,6 @@ def test_summarize_active_job_returns_it(enqueue_mocks: SimpleNamespace) -> None
     assert body["id"] == str(active.id)
     assert body["status"] == "processing"
     enqueue_mocks.add_pending.assert_not_called()
-    enqueue_mocks.defer_async.assert_not_called()
 
 
 def test_summarize_forwards_num_speakers(enqueue_mocks: SimpleNamespace) -> None:
@@ -251,26 +243,17 @@ def test_summarize_trashed_summary_returns_409(enqueue_mocks: SimpleNamespace) -
 
     assert response.status_code == HTTPStatus.CONFLICT
     enqueue_mocks.add_pending.assert_not_called()
-    enqueue_mocks.defer_async.assert_not_called()
     enqueue_mocks.persist.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    "trigger",
-    ["integrity_error", "already_enqueued"],
-)
-def test_summarize_race_loss_deletes_orphan_media(enqueue_mocks: SimpleNamespace, trigger: str) -> None:
+def test_summarize_race_loss_deletes_orphan_media(enqueue_mocks: SimpleNamespace) -> None:
     """並行作成に敗北した場合の competition-loser 挙動を確認するテスト.
 
-    add_pending_job での DB UNIQUE 違反 (IntegrityError) と procrastinate の queueing_lock
-    衝突 (AlreadyEnqueued) の両パスとも, アップロード済み media を削除し, 既存の
-    勝者ジョブを返す.
+    uq_transcription_jobs_active_hash の UNIQUE 違反でアップロード済み media を削除し,
+    既存の勝者ジョブを返す.
     """
     winner = _make_job(JobStatus.processing)  # 別 id (競合の勝者)
-    if trigger == "integrity_error":
-        enqueue_mocks.add_pending.side_effect = IntegrityError("stmt", None, Exception("dup"))
-    else:
-        enqueue_mocks.defer_async.side_effect = AlreadyEnqueued("dup queueing_lock")
+    enqueue_mocks.add_pending.side_effect = IntegrityError("stmt", None, Exception("dup"))
     # 1 回目 (endpoint 冒頭): 進行中ジョブ無し, 2 回目 (except 節): winner が返る
     enqueue_mocks.find_job.side_effect = [None, winner]
 
