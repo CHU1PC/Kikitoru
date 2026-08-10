@@ -2,9 +2,9 @@ from typing import Final
 
 from app.settings.config import settings
 
-# 480 x 5 秒 = 40 分待つ. 想定する最大会議長 120 分に対応する
+# AWS Transcribe のポーリング. 実測 (処理時間 ≒ 46 秒 + 0.1 x 音声長) では 120 分の会議で 10〜12 分
 STT_POLL_INTERVAL_SECONDS: Final = 5
-STT_MAX_POLLS: Final = 480
+STT_MAX_POLLS: Final = 240
 STT_MAX_WAIT_SECONDS: Final = STT_POLL_INTERVAL_SECONDS * STT_MAX_POLLS
 
 # 元のリクエストを含む試行回数 (HttpRetryOptions.attempts の意味). fallback 側にのみ効かせる
