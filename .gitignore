@@ -303,3 +303,7 @@ Session.vim
 *.rej
 tempCodeRunnerFile.py
 .~lock.*
+
+# draw.io が編集中に作るバックアップ / 一時ファイル (.drawio 本体は追跡する)
+.$*.drawio.bkp
+.$*.drawio.dtmp
