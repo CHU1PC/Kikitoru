@@ -29,6 +29,7 @@ from app.settings.job_queue import (
 )
 from app.settings.timeouts import MAX_RUNTIME_SECONDS
 from app.storage import delete_object
+from app.summaries.core import purge_expired_summaries
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -157,6 +158,43 @@ async def _purge_loop(shutdown: asyncio.Event) -> None:
         await _sleep_or_stop(shutdown, PURGE_INTERVAL_SECONDS)
 
 
+async def _delete_trashed_media(purged: list[str | None]) -> None:
+    """完全削除した要約の音声を S3 から消す.
+
+    行が消えた後は media_key を復元できないので, 失敗は error で残す.
+
+    Args:
+        purged (list[str | None]): 削除した行の media_key
+    """
+    for media_key in purged:
+        if media_key is None:
+            continue
+        try:
+            await delete_object(media_key)
+        except Exception as e:  # ruff:ignore[blind-except] - 1件の失敗で残りを道連れにしない
+            logger.error(f"Leaked S3 object {media_key} (purged row is already gone): {e}")
+
+
+async def _trash_purge_loop(shutdown: asyncio.Event) -> None:
+    """保持期間を過ぎたゴミ箱の要約と, その音声を定期的に削除する.
+
+    Args:
+        shutdown (asyncio.Event): 停止要求のイベント
+    """
+    while not shutdown.is_set():
+        try:
+            async with async_session() as db_session:
+                purged = await purge_expired_summaries(
+                    db_session, retention_days=settings.TRASH_RETENTION_DAYS
+                )
+            await _delete_trashed_media(purged)
+            if purged:
+                logger.info(f"Purged {len(purged)} trashed summaries")
+        except Exception as e:  # ruff:ignore[blind-except] - 次の周期で再試行する
+            logger.warning(f"purge_expired_summaries failed: {e}")
+        await _sleep_or_stop(shutdown, _PURGE_INTERVAL_SECONDS)
+
+
 async def _release_in_flight() -> None:
     """停止時に抱えているジョブを pending に戻し, 次の worker がすぐ拾えるようにする."""
     tokens = list(_in_flight.values())
@@ -184,6 +222,7 @@ async def main() -> None:
     tasks += [
         asyncio.create_task(_reclaim_loop(shutdown), name="reclaim"),
         asyncio.create_task(_purge_loop(shutdown), name="purge"),
+        asyncio.create_task(_trash_purge_loop(shutdown), name="trash-purge"),
     ]
 
     await shutdown.wait()
