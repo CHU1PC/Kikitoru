@@ -4,18 +4,18 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.exc import IntegrityError
 
 from app.db.models import SummaryGroup
-from app.db.summary_group import (
-    create_group,
-    delete_group,
-    get_owned_group,
-    list_groups,
-    rename_group,
-)
 from app.dependencies import ApprovedUser, DbSessionDep
 from app.schema.summaries import (
     SummaryGroupCreate,
     SummaryGroupEdit,
     SummaryGroupResponse,
+)
+from app.summaries.groups import (
+    create_group,
+    delete_group,
+    get_owned_group,
+    list_groups,
+    rename_group,
 )
 
 router = APIRouter(prefix="/groups", tags=["groups"])

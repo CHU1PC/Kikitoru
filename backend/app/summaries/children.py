@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from app.db.models import ActionItem, Decision, Topic
-from app.db.summaries import get_owned_summary
+from app.summaries.core import get_owned_summary
 
 if TYPE_CHECKING:
     from uuid import UUID
