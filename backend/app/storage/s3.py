@@ -7,6 +7,7 @@ import boto3
 
 if TYPE_CHECKING:
     import tempfile
+    from datetime import datetime
     from uuid import UUID
 
     from mypy_boto3_s3 import S3Client
@@ -45,6 +46,32 @@ async def persist_upload(spooled: tempfile.SpooledTemporaryFile[bytes], job_id: 
     spooled.seek(0)
     await asyncio.to_thread(s3.upload_fileobj, spooled, settings.S3_BUCKET, key)
     return key
+
+
+def _collect_upload_keys() -> dict[str, datetime]:
+    """uploads/ 配下を1ページずつ消化し, key と最終更新時刻だけを残す.
+
+    Returns:
+        dict[str, datetime]: key -> 最終更新時刻 (tz-aware UTC)
+    """
+    found: dict[str, datetime] = {}
+    for page in s3.get_paginator("list_objects_v2").paginate(
+        Bucket=settings.S3_BUCKET, Prefix=f"{UPLOAD_PREFIX}/"
+    ):
+        for obj in page.get("Contents", []):
+            key, last_modified = obj.get("Key"), obj.get("LastModified")
+            if key is not None and last_modified is not None:
+                found[key] = last_modified
+    return found
+
+
+async def list_upload_keys() -> dict[str, datetime]:
+    """uploads/ 配下のオブジェクトの key と最終更新時刻を全件返す.
+
+    Returns:
+        dict[str, datetime]: key -> 最終更新時刻 (tz-aware UTC)
+    """
+    return await asyncio.to_thread(_collect_upload_keys)
 
 
 async def get_object_bytes(key: str) -> bytes:
