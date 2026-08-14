@@ -105,6 +105,16 @@ class Settings(BaseSettings):
         description="ゴミ箱に入れた要約を完全削除するまでの日数.",
     )
 
+    # Storage
+    ORPHAN_MEDIA_ABORT_MIN_COUNT: int = Field(
+        default=10,
+        ge=1,
+        description=(
+            "参照されない S3 オブジェクトがこの件数を超え, かつ全体の半分を超えたら回収を中止する. "
+            "正常な滞留で止まったときに, 再デプロイせず一時的に引き上げるための逃げ道."
+        ),
+    )
+
     # Deployment
     ENABLE_DOCS: bool = Field(
         default=False,
