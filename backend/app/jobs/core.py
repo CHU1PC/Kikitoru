@@ -385,11 +385,10 @@ async def finish_retry(
 
 async def purge_old(
     db_session: AsyncSession, *, completed_days: int, failed_days: int
-) -> list[tuple[JobStatus, str]]:
-    """保持期間を過ぎた終了済みジョブを削除し, 消した行の (status, media_key) を返す.
+) -> int:
+    """保持期間を過ぎた終了済みジョブを削除する.
 
-    failed の media は summaries から参照されないので, 行を消すと S3 で回収不能になる.
-    completed の media は summaries が音声再生に使うので消してはいけない. 呼び出し側が振り分ける.
+    音声は行が消えた時点で参照が無くなるので, 孤児の回収側が消す.
 
     Args:
         db_session (AsyncSession): DBセッション. この関数が commit する
@@ -397,27 +396,23 @@ async def purge_old(
         failed_days (int): failed を保持する日数
 
     Returns:
-        list[tuple[JobStatus, str]]: 削除した行の (status, media_key)
+        int: 削除した行数
     """
-    expired = (
-        await db_session.exec(
-            delete(TranscriptionJob)
-            .where(
-                or_(
-                    and_(
-                        col(TranscriptionJob.status) == JobStatus.completed,
-                        col(TranscriptionJob.completed_at)
-                        < func.now() - timedelta(days=completed_days),
-                    ),
-                    and_(
-                        col(TranscriptionJob.status) == JobStatus.failed,
-                        col(TranscriptionJob.completed_at)
-                        < func.now() - timedelta(days=failed_days),
-                    ),
-                )
+    result = await db_session.exec(
+        delete(TranscriptionJob).where(
+            or_(
+                and_(
+                    col(TranscriptionJob.status) == JobStatus.completed,
+                    col(TranscriptionJob.completed_at)
+                    < func.now() - timedelta(days=completed_days),
+                ),
+                and_(
+                    col(TranscriptionJob.status) == JobStatus.failed,
+                    col(TranscriptionJob.completed_at)
+                    < func.now() - timedelta(days=failed_days),
+                ),
             )
-            .returning(col(TranscriptionJob.status), col(TranscriptionJob.media_key))
         )
-    ).all()
+    )
     await db_session.commit()
-    return [(status, media_key) for status, media_key in expired]
+    return result.rowcount

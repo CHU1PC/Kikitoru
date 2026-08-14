@@ -299,25 +299,23 @@ async def get_transcript_segments(db_session: AsyncSession, summary_id: UUID) ->
 
 async def purge_expired_summaries(
     db_session: AsyncSession, *, retention_days: int
-) -> list[str | None]:
-    """保持期間を過ぎたゴミ箱の要約を削除し, 消した行の media_key を返す.
+) -> int:
+    """保持期間を過ぎたゴミ箱の要約を削除する.
+
+    音声は行が消えた時点で参照が無くなるので, 孤児の回収側が消す.
 
     Args:
         db_session (AsyncSession): DBセッション. この関数が commit する
         retention_days (int): ゴミ箱に置く日数
 
     Returns:
-        list[str | None]: 削除した行の media_key. 音声が無い行は None
+        int: 削除した行数
     """
-    expired = (
-        await db_session.exec(
-            delete(Summary)
-            .where(
-                col(Summary.deleted_at).is_not(None),
-                col(Summary.deleted_at) < func.now() - timedelta(days=retention_days),
-            )
-            .returning(col(Summary.media_key))
+    result = await db_session.exec(
+        delete(Summary).where(
+            col(Summary.deleted_at).is_not(None),
+            col(Summary.deleted_at) < func.now() - timedelta(days=retention_days),
         )
-    ).all()
+    )
     await db_session.commit()
-    return [media_key for (media_key,) in expired]
+    return result.rowcount

@@ -103,7 +103,7 @@ def _purge(db_session: AsyncSession) -> object:
         db_session (AsyncSession): DB セッション.
 
     Returns:
-        object: 削除した行の media_key のリスト.
+        object: 削除した行数.
     """
     return purge_expired_summaries(db_session, retention_days=_TRASH_RETENTION_DAYS)
 
@@ -124,29 +124,9 @@ def test_purge_removes_only_expired_trashed_summaries(
 
     purged = db_call(_purge)
 
-    assert len(purged) == _EXPECTED_PURGED
+    assert purged == _EXPECTED_PURGED
     remaining = {summary.id for summary in db_call(_all_summaries)}
     assert remaining == {kept_trashed.id, active.id}
-
-
-def test_purge_reports_media_key_of_deleted_rows(
-    seed: Callable[..., None], db_call: Callable[..., object]
-) -> None:
-    """削除した行の media_key を返すことを確認するテスト.
-
-    行を消す前にキーを受け取らないと S3 の音声が回収不能になる. 音声が無い行は None で返る.
-    """
-    now = datetime.now(UTC)
-    user = User(email="trash@example.com", name="Trash", status=UserStatus.approved)
-    with_media = _summary(
-        user.id, deleted_at=now - timedelta(days=31), media_key="uploads/expired"
-    )
-    without_media = _summary(user.id, deleted_at=now - timedelta(days=31))
-    seed(user, with_media, without_media)
-
-    purged = db_call(_purge)
-
-    assert set(purged) == {None, "uploads/expired"}
 
 
 def test_purge_cascades_to_child_rows(
@@ -219,5 +199,5 @@ def test_purge_keeps_everything_within_retention(
     active = _summary(user.id)
     seed(user, fresh_trashed, active)
 
-    assert db_call(_purge) == []
+    assert db_call(_purge) == 0
     assert len(db_call(_all_summaries)) == _EXPECTED_KEPT

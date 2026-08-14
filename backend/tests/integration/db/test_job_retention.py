@@ -67,7 +67,7 @@ def _purge(db_session: AsyncSession) -> object:
         db_session (AsyncSession): DB セッション.
 
     Returns:
-        object: 削除した行の (status, media_key) のリスト.
+        object: 削除した行数.
     """
     return purge_old(
         db_session,
@@ -104,27 +104,9 @@ def test_purge_removes_only_expired_finished_jobs(
 
     purged = db_call(_purge)
 
-    assert len(purged) == _EXPECTED_PURGED
+    assert purged == _EXPECTED_PURGED
     remaining = {job.id for job in db_call(_all_jobs)}
     assert remaining == {kept_completed.id, kept_failed.id, old_processing.id, old_pending.id}
-
-
-def test_purge_reports_media_key_of_failed_jobs(
-    seed: Callable[..., None], db_call: Callable[..., object]
-) -> None:
-    """削除した行の media_key を返すことを確認するテスト.
-
-    failed の音声は summaries から参照されないため, 行を消す前にキーを受け取らないと
-    S3 上で回収不能になる.
-    """
-    now = datetime.now(UTC)
-    user = User(email="purge@example.com", name="Purge", status=UserStatus.approved)
-    expired_failed = _job(user.id, JobStatus.failed, completed_at=now - timedelta(days=31))
-    seed(user, expired_failed)
-
-    purged = db_call(_purge)
-
-    assert purged == [(JobStatus.failed, expired_failed.media_key)]
 
 
 def test_purge_keeps_everything_within_retention(
@@ -137,5 +119,5 @@ def test_purge_keeps_everything_within_retention(
     fresh_failed = _job(user.id, JobStatus.failed, completed_at=now - timedelta(hours=1))
     seed(user, fresh_completed, fresh_failed)
 
-    assert db_call(_purge) == []
+    assert db_call(_purge) == 0
     assert len(db_call(_all_jobs)) == _EXPECTED_PURGED

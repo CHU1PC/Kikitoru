@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from app.audio.orphans import OrphanScanAbortedError, find_orphan_media
 from app.db.engine import async_session, engine
-from app.db.models import JobStatus
 from app.jobs.core import (
     fail_expired_jobs,
     fetch_one,
@@ -27,8 +27,9 @@ from app.settings.job_queue import (
     RECLAIM_INTERVAL_SECONDS,
     SHUTDOWN_GRACE_SECONDS,
 )
+from app.settings.storage import ORPHAN_MEDIA_INTERVAL_SECONDS, ORPHAN_MEDIA_MIN_AGE_SECONDS
 from app.settings.timeouts import MAX_RUNTIME_SECONDS
-from app.storage import delete_object
+from app.storage import UPLOAD_PREFIX, delete_object
 from app.summaries.core import purge_expired_summaries
 
 if TYPE_CHECKING:
@@ -119,25 +120,8 @@ async def _reclaim_loop(shutdown: asyncio.Event) -> None:
         await _sleep_or_stop(shutdown, RECLAIM_INTERVAL_SECONDS)
 
 
-async def _delete_orphaned_media(purged: list[tuple[JobStatus, str]]) -> None:
-    """削除したジョブのうち, 失敗した分の音声だけ S3 から消す.
-
-    completed の音声は summaries が再生に使うので残す.
-
-    Args:
-        purged (list[tuple[JobStatus, str]]): 削除した行の (status, media_key)
-    """
-    for status, media_key in purged:
-        if status is not JobStatus.failed:
-            continue
-        try:
-            await delete_object(media_key)
-        except Exception as e:  # ruff:ignore[blind-except] - 1件の失敗で残りを道連れにしない
-            logger.error(f"Leaked S3 object {media_key} (purged row is already gone): {e}")
-
-
 async def _purge_loop(shutdown: asyncio.Event) -> None:
-    """保持期間を過ぎた終了済みジョブと, 失敗ジョブの音声を定期的に削除する.
+    """保持期間を過ぎた終了済みジョブとゴミ箱の要約を定期的に削除する.
 
     Args:
         shutdown (asyncio.Event): 停止要求のイベント
@@ -145,54 +129,64 @@ async def _purge_loop(shutdown: asyncio.Event) -> None:
     while not shutdown.is_set():
         try:
             async with async_session() as db_session:
-                purged = await purge_old(
+                jobs = await purge_old(
                     db_session,
                     completed_days=COMPLETED_RETENTION_DAYS,
                     failed_days=FAILED_RETENTION_DAYS,
                 )
-            await _delete_orphaned_media(purged)
-            if purged:
-                logger.info(f"Purged {len(purged)} finished jobs")
+                summaries = await purge_expired_summaries(
+                    db_session, retention_days=settings.TRASH_RETENTION_DAYS
+                )
+            if jobs or summaries:
+                logger.info(f"Purged {jobs} finished jobs and {summaries} trashed summaries")
         except Exception as e:  # ruff:ignore[blind-except] - 次の周期で再試行する
-            logger.warning(f"purge_old failed: {e}")
+            logger.warning(f"purge loop failed: {e}")
         await _sleep_or_stop(shutdown, PURGE_INTERVAL_SECONDS)
 
 
-async def _delete_trashed_media(purged: list[str | None]) -> None:
-    """完全削除した要約の音声を S3 から消す.
-
-    行が消えた後は media_key を復元できないので, 失敗は error で残す.
+async def _sweep_orphan_media(orphans: list[str], shutdown: asyncio.Event) -> None:
+    """どの行からも参照されていない音声を S3 から消す.
 
     Args:
-        purged (list[str | None]): 削除した行の media_key
+        orphans (list[str]): 孤児と判定した key
+        shutdown (asyncio.Event): 停止要求のイベント
     """
-    for media_key in purged:
-        if media_key is None:
+    for key in orphans:
+        if shutdown.is_set():
+            return
+        if not key.startswith(f"{UPLOAD_PREFIX}/"):
+            logger.error(f"Refused to delete {key} outside {UPLOAD_PREFIX}/")
             continue
         try:
-            await delete_object(media_key)
+            await delete_object(key)
         except Exception as e:  # ruff:ignore[blind-except] - 1件の失敗で残りを道連れにしない
-            logger.error(f"Leaked S3 object {media_key} (purged row is already gone): {e}")
+            logger.error(f"Failed to delete orphan media {key}: {e}")
+        else:
+            logger.info(f"Deleted orphan media {key}")
 
 
-async def _trash_purge_loop(shutdown: asyncio.Event) -> None:
-    """保持期間を過ぎたゴミ箱の要約と, その音声を定期的に削除する.
+async def _orphan_media_loop(shutdown: asyncio.Event) -> None:
+    """どの行からも参照されなくなった S3 の音声を定期的に回収する.
 
     Args:
         shutdown (asyncio.Event): 停止要求のイベント
     """
     while not shutdown.is_set():
+        await _sleep_or_stop(shutdown, ORPHAN_MEDIA_INTERVAL_SECONDS)
+        if shutdown.is_set():
+            return
         try:
             async with async_session() as db_session:
-                purged = await purge_expired_summaries(
-                    db_session, retention_days=settings.TRASH_RETENTION_DAYS
+                orphans = await find_orphan_media(
+                    db_session, min_age_seconds=ORPHAN_MEDIA_MIN_AGE_SECONDS
                 )
-            await _delete_trashed_media(purged)
-            if purged:
-                logger.info(f"Purged {len(purged)} trashed summaries")
+            if orphans:
+                logger.warning(f"Found {len(orphans)} orphan media objects")
+            await _sweep_orphan_media(orphans, shutdown)
+        except OrphanScanAbortedError as e:  # 設定の異常なので一時エラーと分けて残す
+            logger.error(f"Orphan media scan aborted: {e}")
         except Exception as e:  # ruff:ignore[blind-except] - 次の周期で再試行する
-            logger.warning(f"purge_expired_summaries failed: {e}")
-        await _sleep_or_stop(shutdown, PURGE_INTERVAL_SECONDS)
+            logger.warning(f"orphan media scan failed: {e}")
 
 
 async def _release_in_flight() -> None:
@@ -222,7 +216,7 @@ async def main() -> None:
     tasks += [
         asyncio.create_task(_reclaim_loop(shutdown), name="reclaim"),
         asyncio.create_task(_purge_loop(shutdown), name="purge"),
-        asyncio.create_task(_trash_purge_loop(shutdown), name="trash-purge"),
+        asyncio.create_task(_orphan_media_loop(shutdown), name="orphan-media"),
     ]
 
     await shutdown.wait()
